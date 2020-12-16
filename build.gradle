@@ -1,0 +1,116 @@
+// For those who want the bleeding edge
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            name = "forge"
+            url = "http://files.minecraftforge.net/maven"
+        }
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+    }
+}
+apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'maven-publish'
+
+
+version = "1.0"
+group = "net.modcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+archivesBaseName = "ModCoreLoader"
+
+sourceCompatibility = targetCompatibility = 1.8
+minecraft {
+    version = "1.8.9-11.15.1.2318-1.8.9"
+    runDir = "run"
+
+    // the mappings can be changed at any time, and must be in the following format.
+    // snapshot_YYYYMMDD   snapshot are built nightly.
+    // stable_#            stables are built at the discretion of the MCP team.
+    // Use non-default mappings at your own risk. they may not allways work.
+    // simply re-run your setup task after changing the mappings to update your workspace.
+    mappings = "stable_22"
+    // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
+}
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven { url "https://repo.sk1er.club/repository/maven-public" }
+    maven { url 'https://jitpack.io' }
+    maven {
+        name = 'sponge'
+        url = 'https://repo.spongepowered.org/maven'
+    }
+}
+
+dependencies {
+    implementation("club.sk1er:ModCore:612-10809-SNAPSHOT") {
+        exclude module: "Vigilance"
+    }
+}
+
+processResources {
+    // this will ensure that this task is redone when the versions change.
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    // replace stuff in mcmod.info, nothing else
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+
+        // replace version and mcversion
+        expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+
+    // copy everything else, thats not the mcmod.info
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
+
+jar {
+    manifest {
+        attributes "ModSide": "CLIENT",
+                "TweakClass": "net.modcore.loader.ModCoreSetupTweaker",
+                "TweakOrder": "0"
+    }
+}
+
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId = "Loader"
+            version = "${this.properties.getOrDefault("branch", "master") != "master" ? this.properties.getOrDefault("branch", "master") + "-" : ""}${project.version}${this.properties.getOrDefault("IS_CI", false) ? "-SNAPSHOT" : ""}"
+
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+
+                configurations.implementation.allDependencies.each {
+                    if (it.group != null && it.name != null && it.name != "forge" && it.version != null) {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+
+            artifact jar
+        }
+    }
+
+    repositories {
+        maven {
+            name 'nexus'
+            url "https://repo.sk1er.club/repository/maven-${this.properties.getOrDefault("IS_CI", false) ? "snapshots" : "releases"}/"
+
+            credentials {
+                username project.nexus_user
+                password project.nexus_password
+            }
+        }
+    }
+}
+
