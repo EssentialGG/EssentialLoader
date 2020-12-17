@@ -97,7 +97,7 @@ public final class ModCoreLoader {
 
     private boolean isInitialized() {
         try {
-            return club.sk1er.api.core.tweaker.ModCoreTweaker.initialized;
+            return net.modcore.api.tweaker.ModCoreTweaker.initialized;
         } catch (Throwable ignored) {
         }
         return false;
@@ -118,7 +118,7 @@ public final class ModCoreLoader {
 
     public void initializeModCore() {
         try {
-            club.sk1er.api.core.tweaker.ModCoreTweaker.initialize(gameDir);
+           net.modcore.api.tweaker.ModCoreTweaker.initialize(gameDir);
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
         }
