@@ -2,9 +2,8 @@ package net.modcore.loader;
 
 import net.modcore.loader.components.ModCoreProgressBarUI;
 import net.modcore.loader.components.MotionPanel;
-import net.modcore.loader.internal.JsonHolder;
-import net.modcore.loader.ui.HttpUtils;
 import net.minecraft.launchwrapper.Launch;
+import org.apache.commons.io.FileUtils;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -70,7 +69,29 @@ public final class ModCoreLoader {
 
         if (!modcoreFile.exists() && !failed) {
             initFrame();
-            downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile);
+            File metaDataFile = new File(dataDir, "metadata.json");
+            JsonHolder metaData = new JsonHolder();
+            if (metaDataFile.exists()) {
+                try {
+                    metaData = new JsonHolder(FileUtils.readFileToString(metaDataFile));
+                    if (metaData.has(gameVersion)) {
+                        File oldJar = new File(dataDir, String.format(FILE_NAME, metaData.optString(gameVersion), gameVersion));
+                        if (oldJar.exists()) {
+                            oldJar.delete();
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile)) {
+                metaData.put(gameVersion, remoteVersion);
+                try {
+                    FileUtils.write(metaDataFile, metaData.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
         addToClasspath(modcoreFile);
@@ -118,13 +139,13 @@ public final class ModCoreLoader {
 
     public void initializeModCore() {
         try {
-           net.modcore.api.tweaker.ModCoreTweaker.initialize(gameDir);
+            net.modcore.api.tweaker.ModCoreTweaker.initialize(gameDir);
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
         }
     }
 
-    private void downloadFile(final String url, final File target) {
+    private boolean downloadFile(final String url, final File target) {
         try {
             final HttpURLConnection connection = HttpUtils.prepareConnection(url);
             final int contentLength = connection.getContentLength();
@@ -142,13 +163,16 @@ public final class ModCoreLoader {
                         final int progress = progressBar.getValue() + 1024;
                         progressBar.setValue(progress);
                     }
+                    return true;
                 }
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
+        } finally {
+            frame.dispose();
         }
-        frame.dispose();
     }
 
     private void initFrame() {

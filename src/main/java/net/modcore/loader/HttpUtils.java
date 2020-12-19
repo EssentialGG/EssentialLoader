@@ -1,6 +1,5 @@
-package net.modcore.loader.ui;
+package net.modcore.loader;
 
-import net.modcore.loader.internal.JsonHolder;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
@@ -9,7 +8,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
 
-public class HttpUtils {
+class HttpUtils {
     public static JsonHolder fetchJson(String url) {
         return new JsonHolder(fetchString(url));
     }

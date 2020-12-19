@@ -1,4 +1,4 @@
-package net.modcore.loader.internal;
+package net.modcore.loader;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -7,15 +7,14 @@ import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.List;
-
-public class JsonHolder {
+class JsonHolder {
     private JsonObject object;
 
-    public JsonHolder(JsonObject object) {
+    JsonHolder(JsonObject object) {
         this.object = object;
     }
 
-    public JsonHolder(String raw) {
+    JsonHolder(String raw) {
         if (raw == null)
             object = new JsonObject();
         else
@@ -27,7 +26,7 @@ public class JsonHolder {
             }
     }
 
-    public JsonHolder() {
+    JsonHolder() {
         this(new JsonObject());
     }
 
