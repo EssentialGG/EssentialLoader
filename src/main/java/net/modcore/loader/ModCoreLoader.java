@@ -22,7 +22,7 @@ import java.net.URLClassLoader;
 import java.util.LinkedHashSet;
 
 public final class ModCoreLoader {
-    private static final String VERSION_URL = "http://api.modcore.net/api/v1/versions";
+    private static final String VERSION_URL = "https://api.modcore.net/api/v1/versions";
     private static final String ARTIFACT_URL = "https://static.sk1er.club/repo/mods/modcore/%1$s/%2$s/ModCore-%1$s%%20(%2$s).jar";
     private static final String CLASS_NAME = "net.modcore.api.tweaker.ModCoreTweaker";
     private static final String FILE_NAME = "ModCore-%s (%s).jar";
@@ -187,7 +187,7 @@ public final class ModCoreLoader {
         frame.setSize(FRAME_WIDTH, FRAME_HEIGHT);
         frame.setResizable(false);
 
-        frame.setShape(new RoundRectangle2D.Double(0, 0, FRAME_WIDTH - 16, FRAME_HEIGHT - 16, 16, 16));
+        frame.setShape(new RoundRectangle2D.Double(0, 0, FRAME_WIDTH, FRAME_HEIGHT, 16, 16));
         frame.setTitle("Updating Modcore...");
 
         // Setting the background and the layout
@@ -210,7 +210,7 @@ public final class ModCoreLoader {
         final JButton exit = new JButton();
         exit.setBackground(COLOR_EXIT);
         exit.setForeground(COLOR_EXIT);
-        exit.setBounds(FRAME_WIDTH - 48, 16, 16, 16);
+        exit.setBounds(FRAME_WIDTH - 32, 16, 16, 16);
         exit.setFocusPainted(false);
         titleBar.add(exit, BorderLayout.LINE_END);
 
