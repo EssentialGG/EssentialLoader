@@ -28,7 +28,7 @@ public final class ModCoreLoader {
     private static final String FILE_NAME = "ModCore-%s (%s).jar";
     private static final int FRAME_WIDTH = 470;
     private static final int FRAME_HEIGHT = 240;
-
+    private static final boolean UPDATE = "true".equals(System.getProperty("modcore.autoUpdate", "true"));
     private final Color COLOR_BACKGROUND = new Color(33, 34, 38);
     private final Color COLOR_FOREGROUND = new Color(141, 141, 143);
     private final Color COLOR_TITLE_BACKGROUND = new Color(27, 28, 31);
@@ -65,7 +65,7 @@ public final class ModCoreLoader {
         final String remoteVersion = versions.optString(gameVersion);
         final boolean failed = versions.getKeys().size() == 0 || (versions.has("success") && !versions.optBoolean("success"));
 
-        final File modcoreFile = new File(dataDir, String.format(FILE_NAME, remoteVersion, gameVersion));
+        File modcoreFile = new File(dataDir, String.format(FILE_NAME, remoteVersion, gameVersion));
 
         if (!modcoreFile.exists() && !failed) {
             initFrame();
@@ -77,14 +77,18 @@ public final class ModCoreLoader {
                     if (metaData.has(gameVersion)) {
                         File oldJar = new File(dataDir, String.format(FILE_NAME, metaData.optString(gameVersion), gameVersion));
                         if (oldJar.exists()) {
-                            oldJar.delete();
+                            if (UPDATE)
+                                oldJar.delete();
+                            else {
+                                modcoreFile = oldJar;
+                            }
                         }
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-            if (downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile)) {
+            if ((UPDATE || !modcoreFile.exists()) && downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile)) {
                 metaData.put(gameVersion, remoteVersion);
                 try {
                     FileUtils.write(metaDataFile, metaData.toString());
