@@ -11,14 +11,12 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.MessageDigest;
 import java.util.LinkedHashSet;
 
 public final class ModCoreLoader {
@@ -29,6 +27,12 @@ public final class ModCoreLoader {
     private static final int FRAME_WIDTH = 470;
     private static final int FRAME_HEIGHT = 240;
     private static final boolean UPDATE = "true".equals(System.getProperty("modcore.autoUpdate", "true"));
+    private static final char[] hexCodes;
+
+    static {
+        hexCodes = "0123456789ABCDEF".toCharArray();
+    }
+
     private final Color COLOR_BACKGROUND = new Color(33, 34, 38);
     private final Color COLOR_FOREGROUND = new Color(141, 141, 143);
     private final Color COLOR_TITLE_BACKGROUND = new Color(27, 28, 31);
@@ -56,18 +60,20 @@ public final class ModCoreLoader {
             throw new IllegalStateException("Unable to create necessary files");
         }
 
-        final JsonHolder versions = HttpUtils.fetchJson(VERSION_URL).optJSONObject("versions");
+        final JsonHolder completeDocument = HttpUtils.fetchJson(VERSION_URL);
+        final JsonHolder hashes = completeDocument.optJSONObject("hashes");
+        final JsonHolder versions = completeDocument.optJSONObject("versions");
         if (!versions.has(gameVersion)) {
             System.out.println("Unsupported game version: " + gameVersion);
             return;
         }
-
+        final String expectedHash = hashes.optString(gameVersion);
         final String remoteVersion = versions.optString(gameVersion);
         final boolean failed = versions.getKeys().size() == 0 || (versions.has("success") && !versions.optBoolean("success"));
 
         File modcoreFile = new File(dataDir, String.format(FILE_NAME, remoteVersion, gameVersion));
 
-        if (!modcoreFile.exists() && !failed) {
+        if (!modcoreFile.exists() && !failed || (UPDATE && modcoreFile.exists() && !toHex(checksum(modcoreFile, "SHA-256")).equalsIgnoreCase(expectedHash))) {
             initFrame();
             File metaDataFile = new File(dataDir, "metadata.json");
             JsonHolder metaData = new JsonHolder();
@@ -88,7 +94,7 @@ public final class ModCoreLoader {
                     e.printStackTrace();
                 }
             }
-            if ((UPDATE || !modcoreFile.exists()) && downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile)) {
+            if ((UPDATE || !modcoreFile.exists()) && downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile, expectedHash)) {
                 metaData.put(gameVersion, remoteVersion);
                 try {
                     FileUtils.write(metaDataFile, metaData.toString());
@@ -149,7 +155,52 @@ public final class ModCoreLoader {
         }
     }
 
-    private boolean downloadFile(final String url, final File target) {
+
+    public static String toHex(final byte[] bytes) {
+        final StringBuilder r = new StringBuilder(bytes.length * 2);
+        for (final byte b : bytes) {
+            r.append(hexCodes[b >> 4 & 0xF]);
+            r.append(hexCodes[b & 0xF]);
+        }
+        return r.toString();
+    }
+
+    public static byte[] checksum(final File input, final String name) {
+        try (final InputStream in = new FileInputStream(input)) {
+            final MessageDigest digest = MessageDigest.getInstance(name);
+            final byte[] block = new byte[4096];
+            int length;
+            while ((length = in.read(block)) > 0) {
+                digest.update(block, 0, length);
+            }
+            return digest.digest();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private boolean downloadFile(final String url, final File target, String expectedHash) {
+        int attempts = 0;
+        while (attempts < 5) {
+            if (attemptDownload(url, target)) {
+                String anotherString = toHex(checksum(target, "SHA-256"));
+                if (expectedHash.equalsIgnoreCase(anotherString)) {
+                    return true;
+                } else {
+                    System.out.println("ModCore hash does not match expected " + expectedHash + " " + anotherString);
+                    if (target.exists()) {
+                        FileUtils.deleteQuietly(target);
+                    }
+                }
+            }
+            attempts++;
+        }
+        JOptionPane.showConfirmDialog(null, "Unable to download required ModCore Library. If issues persist please contact support");
+        return false;
+    }
+
+    private boolean attemptDownload(final String url, final File target) {
         try {
             final HttpURLConnection connection = HttpUtils.prepareConnection(url);
             final int contentLength = connection.getContentLength();
