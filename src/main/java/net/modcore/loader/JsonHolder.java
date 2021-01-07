@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.List;
+
 class JsonHolder {
     private JsonObject object;
 

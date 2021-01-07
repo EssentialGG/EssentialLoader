@@ -54,6 +54,7 @@ public class ModCoreSetupTweaker implements ITweaker {
             e.printStackTrace();
         }
     }
+
     private File getCurrentFile() throws URISyntaxException {
         CodeSource codeSource = getClass().getProtectionDomain().getCodeSource();
         if (codeSource != null) {

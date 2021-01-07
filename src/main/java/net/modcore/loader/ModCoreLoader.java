@@ -50,6 +50,30 @@ public final class ModCoreLoader {
         this.gameVersion = gameVersion;
     }
 
+    public static String toHex(final byte[] bytes) {
+        final StringBuilder r = new StringBuilder(bytes.length * 2);
+        for (final byte b : bytes) {
+            r.append(hexCodes[b >> 4 & 0xF]);
+            r.append(hexCodes[b & 0xF]);
+        }
+        return r.toString();
+    }
+
+    public static byte[] checksum(final File input, final String name) {
+        try (final InputStream in = new FileInputStream(input)) {
+            final MessageDigest digest = MessageDigest.getInstance(name);
+            final byte[] block = new byte[4096];
+            int length;
+            while ((length = in.read(block)) > 0) {
+                digest.update(block, 0, length);
+            }
+            return digest.digest();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public void load() {
         if (isInClassPath() && isInitialized()) {
             return;
@@ -152,31 +176,6 @@ public final class ModCoreLoader {
             net.modcore.api.tweaker.ModCoreTweaker.initialize(gameDir);
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
-        }
-    }
-
-
-    public static String toHex(final byte[] bytes) {
-        final StringBuilder r = new StringBuilder(bytes.length * 2);
-        for (final byte b : bytes) {
-            r.append(hexCodes[b >> 4 & 0xF]);
-            r.append(hexCodes[b & 0xF]);
-        }
-        return r.toString();
-    }
-
-    public static byte[] checksum(final File input, final String name) {
-        try (final InputStream in = new FileInputStream(input)) {
-            final MessageDigest digest = MessageDigest.getInstance(name);
-            final byte[] block = new byte[4096];
-            int length;
-            while ((length = in.read(block)) > 0) {
-                digest.update(block, 0, length);
-            }
-            return digest.digest();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
         }
     }
 

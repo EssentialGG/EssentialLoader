@@ -9,11 +9,14 @@ import java.net.URL;
 import java.nio.charset.Charset;
 
 class HttpUtils {
+    public static int failed = 0;
+
     public static JsonHolder fetchJson(String url) {
         return new JsonHolder(fetchString(url));
     }
 
     public static String fetchString(String url) {
+        if (failed > 3) return "Failed to fetch";
         try {
             final HttpURLConnection connection = HttpUtils.prepareConnection(url);
             try (final InputStream is = connection.getInputStream()) {
@@ -21,6 +24,7 @@ class HttpUtils {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            failed++;
         }
         return "Failed to fetch";
     }
@@ -34,8 +38,8 @@ class HttpUtils {
         connection.setRequestMethod("GET");
         connection.setUseCaches(true);
         connection.addRequestProperty("User-Agent", "Mozilla/5.0 (Sk1er ModCore Initializer)");
-        connection.setReadTimeout(15000);
-        connection.setConnectTimeout(15000);
+        connection.setReadTimeout(3000);
+        connection.setConnectTimeout(3000);
         connection.setDoOutput(true);
 
         return connection;
