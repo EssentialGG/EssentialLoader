@@ -15,7 +15,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'maven-publish'
 
 
-version = "2.0"
+version = "2.0.0"
 group = "net.modcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "ModCoreLoader"
 
@@ -84,7 +84,7 @@ publishing {
                 def dependenciesNode = asNode().appendNode('dependencies')
 
                 configurations.implementation.allDependencies.each {
-                    if (it.group != null && it.name != null && it.name != "forge" && it.version != null) {
+                    if (it.group != null && it.name != null && it.name != "modcore" && it.version != null) {
                         def dependencyNode = dependenciesNode.appendNode('dependency')
                         dependencyNode.appendNode('groupId', it.group)
                         dependencyNode.appendNode('artifactId', it.name)
