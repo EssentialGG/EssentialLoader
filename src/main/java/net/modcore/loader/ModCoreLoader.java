@@ -1,5 +1,6 @@
 package net.modcore.loader;
 
+import net.modcore.loader.components.CircleButton;
 import net.modcore.loader.components.ModCoreProgressBarUI;
 import net.modcore.loader.components.MotionPanel;
 import net.minecraft.launchwrapper.Launch;
@@ -165,8 +166,8 @@ public final class ModCoreLoader {
             Launch.classLoader.clearNegativeEntries(objects);
             Class.forName(CLASS_NAME);
             return true;
-        } catch (ClassNotFoundException ignored) {
-            ignored.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
         return false;
     }
@@ -261,7 +262,7 @@ public final class ModCoreLoader {
         title.setForeground(COLOR_FOREGROUND);
         titleBar.add(title, BorderLayout.LINE_START);
 
-        final JButton exit = new JButton();
+        final CircleButton exit = new CircleButton();
         exit.setBackground(COLOR_EXIT);
         exit.setForeground(COLOR_EXIT);
         exit.setBounds(FRAME_WIDTH - 32, 16, 16, 16);
