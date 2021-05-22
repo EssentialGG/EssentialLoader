@@ -1,4 +1,4 @@
-package net.modcore.loader;
+package gg.essential.loader;
 
 import org.apache.commons.io.IOUtils;
 
@@ -37,7 +37,7 @@ class HttpUtils {
         final HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("GET");
         connection.setUseCaches(true);
-        connection.addRequestProperty("User-Agent", "Mozilla/5.0 (Sk1er ModCore Initializer)");
+        connection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
         connection.setReadTimeout(3000);
         connection.setConnectTimeout(3000);
         connection.setDoOutput(true);

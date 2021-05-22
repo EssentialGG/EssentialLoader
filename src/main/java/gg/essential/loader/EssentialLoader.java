@@ -1,8 +1,8 @@
-package net.modcore.loader;
+package gg.essential.loader;
 
-import net.modcore.loader.components.CircleButton;
-import net.modcore.loader.components.ModCoreProgressBarUI;
-import net.modcore.loader.components.MotionPanel;
+import gg.essential.loader.components.CircleButton;
+import gg.essential.loader.components.EssentialProgressBarUI;
+import gg.essential.loader.components.MotionPanel;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.io.FileUtils;
 
@@ -20,14 +20,14 @@ import java.net.URLClassLoader;
 import java.security.MessageDigest;
 import java.util.LinkedHashSet;
 
-public final class ModCoreLoader {
+public final class EssentialLoader {
     private static final String VERSION_URL = "https://api.modcore.net/api/v1/versions";
     private static final String ARTIFACT_URL = "https://static.sk1er.club/repo/mods/modcore/%1$s/%2$s/ModCore-%1$s%%20(%2$s).jar";
-    private static final String CLASS_NAME = "net.modcore.api.tweaker.ModCoreTweaker";
-    private static final String FILE_NAME = "ModCore-%s (%s).jar";
+    private static final String CLASS_NAME = "gg.essential.api.tweaker.ModCoreTweaker";
+    private static final String FILE_NAME = "Essential-%s (%s).jar";
     private static final int FRAME_WIDTH = 470;
     private static final int FRAME_HEIGHT = 240;
-    private static final boolean UPDATE = "true".equals(System.getProperty("modcore.autoUpdate", "true"));
+    private static final boolean UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
     private static final char[] hexCodes;
 
     static {
@@ -46,7 +46,7 @@ public final class ModCoreLoader {
     private JFrame frame;
     private JProgressBar progressBar;
 
-    public ModCoreLoader(final File gameDir, final String gameVersion) {
+    public EssentialLoader(final File gameDir, final String gameVersion) {
         this.gameDir = gameDir;
         this.gameVersion = gameVersion;
     }
@@ -80,7 +80,7 @@ public final class ModCoreLoader {
             return;
         }
 
-        final File dataDir = new File(gameDir, "modcore");
+        final File dataDir = new File(gameDir, "essential");
         if (!dataDir.exists() && !dataDir.mkdirs()) {
             throw new IllegalStateException("Unable to create necessary files");
         }
@@ -96,9 +96,9 @@ public final class ModCoreLoader {
         final String remoteVersion = versions.optString(gameVersion);
         final boolean failed = versions.getKeys().size() == 0 || (versions.has("success") && !versions.optBoolean("success"));
 
-        File modcoreFile = new File(dataDir, String.format(FILE_NAME, remoteVersion, gameVersion));
+        File essentialFile = new File(dataDir, String.format(FILE_NAME, remoteVersion, gameVersion));
 
-        if (!modcoreFile.exists() && !failed || (UPDATE && modcoreFile.exists() && !toHex(checksum(modcoreFile, "SHA-256")).equalsIgnoreCase(expectedHash))) {
+        if (!essentialFile.exists() && !failed || (UPDATE && essentialFile.exists() && !toHex(checksum(essentialFile, "SHA-256")).equalsIgnoreCase(expectedHash))) {
             initFrame();
             File metaDataFile = new File(dataDir, "metadata.json");
             JsonHolder metaData = new JsonHolder();
@@ -111,7 +111,7 @@ public final class ModCoreLoader {
                             if (UPDATE)
                                 oldJar.delete();
                             else {
-                                modcoreFile = oldJar;
+                                essentialFile = oldJar;
                             }
                         }
                     }
@@ -119,7 +119,7 @@ public final class ModCoreLoader {
                     e.printStackTrace();
                 }
             }
-            if ((UPDATE || !modcoreFile.exists()) && downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), modcoreFile, expectedHash)) {
+            if ((UPDATE || !essentialFile.exists()) && downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), essentialFile, expectedHash)) {
                 metaData.put(gameVersion, remoteVersion);
                 try {
                     FileUtils.write(metaDataFile, metaData.toString());
@@ -129,10 +129,10 @@ public final class ModCoreLoader {
             }
         }
 
-        addToClasspath(modcoreFile);
+        addToClasspath(essentialFile);
 
         if (!isInClassPath()) {
-            throw new IllegalStateException("Something went wrong; ModCore is not found in the classpath. Exists? " + modcoreFile.exists());
+            throw new IllegalStateException("Something went wrong; Essential is not found in the classpath. Exists? " + essentialFile.exists());
         }
 
     }
@@ -142,7 +142,7 @@ public final class ModCoreLoader {
             final URL url = file.toURI().toURL();
             Launch.classLoader.addURL(url);
 
-            final ClassLoader classLoader = ModCoreLoader.class.getClassLoader();
+            final ClassLoader classLoader = EssentialLoader.class.getClassLoader();
             final Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
             method.setAccessible(true);
             method.invoke(classLoader, url);
@@ -153,7 +153,7 @@ public final class ModCoreLoader {
 
     private boolean isInitialized() {
         try {
-            return net.modcore.api.tweaker.ModCoreTweaker.initialized;
+            return gg.essential.api.tweaker.EssentialTweaker.initialized;
         } catch (Throwable ignored) {
         }
         return false;
@@ -172,9 +172,9 @@ public final class ModCoreLoader {
         return false;
     }
 
-    public void initializeModCore() {
+    public void initializeEssential() {
         try {
-            net.modcore.api.tweaker.ModCoreTweaker.initialize(gameDir);
+            gg.essential.api.tweaker.EssentialTweaker.initialize(gameDir);
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
         }
@@ -188,7 +188,7 @@ public final class ModCoreLoader {
                 if (expectedHash.equalsIgnoreCase(anotherString)) {
                     return true;
                 } else {
-                    System.out.println("ModCore hash does not match expected " + expectedHash + " " + anotherString);
+                    System.out.println("Essential hash does not match expected " + expectedHash + " " + anotherString);
                     if (target.exists()) {
                         FileUtils.deleteQuietly(target);
                     }
@@ -196,7 +196,7 @@ public final class ModCoreLoader {
             }
             attempts++;
         }
-        JOptionPane.showConfirmDialog(null, "Unable to download required ModCore Library. If issues persist please contact support");
+        JOptionPane.showConfirmDialog(null, "Unable to download Essential. If issues persist please contact support");
         return false;
     }
 
@@ -243,7 +243,7 @@ public final class ModCoreLoader {
         frame.setResizable(false);
 
         frame.setShape(new RoundRectangle2D.Double(0, 0, FRAME_WIDTH, FRAME_HEIGHT, 16, 16));
-        frame.setTitle("Updating Modcore...");
+        frame.setTitle("Updating Essential...");
 
         // Setting the background and the layout
         final Container container = frame.getContentPane();
@@ -257,7 +257,7 @@ public final class ModCoreLoader {
         titleBar.setBounds(0, 0, FRAME_WIDTH, 30);
         container.add(titleBar);
 
-        final JLabel title = new JLabel("Updating Modcore...");
+        final JLabel title = new JLabel("Updating Essentail...");
         title.setBounds(16, 16, 150, 16);
         title.setForeground(COLOR_FOREGROUND);
         titleBar.add(title, BorderLayout.LINE_START);
@@ -273,7 +273,7 @@ public final class ModCoreLoader {
 
         // Logo
         try {
-            final Image icon = ImageIO.read(getClass().getResource("/modcore.png"));
+            final Image icon = ImageIO.read(getClass().getResource("/essential.png"));
             final JLabel label = new JLabel(new ImageIcon(icon));
             label.setBorder(new EmptyBorder(35, 0, 0, 0));
             label.setAlignmentX(Container.CENTER_ALIGNMENT);
@@ -286,7 +286,7 @@ public final class ModCoreLoader {
         final JProgressBar progressBar = new JProgressBar();
         progressBar.setForeground(COLOR_PROGRESS_FILL);
         progressBar.setBackground(COLOR_BACKGROUND);
-        progressBar.setUI(new ModCoreProgressBarUI());
+        progressBar.setUI(new EssentialProgressBarUI());
         progressBar.setBorderPainted(false);
 
         final JPanel panel = new JPanel();

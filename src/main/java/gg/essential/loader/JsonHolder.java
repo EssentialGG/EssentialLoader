@@ -1,4 +1,4 @@
-package net.modcore.loader;
+package gg.essential.loader;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

@@ -1,10 +1,10 @@
-package net.modcore.loader.components;
+package gg.essential.loader.components;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicProgressBarUI;
 import java.awt.*;
 
-public class ModCoreProgressBarUI extends BasicProgressBarUI {
+public class EssentialProgressBarUI extends BasicProgressBarUI {
     private static final int STROKE_WIDTH = 3;
 
     @Override

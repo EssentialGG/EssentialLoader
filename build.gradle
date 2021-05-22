@@ -46,7 +46,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("club.sk1er:ModCore:616-10809-SNAPSHOT") {
+    compileOnly("gg.essential:Essential:824-10809-SNAPSHOT") {
         exclude module: "Vigilance"
     }
 }

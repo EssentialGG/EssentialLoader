@@ -1,4 +1,4 @@
-package net.modcore.loader;
+package gg.essential.loader;
 
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
@@ -14,14 +14,14 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.util.List;
 
-public class ModCoreSetupTweaker implements ITweaker {
-    private final ModCoreLoader loader;
+public class EssentialTweaker implements ITweaker {
+    private final EssentialLoader loader;
 
-    public ModCoreSetupTweaker() {
+    public EssentialTweaker() {
         this(new String[0]);
     }
 
-    public ModCoreSetupTweaker(String[] fmlPlugins) {
+    public EssentialTweaker(String[] fmlPlugins) {
         String version = "unknown";
 
         try {
@@ -29,7 +29,7 @@ public class ModCoreSetupTweaker implements ITweaker {
         } catch (IllegalAccessException | NoSuchFieldException e) {
             e.printStackTrace();
         }
-        this.loader = new ModCoreLoader(Launch.minecraftHome, version);
+        this.loader = new EssentialLoader(Launch.minecraftHome, version);
         loader.load();
 
         try {
@@ -70,7 +70,7 @@ public class ModCoreSetupTweaker implements ITweaker {
 
     @Override
     public void injectIntoClassLoader(LaunchClassLoader classLoader) {
-        loader.initializeModCore();
+        loader.initializeEssential();
     }
 
     @Override

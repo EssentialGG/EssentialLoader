@@ -1,4 +1,4 @@
-package net.modcore.loader.components;
+package gg.essential.loader.components;
 
 import javax.swing.JButton;
 import java.awt.Graphics;
