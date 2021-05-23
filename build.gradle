@@ -1,14 +1,12 @@
 // For those who want the bleeding edge
 buildscript {
     repositories {
-        jcenter()
-        maven {
-            name = "forge"
-            url = "http://files.minecraftforge.net/maven"
-        }
+        mavenCentral()
+        maven { url "https://files.minecraftforge.net/maven" }
+        maven { url 'https://jitpack.io' }
     }
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+        classpath 'com.github.ReplayMod:ForgeGradle:48c4f0c:all'
     }
 }
 
@@ -16,8 +14,8 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'maven-publish'
 apply plugin: 'java'
 
-version = "2.0.1"
-group = "gg.essential" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+version = "0.9.1"
+group = "gg.essential"
 archivesBaseName = "Loader"
 
 sourceCompatibility = targetCompatibility = 1.8
@@ -35,18 +33,13 @@ minecraft {
 }
 
 repositories {
-    jcenter()
     mavenCentral()
     maven { url "https://repo.sk1er.club/repository/maven-public" }
     maven { url 'https://jitpack.io' }
-    maven {
-        name = 'sponge'
-        url = 'https://repo.spongepowered.org/maven'
-    }
 }
 
 dependencies {
-    compileOnly("gg.essential:Essential:824-10809-SNAPSHOT") {
+    compileOnly("gg.essential:Essential:829-10809-SNAPSHOT") {
         exclude module: "Vigilance"
     }
 }

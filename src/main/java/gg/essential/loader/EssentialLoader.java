@@ -23,7 +23,7 @@ import java.util.LinkedHashSet;
 public final class EssentialLoader {
     private static final String VERSION_URL = "https://api.modcore.net/api/v1/versions";
     private static final String ARTIFACT_URL = "https://static.sk1er.club/repo/mods/modcore/%1$s/%2$s/ModCore-%1$s%%20(%2$s).jar";
-    private static final String CLASS_NAME = "gg.essential.api.tweaker.ModCoreTweaker";
+    private static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_NAME = "Essential-%s (%s).jar";
     private static final int FRAME_WIDTH = 470;
     private static final int FRAME_HEIGHT = 240;
@@ -257,7 +257,7 @@ public final class EssentialLoader {
         titleBar.setBounds(0, 0, FRAME_WIDTH, 30);
         container.add(titleBar);
 
-        final JLabel title = new JLabel("Updating Essentail...");
+        final JLabel title = new JLabel("Updating Essential...");
         title.setBounds(16, 16, 150, 16);
         title.setForeground(COLOR_FOREGROUND);
         titleBar.add(title, BorderLayout.LINE_START);
