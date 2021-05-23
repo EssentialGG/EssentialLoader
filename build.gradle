@@ -36,11 +36,13 @@ repositories {
     mavenCentral()
     maven { url "https://repo.sk1er.club/repository/maven-public" }
     maven { url 'https://jitpack.io' }
+    maven { url 'https://repo.spongepowered.org/maven' }
 }
 
 dependencies {
     compileOnly("gg.essential:Essential:829-10809-SNAPSHOT") {
         exclude module: "Vigilance"
+        exclude module: 'WaifUPnP'
     }
 }
 
