@@ -19,6 +19,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.MessageDigest;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 
 public final class EssentialLoader {
     private static final String VERSION_URL = "https://api.modcore.net/api/v1/versions";
@@ -273,7 +274,7 @@ public final class EssentialLoader {
 
         // Logo
         try {
-            final Image icon = ImageIO.read(getClass().getResource("/essential.png"));
+            final Image icon = ImageIO.read(Objects.requireNonNull(getClass().getResource("/essential.png")));
             final JLabel label = new JLabel(new ImageIcon(icon));
             label.setBorder(new EmptyBorder(35, 0, 0, 0));
             label.setAlignmentX(Container.CENTER_ALIGNMENT);
