@@ -14,7 +14,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'maven-publish'
 apply plugin: 'java'
 
-version = "0.9.1"
+version = "0.9.2"
 group = "gg.essential"
 archivesBaseName = "Loader"
 
