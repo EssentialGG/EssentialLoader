@@ -16,7 +16,7 @@ class HttpUtils {
     }
 
     public static String fetchString(String url) {
-        if (failed > 3) return "Failed to fetch";
+        if (failed > 3) return new JsonHolder().put("failed", true).toString();
         try {
             final HttpURLConnection connection = HttpUtils.prepareConnection(url);
             try (final InputStream is = connection.getInputStream()) {
@@ -26,7 +26,7 @@ class HttpUtils {
             e.printStackTrace();
             failed++;
         }
-        return "Failed to fetch";
+        return new JsonHolder().put("failed", true).toString();
     }
 
     public static HttpURLConnection prepareConnection(final String url) throws IOException {

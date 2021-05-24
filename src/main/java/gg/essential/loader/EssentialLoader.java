@@ -4,6 +4,7 @@ import gg.essential.loader.components.CircleButton;
 import gg.essential.loader.components.EssentialProgressBarUI;
 import gg.essential.loader.components.MotionPanel;
 import net.minecraft.launchwrapper.Launch;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 
 import javax.imageio.ImageIO;
@@ -22,10 +23,9 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 
 public final class EssentialLoader {
-    private static final String VERSION_URL = "https://api.modcore.net/api/v1/versions";
-    private static final String ARTIFACT_URL = "https://static.sk1er.club/repo/mods/modcore/%1$s/%2$s/ModCore-%1$s%%20(%2$s).jar";
+    private static final String VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s";
     private static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
-    private static final String FILE_NAME = "Essential-%s (%s).jar";
+    private static final String FILE_NAME = "Essential (%s).jar";
     private static final int FRAME_WIDTH = 470;
     private static final int FRAME_HEIGHT = 240;
     private static final boolean UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
@@ -61,15 +61,9 @@ public final class EssentialLoader {
         return r.toString();
     }
 
-    public static byte[] checksum(final File input, final String name) {
+    public static String checksum(final File input) {
         try (final InputStream in = new FileInputStream(input)) {
-            final MessageDigest digest = MessageDigest.getInstance(name);
-            final byte[] block = new byte[4096];
-            int length;
-            while ((length = in.read(block)) > 0) {
-                digest.update(block, 0, length);
-            }
-            return digest.digest();
+            return DigestUtils.md5Hex(in);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -86,50 +80,23 @@ public final class EssentialLoader {
             throw new IllegalStateException("Unable to create necessary files");
         }
 
-        final JsonHolder completeDocument = HttpUtils.fetchJson(VERSION_URL);
-        final JsonHolder hashes = completeDocument.optJSONObject("hashes");
-        final JsonHolder versions = completeDocument.optJSONObject("versions");
-        if (!versions.has(gameVersion)) {
+        final JsonHolder completeDocument = HttpUtils.fetchJson(String.format(VERSION_URL, gameVersion.replace(".", "-")));
+        final boolean failed = completeDocument.optBoolean("failed");
+        if (completeDocument.optString("url").isEmpty() && !failed) {
             System.out.println("Unsupported game version: " + gameVersion);
             return;
         }
-        final String expectedHash = hashes.optString(gameVersion);
-        final String remoteVersion = versions.optString(gameVersion);
-        final boolean failed = versions.getKeys().size() == 0 || (versions.has("success") && !versions.optBoolean("success"));
+        final String expectedHash = completeDocument.optString("checksum");
+        File essentialFile = new File(dataDir, String.format(FILE_NAME, gameVersion));
 
-        File essentialFile = new File(dataDir, String.format(FILE_NAME, remoteVersion, gameVersion));
-
-        if (!essentialFile.exists() && !failed || (UPDATE && essentialFile.exists() && !toHex(checksum(essentialFile, "SHA-256")).equalsIgnoreCase(expectedHash))) {
+        if (!essentialFile.exists() && !failed || (UPDATE && essentialFile.exists() && !expectedHash.equalsIgnoreCase(checksum(essentialFile)))) {
             initFrame();
-            File metaDataFile = new File(dataDir, "metadata.json");
-            JsonHolder metaData = new JsonHolder();
-            if (metaDataFile.exists()) {
-                try {
-                    metaData = new JsonHolder(FileUtils.readFileToString(metaDataFile));
-                    if (metaData.has(gameVersion)) {
-                        File oldJar = new File(dataDir, String.format(FILE_NAME, metaData.optString(gameVersion), gameVersion));
-                        if (oldJar.exists()) {
-                            if (UPDATE)
-                                oldJar.delete();
-                            else {
-                                essentialFile = oldJar;
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if ((UPDATE || !essentialFile.exists()) && downloadFile(String.format(ARTIFACT_URL, remoteVersion, gameVersion), essentialFile, expectedHash)) {
-                metaData.put(gameVersion, remoteVersion);
-                try {
-                    FileUtils.write(metaDataFile, metaData.toString());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            if (UPDATE && essentialFile.exists())
+                essentialFile.delete();
+            if ((UPDATE)) {
+                downloadFile(completeDocument.optString("url"), essentialFile, expectedHash);
             }
         }
-
         addToClasspath(essentialFile);
 
         if (!isInClassPath()) {
@@ -185,7 +152,7 @@ public final class EssentialLoader {
         int attempts = 0;
         while (attempts < 5) {
             if (attemptDownload(url, target)) {
-                String anotherString = toHex(checksum(target, "SHA-256"));
+                String anotherString = checksum(target);
                 if (expectedHash.equalsIgnoreCase(anotherString)) {
                     return true;
                 } else {
