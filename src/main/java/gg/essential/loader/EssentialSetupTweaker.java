@@ -14,14 +14,15 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.util.List;
 
-public class EssentialTweaker implements ITweaker {
+@SuppressWarnings("unused")
+public class EssentialSetupTweaker implements ITweaker {
     private final EssentialLoader loader;
 
-    public EssentialTweaker() {
+    public EssentialSetupTweaker() {
         this(new String[0]);
     }
 
-    public EssentialTweaker(String[] fmlPlugins) {
+    public EssentialSetupTweaker(String[] fmlPlugins) {
         String version = "unknown";
 
         try {

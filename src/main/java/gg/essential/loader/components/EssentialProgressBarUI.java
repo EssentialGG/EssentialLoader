@@ -1,8 +1,13 @@
 package gg.essential.loader.components;
 
-import javax.swing.*;
+import javax.swing.JComponent;
 import javax.swing.plaf.basic.BasicProgressBarUI;
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
 public class EssentialProgressBarUI extends BasicProgressBarUI {
     private static final int STROKE_WIDTH = 3;

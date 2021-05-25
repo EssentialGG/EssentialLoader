@@ -9,14 +9,25 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,20 +44,20 @@ import java.util.Objects;
 
 public final class EssentialLoader {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EssentialLoader.class);
+    private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private static final String
-            VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s/",
-            CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker",
-            FILE_NAME = "Essential (%s).jar";
+        VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s/",
+        CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker",
+        FILE_NAME = "Essential (%s).jar";
     private static final int FRAME_WIDTH = 470, FRAME_HEIGHT = 240;
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
     private final Color
-            COLOR_BACKGROUND = new Color(33, 34, 38),
-            COLOR_FOREGROUND = new Color(141, 141, 143),
-            COLOR_TITLE_BACKGROUND = new Color(27, 28, 31),
-            COLOR_PROGRESS_FILL = new Color(1, 165, 82),
-            COLOR_EXIT = new Color(248, 203, 25);
+        COLOR_BACKGROUND = new Color(33, 34, 38),
+        COLOR_FOREGROUND = new Color(141, 141, 143),
+        COLOR_TITLE_BACKGROUND = new Color(27, 28, 31),
+        COLOR_PROGRESS_FILL = new Color(1, 165, 82),
+        COLOR_EXIT = new Color(248, 203, 25);
 
     private final File gameDir;
     private final String gameVersion;
@@ -72,7 +83,7 @@ public final class EssentialLoader {
         JsonObject responseObject;
         try {
             final HttpURLConnection httpURLConnection = this.prepareConnection(
-                    String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
+                String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
             );
 
             String response;
@@ -92,8 +103,8 @@ public final class EssentialLoader {
         }
 
         final String
-                url = responseObject.get("url").getAsString(),
-                checksum = responseObject.get("checksum").getAsString();
+            url = responseObject.get("url").getAsString(),
+            checksum = responseObject.get("checksum").getAsString();
 
         if (StringUtils.isEmpty(url) || StringUtils.isEmpty(checksum)) {
             LOGGER.warn("Unexpected response object data (url={}, checksum={})", url, checksum);
@@ -103,8 +114,8 @@ public final class EssentialLoader {
         final File essentialFile = new File(dataDir, String.format(FILE_NAME, this.gameVersion));
 
         if (
-                !essentialFile.exists() ||
-                (AUTO_UPDATE && essentialFile.exists() && !checksum.equals(this.getChecksum(essentialFile)))
+            !essentialFile.exists() ||
+            (AUTO_UPDATE && essentialFile.exists() && !checksum.equals(this.getChecksum(essentialFile)))
         ) {
             this.initFrame();
 
@@ -143,6 +154,8 @@ public final class EssentialLoader {
         httpURLConnection.setReadTimeout(3000);
         httpURLConnection.setDoOutput(true);
 
+        httpURLConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
+
         return httpURLConnection;
     }
 
@@ -175,9 +188,7 @@ public final class EssentialLoader {
             Launch.classLoader.clearNegativeEntries(objects);
             Class.forName(CLASS_NAME);
             return true;
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        } catch (ClassNotFoundException ignored) { }
         return false;
     }
 
@@ -202,8 +213,8 @@ public final class EssentialLoader {
         }
 
         LOGGER.warn(
-                "Downloaded Essential file checksum did not match what we expected (downloaded={}, expected={}",
-                downloadedChecksum, expectedHash
+            "Downloaded Essential file checksum did not match what we expected (downloaded={}, expected={}",
+            downloadedChecksum, expectedHash
         );
 
         // Do not keep the file they downloaded if validation failed.
@@ -221,8 +232,8 @@ public final class EssentialLoader {
             this.progressBar.setMaximum(contentLength);
 
             try (
-                    final InputStream inputStream = httpURLConnection.getInputStream();
-                    final FileOutputStream fileOutputStream = new FileOutputStream(target)
+                final InputStream inputStream = httpURLConnection.getInputStream();
+                final FileOutputStream fileOutputStream = new FileOutputStream(target)
             ) {
                 final byte[] buffer = new byte[1024];
 
