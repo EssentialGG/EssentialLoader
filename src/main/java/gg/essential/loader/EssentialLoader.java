@@ -1,11 +1,16 @@
 package gg.essential.loader;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import gg.essential.loader.components.CircleButton;
 import gg.essential.loader.components.EssentialProgressBarUI;
 import gg.essential.loader.components.MotionPanel;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -13,33 +18,35 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.security.MessageDigest;
+import java.nio.charset.Charset;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 
 public final class EssentialLoader {
-    private static final String VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s";
-    private static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
-    private static final String FILE_NAME = "Essential (%s).jar";
-    private static final int FRAME_WIDTH = 470;
-    private static final int FRAME_HEIGHT = 240;
-    private static final boolean UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
-    private static final char[] hexCodes;
 
-    static {
-        hexCodes = "0123456789ABCDEF".toCharArray();
-    }
+    private static final Logger LOGGER = LoggerFactory.getLogger(EssentialLoader.class);
+    private static final String
+            VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s/",
+            CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker",
+            FILE_NAME = "Essential (%s).jar";
+    private static final int FRAME_WIDTH = 470, FRAME_HEIGHT = 240;
+    private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
-    private final Color COLOR_BACKGROUND = new Color(33, 34, 38);
-    private final Color COLOR_FOREGROUND = new Color(141, 141, 143);
-    private final Color COLOR_TITLE_BACKGROUND = new Color(27, 28, 31);
-    private final Color COLOR_PROGRESS_FILL = new Color(1, 165, 82);
-    private final Color COLOR_EXIT = new Color(248, 203, 25);
+    private final Color
+            COLOR_BACKGROUND = new Color(33, 34, 38),
+            COLOR_FOREGROUND = new Color(141, 141, 143),
+            COLOR_TITLE_BACKGROUND = new Color(27, 28, 31),
+            COLOR_PROGRESS_FILL = new Color(1, 165, 82),
+            COLOR_EXIT = new Color(248, 203, 25);
 
     private final File gameDir;
     private final String gameVersion;
@@ -52,57 +59,91 @@ public final class EssentialLoader {
         this.gameVersion = gameVersion;
     }
 
-    public static String toHex(final byte[] bytes) {
-        final StringBuilder r = new StringBuilder(bytes.length * 2);
-        for (final byte b : bytes) {
-            r.append(hexCodes[b >> 4 & 0xF]);
-            r.append(hexCodes[b & 0xF]);
-        }
-        return r.toString();
-    }
-
-    public static String checksum(final File input) {
-        try (final InputStream in = new FileInputStream(input)) {
-            return DigestUtils.md5Hex(in);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     public void load() {
-        if (isInClassPath() && isInitialized()) {
+        if (this.isInClassPath() && this.isInitialized()) {
             return;
         }
 
-        final File dataDir = new File(gameDir, "essential");
+        final File dataDir = new File(this.gameDir, "essential");
         if (!dataDir.exists() && !dataDir.mkdirs()) {
-            throw new IllegalStateException("Unable to create necessary files");
+            throw new IllegalStateException("Unable to create essential directory, no permissions?");
         }
 
-        final JsonHolder completeDocument = HttpUtils.fetchJson(String.format(VERSION_URL, gameVersion.replace(".", "-")));
-        final boolean failed = completeDocument.optBoolean("failed");
-        if (completeDocument.optString("url").isEmpty() && !failed) {
-            System.out.println("Unsupported game version: " + gameVersion);
+        JsonObject responseObject;
+        try {
+            final HttpURLConnection httpURLConnection = this.prepareConnection(
+                    String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
+            );
+
+            String response;
+            try (final InputStream inputStream = httpURLConnection.getInputStream()) {
+                response = IOUtils.toString(inputStream, Charset.defaultCharset());
+            }
+
+            responseObject = new JsonParser().parse(response).getAsJsonObject();
+        } catch (final IOException e) {
+            LOGGER.error("Error occurred when verifying game version {}.", this.gameVersion, e);
             return;
         }
-        final String expectedHash = completeDocument.optString("checksum");
-        File essentialFile = new File(dataDir, String.format(FILE_NAME, gameVersion));
 
-        if (!essentialFile.exists() && !failed || (UPDATE && essentialFile.exists() && !expectedHash.equalsIgnoreCase(checksum(essentialFile)))) {
-            initFrame();
-            if (UPDATE && essentialFile.exists())
-                essentialFile.delete();
-            if ((UPDATE)) {
-                downloadFile(completeDocument.optString("url"), essentialFile, expectedHash);
+        if (responseObject == null) {
+            LOGGER.warn("Essential does not support the following game version: {}", this.gameVersion);
+            return;
+        }
+
+        final String
+                url = responseObject.get("url").getAsString(),
+                checksum = responseObject.get("checksum").getAsString();
+
+        if (StringUtils.isEmpty(url) || StringUtils.isEmpty(checksum)) {
+            LOGGER.warn("Unexpected response object data (url={}, checksum={})", url, checksum);
+            return;
+        }
+
+        final File essentialFile = new File(dataDir, String.format(FILE_NAME, this.gameVersion));
+
+        if (
+                !essentialFile.exists() ||
+                (AUTO_UPDATE && essentialFile.exists() && !checksum.equals(this.getChecksum(essentialFile)))
+        ) {
+            this.initFrame();
+
+            if (AUTO_UPDATE) {
+                if (essentialFile.exists()) {
+                    essentialFile.delete();
+                }
+
+                this.downloadFile(url, essentialFile, checksum);
             }
         }
-        addToClasspath(essentialFile);
 
-        if (!isInClassPath()) {
-            throw new IllegalStateException("Something went wrong; Essential is not found in the classpath. Exists? " + essentialFile.exists());
+        this.addToClasspath(essentialFile);
+
+        if (!this.isInClassPath()) {
+            throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
+        }
+    }
+
+    private String getChecksum(final File input) {
+        try (final InputStream inputStream = new FileInputStream(input)) {
+            return DigestUtils.md5Hex(inputStream);
+        } catch (final Exception e) {
+            e.printStackTrace();
         }
 
+        return null;
+    }
+
+    private HttpURLConnection prepareConnection(final String url) throws IOException {
+        final HttpURLConnection httpURLConnection = (HttpURLConnection) new URL(url).openConnection();
+
+        httpURLConnection.setRequestMethod("GET");
+        httpURLConnection.setUseCaches(true);
+        httpURLConnection.setReadTimeout(3000);
+        httpURLConnection.setReadTimeout(3000);
+        httpURLConnection.setDoOutput(true);
+
+        return httpURLConnection;
     }
 
     private void addToClasspath(final File file) {
@@ -149,52 +190,55 @@ public final class EssentialLoader {
     }
 
     private boolean downloadFile(final String url, final File target, String expectedHash) {
-        int attempts = 0;
-        while (attempts < 5) {
-            if (attemptDownload(url, target)) {
-                String anotherString = checksum(target);
-                if (expectedHash.equalsIgnoreCase(anotherString)) {
-                    return true;
-                } else {
-                    System.out.println("Essential hash does not match expected " + expectedHash + " " + anotherString);
-                    if (target.exists()) {
-                        FileUtils.deleteQuietly(target);
-                    }
-                }
-            }
-            attempts++;
+        if (!this.attemptDownload(url, target)) {
+            LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
+            return false;
         }
-        JOptionPane.showConfirmDialog(null, "Unable to download Essential. If issues persist please contact support");
+
+        final String downloadedChecksum = this.getChecksum(target);
+
+        if (downloadedChecksum.equals(expectedHash)) {
+            return true;
+        }
+
+        LOGGER.warn(
+                "Downloaded Essential file checksum did not match what we expected (downloaded={}, expected={}",
+                downloadedChecksum, expectedHash
+        );
+
+        // Do not keep the file they downloaded if validation failed.
+        if (target.exists()) {
+            target.delete();
+        }
+
         return false;
     }
 
     private boolean attemptDownload(final String url, final File target) {
         try {
-            final HttpURLConnection connection = HttpUtils.prepareConnection(url);
-            final int contentLength = connection.getContentLength();
+            final HttpURLConnection httpURLConnection = this.prepareConnection(url);
+            final int contentLength = httpURLConnection.getContentLength();
+            this.progressBar.setMaximum(contentLength);
 
-            try (final InputStream is = connection.getInputStream()) {
-                try (FileOutputStream outputStream = new FileOutputStream(target)) {
-                    final byte[] buffer = new byte[1024];
-                    int read;
+            try (
+                    final InputStream inputStream = httpURLConnection.getInputStream();
+                    final FileOutputStream fileOutputStream = new FileOutputStream(target)
+            ) {
+                final byte[] buffer = new byte[1024];
 
-                    progressBar.setMaximum(contentLength);
-
-                    while ((read = is.read(buffer)) > 0) {
-                        outputStream.write(buffer, 0, read);
-
-                        final int progress = progressBar.getValue() + 1024;
-                        progressBar.setValue(progress);
-                    }
-                    return true;
+                int read;
+                while ((read = inputStream.read(buffer)) > 0) {
+                    fileOutputStream.write(buffer, 0, read);
+                    this.progressBar.setValue((this.progressBar.getValue()) + 1024);
                 }
-            }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+                return true;
+            }
+        } catch (final IOException e) {
+            LOGGER.error("Error occurred when downloading file '{}'.", url, e);
             return false;
         } finally {
-            frame.dispose();
+            this.frame.dispose();
         }
     }
 

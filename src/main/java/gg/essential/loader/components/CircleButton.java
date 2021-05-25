@@ -1,9 +1,7 @@
 package gg.essential.loader.components;
 
-import javax.swing.JButton;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import javax.swing.*;
+import java.awt.*;
 
 public class CircleButton extends JButton {
 
