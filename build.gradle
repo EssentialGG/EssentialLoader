@@ -40,10 +40,6 @@ repositories {
 }
 
 dependencies {
-    compileOnly("gg.essential:Essential:829-10809-SNAPSHOT") {
-        exclude module: "Vigilance"
-        exclude module: 'WaifUPnP'
-    }
 }
 
 processResources {

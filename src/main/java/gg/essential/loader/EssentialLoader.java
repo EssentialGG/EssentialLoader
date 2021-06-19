@@ -175,7 +175,9 @@ public final class EssentialLoader {
 
     private boolean isInitialized() {
         try {
-            return gg.essential.api.tweaker.EssentialTweaker.initialized;
+            return Class.forName(CLASS_NAME)
+                .getField("initialized")
+                .getBoolean(null);
         } catch (Throwable ignored) {
         }
         return false;
@@ -194,7 +196,9 @@ public final class EssentialLoader {
 
     public void initializeEssential() {
         try {
-            gg.essential.api.tweaker.EssentialTweaker.initialize(gameDir);
+            Class.forName(CLASS_NAME)
+                .getDeclaredMethod("initialize", File.class)
+                .invoke(null, gameDir);
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
         }
