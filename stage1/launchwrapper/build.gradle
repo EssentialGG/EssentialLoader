@@ -1,0 +1,18 @@
+version = "1.0.0-SNAPSHOT"
+
+repositories {
+    maven { url "https://maven.minecraftforge.net/" }
+}
+
+dependencies {
+    compileOnly("net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9:universal")
+    compileOnly("net.minecraft:launchwrapper:1.12")
+
+    // Versions based on the one which MC include by default in 1.8.9
+    // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
+    compileOnly("org.apache.commons:commons-lang3:3.3.2")
+    compileOnly("commons-io:commons-io:2.4")
+    compileOnly("commons-codec:commons-codec:1.9")
+    compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
+    compileOnly("com.google.code.gson:gson:2.2.4")
+}

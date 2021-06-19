@@ -1,11 +1,10 @@
-package gg.essential.loader;
+package gg.essential.loader.stage2;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import gg.essential.loader.components.CircleButton;
-import gg.essential.loader.components.EssentialProgressBarUI;
-import gg.essential.loader.components.MotionPanel;
-import net.minecraft.launchwrapper.Launch;
+import gg.essential.loader.stage2.components.CircleButton;
+import gg.essential.loader.stage2.components.EssentialProgressBarUI;
+import gg.essential.loader.stage2.components.MotionPanel;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -34,21 +33,18 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.charset.Charset;
-import java.util.LinkedHashSet;
+import java.nio.file.Path;
 import java.util.Objects;
 
-public final class EssentialLoader {
+public abstract class EssentialLoaderBase {
 
-    private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
-    private static final String
-        VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s/",
-        CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker",
-        FILE_NAME = "Essential (%s).jar";
+    private static final Logger LOGGER = LogManager.getLogger(EssentialLoaderBase.class);
+    private static final String VERSION_URL = "https://downloads.essential.gg/v1/mods/essential/updates/latest/%s/";
+    protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
+    private static final String FILE_NAME = "Essential (%s).jar";
     private static final int FRAME_WIDTH = 470, FRAME_HEIGHT = 240;
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
@@ -65,8 +61,8 @@ public final class EssentialLoader {
     private JFrame frame;
     private JProgressBar progressBar;
 
-    public EssentialLoader(final File gameDir, final String gameVersion) {
-        this.gameDir = gameDir;
+    public EssentialLoaderBase(final Path gameDir, final String gameVersion) {
+        this.gameDir = gameDir.toFile();
         this.gameVersion = gameVersion;
     }
 
@@ -159,19 +155,7 @@ public final class EssentialLoader {
         return httpURLConnection;
     }
 
-    private void addToClasspath(final File file) {
-        try {
-            final URL url = file.toURI().toURL();
-            Launch.classLoader.addURL(url);
-
-            final ClassLoader classLoader = EssentialLoader.class.getClassLoader();
-            final Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
-            method.setAccessible(true);
-            method.invoke(classLoader, url);
-        } catch (Exception e) {
-            throw new RuntimeException("Unexpected error", e);
-        }
-    }
+    protected abstract void addToClasspath(final File file);
 
     private boolean isInitialized() {
         try {
@@ -183,18 +167,9 @@ public final class EssentialLoader {
         return false;
     }
 
-    private boolean isInClassPath() {
-        try {
-            LinkedHashSet<String> objects = new LinkedHashSet<>();
-            objects.add(CLASS_NAME);
-            Launch.classLoader.clearNegativeEntries(objects);
-            Class.forName(CLASS_NAME);
-            return true;
-        } catch (ClassNotFoundException ignored) { }
-        return false;
-    }
+    protected abstract boolean isInClassPath();
 
-    public void initializeEssential() {
+    public void initialize() {
         try {
             Class.forName(CLASS_NAME)
                 .getDeclaredMethod("initialize", File.class)

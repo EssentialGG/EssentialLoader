@@ -1,0 +1,14 @@
+configure(subprojects.findAll { it.name != "common" }) {
+    configurations {
+        bundle
+    }
+
+    dependencies {
+        bundle(implementation(parent.project("common")))
+    }
+
+    jar {
+        dependsOn configurations.bundle
+        from { configurations.bundle.collect { zipTree(it) } }
+    }
+}

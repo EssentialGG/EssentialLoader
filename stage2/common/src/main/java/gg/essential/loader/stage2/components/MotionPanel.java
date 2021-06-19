@@ -1,4 +1,4 @@
-package gg.essential.loader.components;
+package gg.essential.loader.stage2.components;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
