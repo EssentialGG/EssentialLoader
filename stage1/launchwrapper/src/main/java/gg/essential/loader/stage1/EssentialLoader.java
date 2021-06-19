@@ -34,7 +34,11 @@ public final class EssentialLoader {
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private static final String STAGE2_PKG = "gg.essential.loader.stage2.";
     private static final String STAGE2_CLS = STAGE2_PKG + "EssentialLoader";
-    private static final String VERSION_URL = "https://downloads.essential.gg/v1/mods/essential-loader-stage2/updates/latest/%s/";
+    private static final String BASE_URL = System.getProperty(
+        "essential.download.url",
+        System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
+    );
+    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential-loader-stage2/updates/latest/%s/";
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
     private final String gameVersion;
