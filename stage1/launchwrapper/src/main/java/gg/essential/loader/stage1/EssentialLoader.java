@@ -2,6 +2,7 @@ package gg.essential.loader.stage1;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -165,7 +166,7 @@ public final class EssentialLoader {
 
             JsonElement jsonElement = new JsonParser().parse(response);
             responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
-        } catch (final IOException e) {
+        } catch (final IOException | JsonParseException e) {
             LOGGER.error("Error occurred checking for updates for game version {}.", this.gameVersion, e);
             return null;
         }
@@ -175,12 +176,15 @@ public final class EssentialLoader {
             return null;
         }
 
+        final JsonElement
+            jsonUrl = responseObject.get("url"),
+            jsonChecksum = responseObject.get("checksum");
         final String
-            url = responseObject.get("url").getAsString(),
-            checksum = responseObject.get("checksum").getAsString();
+            url = jsonUrl != null && jsonUrl.isJsonPrimitive() ? jsonUrl.getAsString() : null,
+            checksum = jsonChecksum != null && jsonChecksum.isJsonPrimitive() ? responseObject.get("checksum").getAsString() : null;
 
         if (StringUtils.isEmpty(url) || StringUtils.isEmpty(checksum)) {
-            LOGGER.warn("Unexpected response object data (url={}, checksum={})", url, checksum);
+            LOGGER.warn("Unexpected response object data (url={}, checksum={})", jsonUrl, jsonChecksum);
             return null;
         }
 
