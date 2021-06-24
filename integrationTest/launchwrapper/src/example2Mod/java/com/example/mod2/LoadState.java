@@ -5,4 +5,5 @@ public class LoadState {
     public static boolean tweaker = false;
     public static boolean coreMod = false;
     public static boolean mod = false;
+    public static boolean mixin = false;
 }

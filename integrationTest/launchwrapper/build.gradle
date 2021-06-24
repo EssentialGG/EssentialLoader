@@ -1,5 +1,6 @@
 repositories {
     maven { url "https://maven.minecraftforge.net/" }
+    maven { url "https://repo.spongepowered.org/maven" }
 }
 
 sourceSets {
@@ -14,6 +15,9 @@ sourceSets {
 configurations {
     example2ModImplementation.extendsFrom(exampleModImplementation)
     example2ModCompileOnly.extendsFrom(exampleModCompileOnly)
+
+    mixin07
+    mixin08
 }
 
 dependencies {
@@ -36,10 +40,23 @@ dependencies {
     // Forge
     implementation(forge)
     runtimeOnly("lzma:lzma:0.0.1")
+    // Mixin 0.8
+    runtimeOnly("org.ow2.asm:asm-commons:6.2")
+    runtimeOnly("com.google.guava:guava:21.0")
 
     exampleModImplementation(project(":stage0:launchwrapper"))
     exampleModCompileOnly(launchwrapper)
     exampleModCompileOnly(forge)
+    exampleModCompileOnly("org.spongepowered:mixin:0.7.11-SNAPSHOT") {
+        transitive = false
+    }
+
+    mixin07("org.spongepowered:mixin:0.7.11-SNAPSHOT") {
+        transitive = false
+    }
+    mixin08("org.spongepowered:mixin:0.8.2") {
+        transitive = false
+    }
 
     essentialCompileOnly(launchwrapper)
     essentialCompileOnly(forge)
@@ -60,7 +77,7 @@ def integrationTest = tasks.register("integrationTest", Test) {
 }
 check.dependsOn(integrationTest)
 
-def configureExampleModJar = { String tweaker -> return {
+def configureExampleModJar = { String tweaker, Configuration mixin = null -> return {
     archiveBaseName.set(name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
@@ -72,9 +89,17 @@ def configureExampleModJar = { String tweaker -> return {
                 "TweakClass": tweaker,
                 "TweakOrder": "0"
     }
+
+    if (mixin != null) {
+        dependsOn(mixin)
+        from({ mixin.collect { zipTree(it) } }) {
+            exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        }
+        manifest.attributes "MixinConfigs": "examplemod.mixins.json"
+    }
 } }
 
-def configureExample2ModJar = { String tweaker -> return {
+def configureExample2ModJar = { String tweaker, Configuration mixin = null -> return {
     archiveBaseName.set(name)
     from(sourceSets.example2Mod.output)
     dependsOn(configurations.example2ModRuntimeClasspath)
@@ -86,12 +111,30 @@ def configureExample2ModJar = { String tweaker -> return {
                 "TweakClass": tweaker,
                 "TweakOrder": "0"
     }
+
+    if (mixin != null) {
+        dependsOn(mixin)
+        from({ mixin.collect { zipTree(it) } }) {
+            exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        }
+        manifest.attributes "MixinConfigs": "example2mod.mixins.json"
+    }
 } }
 
 tasks.register("exampleModJar", Jar, configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker"))
 tasks.register("example2ModJar", Jar, configureExample2ModJar("com.example.mod2.tweaker.ExampleModTweaker"))
 tasks.register("exampleModEssentialTweakerJar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker"))
 tasks.register("example2ModEssentialTweakerJar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker"))
+
+tasks.register("exampleModWithMixin07Jar", Jar, configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker", configurations.mixin07))
+tasks.register("example2ModWithMixin07Jar", Jar, configureExample2ModJar("com.example.mod2.tweaker.ExampleModTweaker", configurations.mixin07))
+tasks.register("exampleModEssentialTweakerWithMixin07Jar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin07))
+tasks.register("example2ModEssentialTweakerWithMixin07Jar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin07))
+
+tasks.register("exampleModWithMixin08Jar", Jar, configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker", configurations.mixin08))
+tasks.register("example2ModWithMixin08Jar", Jar, configureExample2ModJar("com.example.mod2.tweaker.ExampleModTweaker", configurations.mixin08))
+tasks.register("exampleModEssentialTweakerWithMixin08Jar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin08))
+tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin08))
 
 tasks.register("essentialJar", Jar) {
     archiveBaseName.set("essential")
@@ -130,10 +173,22 @@ tasks.register("setupDownloadsApi", Sync) {
         }
     }
     def platformForge = "forge_1-8-8"
+
     mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformForge")
     mod(tasks.example2ModJar.archiveFile, "v1/mods/example/mod2/updates/stable/$platformForge")
     mod(tasks.exampleModEssentialTweakerJar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker/$platformForge")
     mod(tasks.example2ModEssentialTweakerJar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker/$platformForge")
+
+    mod(tasks.exampleModWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/stable-with-mixin-07/$platformForge")
+    mod(tasks.example2ModWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-07/$platformForge")
+    mod(tasks.exampleModEssentialTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-07/$platformForge")
+    mod(tasks.example2ModEssentialTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-07/$platformForge")
+
+    mod(tasks.exampleModWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/stable-with-mixin-08/$platformForge")
+    mod(tasks.example2ModWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-08/$platformForge")
+    mod(tasks.exampleModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-08/$platformForge")
+    mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-08/$platformForge")
+
     mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
     mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
     mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")

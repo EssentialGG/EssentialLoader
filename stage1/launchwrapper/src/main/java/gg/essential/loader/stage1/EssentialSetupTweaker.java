@@ -129,6 +129,34 @@ public class EssentialSetupTweaker implements ITweaker {
                     ITweaker tweaker = (ITweaker) loadCoreMod.invoke(null, Launch.classLoader, coreMod, sourceFile.file);
                     ((List<ITweaker>) Launch.blackboard.get("Tweaks")).add(tweaker);
                 }
+
+                // Mixin will only look at jar files which declare the MixinTweaker as their tweaker class, so we need
+                // to manually add our source files for inspection.
+                if (sourceFile.mixin) {
+                    try {
+                        injectMixinTweaker();
+
+                        Class<?> MixinBootstrap = Class.forName("org.spongepowered.asm.launch.MixinBootstrap");
+                        Class<?> MixinPlatformManager = Class.forName("org.spongepowered.asm.launch.platform.MixinPlatformManager");
+                        Object platformManager = MixinBootstrap.getDeclaredMethod("getPlatform").invoke(null);
+                        Method addContainer;
+                        Object arg;
+                        try {
+                            // Mixin 0.7
+                            addContainer = MixinPlatformManager.getDeclaredMethod("addContainer", URI.class);
+                            arg = sourceFile.file.toURI();
+                        } catch (NoSuchMethodException ignored) {
+                            // Mixin 0.8
+                            Class<?> IContainerHandle = Class.forName("org.spongepowered.asm.launch.platform.container.IContainerHandle");
+                            Class<?> ContainerHandleURI = Class.forName("org.spongepowered.asm.launch.platform.container.ContainerHandleURI");
+                            addContainer = MixinPlatformManager.getDeclaredMethod("addContainer", IContainerHandle);
+                            arg = ContainerHandleURI.getDeclaredConstructor(URI.class).newInstance(sourceFile.file.toURI());
+                        }
+                        addContainer.invoke(platformManager, arg);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
             }
 
             private List<SourceFile> getSourceFiles(Class<?> tweakerClass) {
@@ -146,15 +174,17 @@ public class EssentialSetupTweaker implements ITweaker {
                         }
                         String tweakClass = null;
                         String coreMod = null;
+                        boolean mixin = false;
                         try (JarFile jar = new JarFile(file)) {
                             if (jar.getManifest() != null) {
                                 Attributes attributes = jar.getManifest().getMainAttributes();
                                 tweakClass = attributes.getValue("TweakClass");
                                 coreMod = attributes.getValue("FMLCorePlugin");
+                                mixin = attributes.getValue("MixinConfigs") != null;
                             }
                         }
                         if (tweakerClassName.equals(tweakClass)) {
-                            sourceFiles.add(new SourceFile(file, coreMod));
+                            sourceFiles.add(new SourceFile(file, coreMod, mixin));
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -163,13 +193,42 @@ public class EssentialSetupTweaker implements ITweaker {
                 return sourceFiles;
             }
 
+            private void injectMixinTweaker() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+                final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
+
+                @SuppressWarnings("unchecked")
+                List<String> tweakClasses = (List<String>) Launch.blackboard.get("TweakClasses");
+
+                // If the MixinTweaker is already queued (because of another mod), then there's nothing we need to to
+                if (tweakClasses.contains(MIXIN_TWEAKER)) {
+                    return;
+                }
+
+                // If it is already booted, we're also good to go
+                if (Launch.blackboard.get("mixin.initialised") != null) {
+                    return;
+                }
+
+                System.out.println("Injecting MixinTweaker from EssentialSetupTweaker");
+
+                // Otherwise, we need to take things into our own hands because the normal way to chainload a tweaker
+                // (by adding it to the TweakClasses list during injectIntoClassLoader) is too late for Mixin.
+                // Instead we instantiate the MixinTweaker on our own and add it to the current Tweaks list immediately.
+                Launch.classLoader.addClassLoaderExclusion(MIXIN_TWEAKER.substring(0, MIXIN_TWEAKER.lastIndexOf('.')));
+                @SuppressWarnings("unchecked")
+                List<ITweaker> tweaks = (List<ITweaker>) Launch.blackboard.get("Tweaks");
+                tweaks.add((ITweaker) Class.forName(MIXIN_TWEAKER, true, Launch.classLoader).newInstance());
+            }
+
             private static class SourceFile {
                 final File file;
                 final String coreMod;
+                final boolean mixin;
 
-                private SourceFile(File file, String coreMod) {
+                private SourceFile(File file, String coreMod, boolean mixin) {
                     this.file = file;
                     this.coreMod = coreMod;
+                    this.mixin = mixin;
                 }
             }
         }

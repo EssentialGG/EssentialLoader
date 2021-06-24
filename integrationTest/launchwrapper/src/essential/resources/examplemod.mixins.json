@@ -1,0 +1,4 @@
+{
+  "package": "com.example.mod.mixin",
+  "plugin": "com.example.mod.MixinPlugin"
+}
