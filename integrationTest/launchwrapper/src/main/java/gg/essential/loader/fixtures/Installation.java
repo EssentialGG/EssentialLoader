@@ -19,9 +19,9 @@ public class Installation {
     public final Path apiDir = gameDir.resolve("downloadsApi");
     public final Path stage1Dummy = apiDir.resolve("v1/mods/essential/loader-stage1/updates/dummy/forge_1-8-8");
     public final Path stage2Meta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/stable/forge_1-8-8");
-    public final Path stage2DummyMeta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/dummy/forge_1-8-8");
+    public final Path stage2DummyMeta = withBranch(stage2Meta, "dummy");
     public final Path stage3Meta = apiDir.resolve("v1/mods/essential/essential/updates/stable/forge_1-8-8");
-    public final Path stage3DummyMeta = apiDir.resolve("v1/mods/essential/essential/updates/dummy/forge_1-8-8");
+    public final Path stage3DummyMeta = withBranch(stage3Meta, "dummy");
 
     public Installation() throws IOException {
         System.out.println("Installation: " + gameDir);
@@ -69,5 +69,9 @@ public class Installation {
         assertTrue(isolatedLaunch.getMod2LoadState("tweaker"), "Example2 Tweaker ran");
         assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
         assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
+    }
+
+    public static Path withBranch(Path endpoint, String branch) {
+        return endpoint.getParent().resolveSibling(branch).resolve(endpoint.getFileName());
     }
 }
