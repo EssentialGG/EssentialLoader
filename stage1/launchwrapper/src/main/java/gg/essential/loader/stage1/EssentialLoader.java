@@ -38,7 +38,11 @@ public final class EssentialLoader {
         "essential.download.url",
         System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
     );
-    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/loader-stage2/updates/latest/%s/";
+    private static final String BRANCH = System.getProperty(
+        "essential.stage2.branch",
+        System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
+    );
+    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/loader-stage2/updates/" + BRANCH + "/%s/";
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
     private final String gameVersion;
