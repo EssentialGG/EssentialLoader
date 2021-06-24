@@ -115,6 +115,9 @@ public final class EssentialLoader {
     }
 
     public void initialize() {
+        if (this.stage2 == null) {
+            return;
+        }
         try {
             this.stage2.getClass()
                 .getMethod("initialize")
