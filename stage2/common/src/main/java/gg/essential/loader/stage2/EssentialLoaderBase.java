@@ -134,7 +134,9 @@ public abstract class EssentialLoaderBase {
                     essentialFile.delete();
                 }
 
-                this.downloadFile(url, essentialFile, checksum);
+                if (!this.downloadFile(url, essentialFile, checksum)) {
+                    return;
+                }
             }
         }
 
