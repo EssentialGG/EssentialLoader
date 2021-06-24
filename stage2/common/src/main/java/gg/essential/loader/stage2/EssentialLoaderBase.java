@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -88,12 +89,12 @@ public abstract class EssentialLoaderBase {
 
         JsonObject responseObject;
         try {
-            final HttpURLConnection httpURLConnection = this.prepareConnection(
+            final URLConnection connection = this.prepareConnection(
                 String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
             );
 
             String response;
-            try (final InputStream inputStream = httpURLConnection.getInputStream()) {
+            try (final InputStream inputStream = connection.getInputStream()) {
                 response = IOUtils.toString(inputStream, Charset.defaultCharset());
             }
 
@@ -157,18 +158,22 @@ public abstract class EssentialLoaderBase {
         return null;
     }
 
-    private HttpURLConnection prepareConnection(final String url) throws IOException {
-        final HttpURLConnection httpURLConnection = (HttpURLConnection) new URL(url).openConnection();
+    private URLConnection prepareConnection(final String url) throws IOException {
+        final URLConnection urlConnection = new URL(url).openConnection();
 
-        httpURLConnection.setRequestMethod("GET");
-        httpURLConnection.setUseCaches(true);
-        httpURLConnection.setReadTimeout(3000);
-        httpURLConnection.setReadTimeout(3000);
-        httpURLConnection.setDoOutput(true);
+        if (urlConnection instanceof HttpURLConnection) {
+            final HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
 
-        httpURLConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
+            httpURLConnection.setRequestMethod("GET");
+            httpURLConnection.setUseCaches(true);
+            httpURLConnection.setReadTimeout(3000);
+            httpURLConnection.setReadTimeout(3000);
+            httpURLConnection.setDoOutput(true);
 
-        return httpURLConnection;
+            httpURLConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
+        }
+
+        return urlConnection;
     }
 
     protected abstract void addToClasspath(final File file);
@@ -222,12 +227,12 @@ public abstract class EssentialLoaderBase {
 
     private boolean attemptDownload(final String url, final File target) {
         try {
-            final HttpURLConnection httpURLConnection = this.prepareConnection(url);
-            final int contentLength = httpURLConnection.getContentLength();
+            final URLConnection connection = this.prepareConnection(url);
+            final int contentLength = connection.getContentLength();
             this.progressBar.setMaximum(contentLength);
 
             try (
-                final InputStream inputStream = httpURLConnection.getInputStream();
+                final InputStream inputStream = connection.getInputStream();
                 final FileOutputStream fileOutputStream = new FileOutputStream(target)
             ) {
                 final byte[] buffer = new byte[1024];

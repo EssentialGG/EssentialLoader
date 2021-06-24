@@ -19,6 +19,7 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,29 +139,33 @@ public final class EssentialLoader {
         }
     }
 
-    private HttpURLConnection prepareConnection(final String url) throws IOException {
-        final HttpURLConnection httpURLConnection = (HttpURLConnection) new URL(url).openConnection();
+    private URLConnection prepareConnection(final String url) throws IOException {
+        final URLConnection urlConnection = new URL(url).openConnection();
 
-        httpURLConnection.setRequestMethod("GET");
-        httpURLConnection.setUseCaches(true);
-        httpURLConnection.setReadTimeout(3000);
-        httpURLConnection.setReadTimeout(3000);
-        httpURLConnection.setDoOutput(true);
+        if (urlConnection instanceof HttpURLConnection) {
+            final HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
 
-        httpURLConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
+            httpURLConnection.setRequestMethod("GET");
+            httpURLConnection.setUseCaches(true);
+            httpURLConnection.setReadTimeout(3000);
+            httpURLConnection.setReadTimeout(3000);
+            httpURLConnection.setDoOutput(true);
 
-        return httpURLConnection;
+            httpURLConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
+        }
+
+        return urlConnection;
     }
 
     private FileMeta fetchLatestMetadata() {
         JsonObject responseObject;
         try {
-            final HttpURLConnection httpURLConnection = this.prepareConnection(
+            final URLConnection connection = this.prepareConnection(
                 String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
             );
 
             String response;
-            try (final InputStream inputStream = httpURLConnection.getInputStream()) {
+            try (final InputStream inputStream = connection.getInputStream()) {
                 response = IOUtils.toString(inputStream, Charset.defaultCharset());
             }
 
@@ -193,8 +198,8 @@ public final class EssentialLoader {
 
     private boolean downloadFile(FileMeta meta, Path target) {
         try {
-            final HttpURLConnection httpURLConnection = this.prepareConnection(meta.url);
-            Files.copy(httpURLConnection.getInputStream(), target);
+            final URLConnection connection = this.prepareConnection(meta.url);
+            Files.copy(connection.getInputStream(), target);
         } catch (final IOException e) {
             LOGGER.error("Error occurred when downloading file '{}'.", meta.url, e);
             return false;
