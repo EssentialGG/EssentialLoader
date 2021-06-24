@@ -191,6 +191,9 @@ public abstract class EssentialLoaderBase {
     protected abstract boolean isInClassPath();
 
     public void initialize() {
+        if (!isInClassPath()) {
+            return;
+        }
         try {
             Class.forName(CLASS_NAME)
                 .getDeclaredMethod("initialize", File.class)
