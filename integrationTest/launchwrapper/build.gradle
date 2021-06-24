@@ -1,0 +1,114 @@
+repositories {
+    maven { url "https://maven.minecraftforge.net/" }
+}
+
+sourceSets {
+    exampleMod
+    essential
+    dummyStage1
+    dummyStage2
+    dummyStage3
+}
+
+dependencies {
+    def launchwrapper = "net.minecraft:launchwrapper:1.12"
+    // Intentionally using a different version than stage1 to make sure it can determine the version correctly
+    def forge = "net.minecraftforge:forge:1.8.8-11.15.0.1655:universal"
+
+    implementation("org.junit.jupiter:junit-jupiter:5.7.2")
+
+    // Versions based on the one which MC include by default in 1.8.9 (minimal supported version)
+    // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
+    implementation(launchwrapper)
+    runtimeOnly("org.apache.commons:commons-lang3:3.3.2")
+    runtimeOnly("commons-io:commons-io:2.4")
+    runtimeOnly("commons-codec:commons-codec:1.9")
+    runtimeOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
+    implementation("com.google.code.gson:gson:2.2.4")
+    implementation("com.google.guava:guava:17.0")
+    runtimeOnly("com.mojang:authlib:1.5.21")
+    // Forge
+    implementation(forge)
+    runtimeOnly("lzma:lzma:0.0.1")
+
+    exampleModImplementation(project(":stage0:launchwrapper"))
+    exampleModCompileOnly(launchwrapper)
+    exampleModCompileOnly(forge)
+
+    essentialCompileOnly(launchwrapper)
+    essentialCompileOnly(forge)
+
+    dummyStage1CompileOnly(launchwrapper)
+    dummyStage2CompileOnly(launchwrapper)
+    dummyStage3CompileOnly(launchwrapper)
+}
+
+def integrationTest = tasks.register("integrationTest", Test) {
+    testClassesDirs = sourceSets.main.output.classesDirs
+    classpath = sourceSets.main.runtimeClasspath
+
+    useJUnitPlatform()
+
+    inputs.dir(tasks.setupDownloadsApi.destinationDir)
+    dependsOn(tasks.setupDownloadsApi)
+}
+check.dependsOn(integrationTest)
+
+tasks.register("exampleModJar", Jar) {
+    archiveBaseName.set("examplemod")
+    from(sourceSets.exampleMod.output)
+    dependsOn(configurations.exampleModRuntimeClasspath)
+    from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } })
+
+    manifest {
+        attributes "FMLCorePlugin": "com.example.mod.ExampleCoreMod",
+                "FMLCorePluginContainsFMLMod": "Yes, yes it does",
+                "TweakClass": "com.example.mod.tweaker.ExampleModTweaker",
+                "TweakOrder": "0"
+    }
+}
+
+tasks.register("essentialJar", Jar) {
+    archiveBaseName.set("essential")
+    from(sourceSets.essential.output)
+}
+
+tasks.register("dummyStage1Jar", Jar) {
+    archiveBaseName.set("dummyStage1")
+    from(sourceSets.dummyStage1.output)
+}
+
+tasks.register("dummyStage2Jar", Jar) {
+    archiveBaseName.set("dummyStage2")
+    from(sourceSets.dummyStage2.output)
+}
+
+tasks.register("dummyStage3Jar", Jar) {
+    archiveBaseName.set("dummyStage3")
+    from(sourceSets.dummyStage3.output)
+}
+
+tasks.register("setupDownloadsApi", Sync) {
+    def downloadsApi = new File(project.buildDir, "downloadsApi")
+    into(downloadsApi)
+
+    def mod = { Provider<RegularFile> source, String dst ->
+        def dstJar = "${dst}.jar"
+        preserve.include(dst)
+        preserve.include(dstJar)
+        from(source) {
+            rename { dstJar }
+        }
+        doLast {
+            def file = new File(downloadsApi, dstJar).absoluteFile
+            new File(downloadsApi, dst).write("""{ "url": "${file.toURI()}", "checksum": "${file.bytes.md5()}" }""")
+        }
+    }
+    def platformForge = "forge_1-8-8"
+    mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformForge")
+    mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
+    mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
+    mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")
+    mod(tasks.dummyStage2Jar.archiveFile, "v1/mods/essential/loader-stage2/updates/dummy/$platformForge")
+    mod(tasks.dummyStage3Jar.archiveFile, "v1/mods/essential/essential/updates/dummy/$platformForge")
+}
