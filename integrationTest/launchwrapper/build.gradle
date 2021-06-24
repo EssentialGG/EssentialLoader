@@ -60,8 +60,8 @@ def integrationTest = tasks.register("integrationTest", Test) {
 }
 check.dependsOn(integrationTest)
 
-tasks.register("exampleModJar", Jar) {
-    archiveBaseName.set("examplemod")
+def configureExampleModJar = { String tweaker -> return {
+    archiveBaseName.set(name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
     from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } })
@@ -69,13 +69,13 @@ tasks.register("exampleModJar", Jar) {
     manifest {
         attributes "FMLCorePlugin": "com.example.mod.ExampleCoreMod",
                 "FMLCorePluginContainsFMLMod": "Yes, yes it does",
-                "TweakClass": "com.example.mod.tweaker.ExampleModTweaker",
+                "TweakClass": tweaker,
                 "TweakOrder": "0"
     }
-}
+} }
 
-tasks.register("example2ModJar", Jar) {
-    archiveBaseName.set("example2mod")
+def configureExample2ModJar = { String tweaker -> return {
+    archiveBaseName.set(name)
     from(sourceSets.example2Mod.output)
     dependsOn(configurations.example2ModRuntimeClasspath)
     from({ configurations.example2ModRuntimeClasspath.collect { zipTree(it) } })
@@ -83,10 +83,15 @@ tasks.register("example2ModJar", Jar) {
     manifest {
         attributes "FMLCorePlugin": "com.example.mod2.ExampleCoreMod",
                 "FMLCorePluginContainsFMLMod": "Yes, yes it does",
-                "TweakClass": "com.example.mod2.tweaker.ExampleModTweaker",
+                "TweakClass": tweaker,
                 "TweakOrder": "0"
     }
-}
+} }
+
+tasks.register("exampleModJar", Jar, configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker"))
+tasks.register("example2ModJar", Jar, configureExample2ModJar("com.example.mod2.tweaker.ExampleModTweaker"))
+tasks.register("exampleModEssentialTweakerJar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker"))
+tasks.register("example2ModEssentialTweakerJar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker"))
 
 tasks.register("essentialJar", Jar) {
     archiveBaseName.set("essential")
@@ -127,6 +132,8 @@ tasks.register("setupDownloadsApi", Sync) {
     def platformForge = "forge_1-8-8"
     mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformForge")
     mod(tasks.example2ModJar.archiveFile, "v1/mods/example/mod2/updates/stable/$platformForge")
+    mod(tasks.exampleModEssentialTweakerJar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker/$platformForge")
+    mod(tasks.example2ModEssentialTweakerJar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker/$platformForge")
     mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
     mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
     mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")

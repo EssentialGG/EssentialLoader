@@ -10,10 +10,11 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
+import java.net.URI;
 import java.net.URL;
-import java.security.CodeSource;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 
 @SuppressWarnings("unused")
@@ -95,52 +96,81 @@ public class EssentialSetupTweaker implements ITweaker {
                 }
             }
 
-            @SuppressWarnings("unchecked")
             @Override
             public void setupPostLoad(EssentialSetupTweaker stage1) throws Exception {
-                final File sourceFile = getSourceFile(stage1.stage0.getClass());
-                if (sourceFile == null) {
+                final List<SourceFile> sourceFiles = getSourceFiles(stage1.stage0.getClass());
+                if (sourceFiles.isEmpty()) {
                     System.out.println("Not able to determine current file. Mod will NOT work");
                     return;
                 }
+                for (SourceFile sourceFile : sourceFiles) {
+                    setupSourceFile(sourceFile);
+                }
+            }
 
+            @SuppressWarnings("unchecked")
+            private void setupSourceFile(SourceFile sourceFile) throws Exception {
                 // Forge will by default ignore a mod file if it contains a tweaker
                 // So we need to remove ourselves from that exclusion list
                 Field ignoredModFile = CoreModManager.class.getDeclaredField("ignoredModFiles");
                 ignoredModFile.setAccessible(true);
-                ((List<String>) ignoredModFile.get(null)).remove(sourceFile.getName());
+                ((List<String>) ignoredModFile.get(null)).remove(sourceFile.file.getName());
 
                 // And instead add ourselves to the mod candidate list
-                CoreModManager.getReparseableCoremods().add(sourceFile.getName());
+                CoreModManager.getReparseableCoremods().add(sourceFile.file.getName());
 
                 // FML will not load CoreMods if it finds a tweaker, so we need to load the coremod manually if present
                 // We do this to reduce the friction of adding our tweaker if a mod has previously been relying on a
                 // coremod (cause ordinarily they would have to convert their coremod into a tweaker manually).
-                String coreMod = getCoreMod(sourceFile);
+                String coreMod = sourceFile.coreMod;
                 if (coreMod != null) {
                     Method loadCoreMod = CoreModManager.class.getDeclaredMethod("loadCoreMod", LaunchClassLoader.class, String.class, File.class);
                     loadCoreMod.setAccessible(true);
-                    ITweaker tweaker = (ITweaker) loadCoreMod.invoke(null, Launch.classLoader, coreMod, sourceFile);
+                    ITweaker tweaker = (ITweaker) loadCoreMod.invoke(null, Launch.classLoader, coreMod, sourceFile.file);
                     ((List<ITweaker>) Launch.blackboard.get("Tweaks")).add(tweaker);
                 }
             }
 
-            private File getSourceFile(Class<?> cls) throws URISyntaxException {
-                CodeSource codeSource = cls.getProtectionDomain().getCodeSource();
-                if (codeSource != null) {
-                    URL location = codeSource.getLocation();
-                    return new File(location.toURI());
-                }
-                return null;
-            }
-
-            private String getCoreMod(File file) throws IOException {
-                try (JarFile jar = new JarFile(file)) {
-                    if (jar.getManifest() != null) {
-                        return jar.getManifest().getMainAttributes().getValue("FMLCorePlugin");
+            private List<SourceFile> getSourceFiles(Class<?> tweakerClass) {
+                String tweakerClassName = tweakerClass.getName();
+                List<SourceFile> sourceFiles = new ArrayList<>();
+                for (URL url : Launch.classLoader.getSources()) {
+                    try {
+                        URI uri = url.toURI();
+                        if (!"file".equals(uri.getScheme())) {
+                            continue;
+                        }
+                        File file = new File(uri);
+                        if (!file.exists() || !file.isFile()) {
+                            continue;
+                        }
+                        String tweakClass = null;
+                        String coreMod = null;
+                        try (JarFile jar = new JarFile(file)) {
+                            if (jar.getManifest() != null) {
+                                Attributes attributes = jar.getManifest().getMainAttributes();
+                                tweakClass = attributes.getValue("TweakClass");
+                                coreMod = attributes.getValue("FMLCorePlugin");
+                            }
+                        }
+                        if (tweakerClassName.equals(tweakClass)) {
+                            sourceFiles.add(new SourceFile(file, coreMod));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
-                return null;
+                return sourceFiles;
+            }
+
+            private static class SourceFile {
+                final File file;
+                final String coreMod;
+
+                private SourceFile(File file, String coreMod) {
+                    this.file = file;
+                    this.coreMod = coreMod;
+                }
             }
         }
     }

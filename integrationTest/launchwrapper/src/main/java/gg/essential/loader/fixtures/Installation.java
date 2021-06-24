@@ -42,11 +42,19 @@ public class Installation {
     }
 
     public void addExampleMod() throws IOException {
-        Files.copy(originalExampleModFile, modsDir.resolve("examplemod.jar"));
+        addExampleMod("stable");
+    }
+
+    public void addExampleMod(String branch) throws IOException {
+        Files.copy(withBranch(originalExampleModFile, branch), modsDir.resolve("examplemod.jar"));
     }
 
     public void addExample2Mod() throws IOException {
-        Files.copy(originalExample2ModFile, modsDir.resolve("example2mod.jar"));
+        addExample2Mod("stable");
+    }
+
+    public void addExample2Mod(String branch) throws IOException {
+        Files.copy(withBranch(originalExample2ModFile, branch), modsDir.resolve("example2mod.jar"));
     }
 
     public IsolatedLaunch launch(String tweaker) throws Exception {

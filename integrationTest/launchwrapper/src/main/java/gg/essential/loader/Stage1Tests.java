@@ -135,4 +135,20 @@ public class Stage1Tests {
         installation.assertMod2Launched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
+
+    @Test
+    public void testMultipleEssentialTweakerMods() throws Exception {
+        Installation installation = new Installation();
+        installation.setup();
+        installation.addExampleMod("essential-tweaker");
+        installation.addExample2Mod("essential-tweaker");
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
+        assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
 }
