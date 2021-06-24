@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class Installation {
     private static final Path originalApiDir = Paths.get("build", "downloadsApi");
     private static final Path originalExampleModFile = originalApiDir.resolve("v1/mods/example/mod/updates/stable/forge_1-8-8.jar");
+    private static final Path originalExample2ModFile = originalApiDir.resolve("v1/mods/example/mod2/updates/stable/forge_1-8-8.jar");
 
     public final Path gameDir = Files.createTempDirectory("game");
     public final Path modsDir = gameDir.resolve("mods");
@@ -44,6 +45,10 @@ public class Installation {
         Files.copy(originalExampleModFile, modsDir.resolve("examplemod.jar"));
     }
 
+    public void addExample2Mod() throws IOException {
+        Files.copy(originalExample2ModFile, modsDir.resolve("example2mod.jar"));
+    }
+
     public IsolatedLaunch launch(String tweaker) throws Exception {
         IsolatedLaunch isolatedLaunch = new IsolatedLaunch();
         isolatedLaunch.launch(gameDir, tweaker);
@@ -58,5 +63,11 @@ public class Installation {
         assertTrue(isolatedLaunch.getModLoadState("tweaker"), "Example Tweaker ran");
         assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
         assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
+    }
+
+    public void assertMod2Launched(IsolatedLaunch isolatedLaunch) throws Exception {
+        assertTrue(isolatedLaunch.getMod2LoadState("tweaker"), "Example2 Tweaker ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
     }
 }

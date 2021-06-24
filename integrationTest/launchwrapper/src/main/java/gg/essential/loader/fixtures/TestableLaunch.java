@@ -32,6 +32,7 @@ public class TestableLaunch {
         final URLClassLoader ucl = (URLClassLoader) getClass().getClassLoader();
         classLoader = new LaunchClassLoader(ucl.getURLs());
         classLoader.addClassLoaderExclusion("com.example.mod.LoadState");
+        classLoader.addClassLoaderExclusion("com.example.mod2.LoadState");
         blackboard = new HashMap<>();
         Thread.currentThread().setContextClassLoader(classLoader);
     }

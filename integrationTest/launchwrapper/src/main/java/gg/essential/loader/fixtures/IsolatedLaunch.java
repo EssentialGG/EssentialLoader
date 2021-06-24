@@ -39,6 +39,12 @@ public class IsolatedLaunch {
             .getBoolean(null);
     }
 
+    public boolean getMod2LoadState(String field) throws Exception {
+        return getClass("com.example.mod2.LoadState")
+            .getDeclaredField(field)
+            .getBoolean(null);
+    }
+
     public boolean isEssentialLoaded() throws Exception {
         try {
             return getClass("gg.essential.api.tweaker.EssentialTweaker")

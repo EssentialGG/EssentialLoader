@@ -4,10 +4,16 @@ repositories {
 
 sourceSets {
     exampleMod
+    example2Mod
     essential
     dummyStage1
     dummyStage2
     dummyStage3
+}
+
+configurations {
+    example2ModImplementation.extendsFrom(exampleModImplementation)
+    example2ModCompileOnly.extendsFrom(exampleModCompileOnly)
 }
 
 dependencies {
@@ -68,6 +74,20 @@ tasks.register("exampleModJar", Jar) {
     }
 }
 
+tasks.register("example2ModJar", Jar) {
+    archiveBaseName.set("example2mod")
+    from(sourceSets.example2Mod.output)
+    dependsOn(configurations.example2ModRuntimeClasspath)
+    from({ configurations.example2ModRuntimeClasspath.collect { zipTree(it) } })
+
+    manifest {
+        attributes "FMLCorePlugin": "com.example.mod2.ExampleCoreMod",
+                "FMLCorePluginContainsFMLMod": "Yes, yes it does",
+                "TweakClass": "com.example.mod2.tweaker.ExampleModTweaker",
+                "TweakOrder": "0"
+    }
+}
+
 tasks.register("essentialJar", Jar) {
     archiveBaseName.set("essential")
     from(sourceSets.essential.output)
@@ -106,6 +126,7 @@ tasks.register("setupDownloadsApi", Sync) {
     }
     def platformForge = "forge_1-8-8"
     mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformForge")
+    mod(tasks.example2ModJar.archiveFile, "v1/mods/example/mod2/updates/stable/$platformForge")
     mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
     mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
     mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")

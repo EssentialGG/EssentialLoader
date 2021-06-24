@@ -121,4 +121,18 @@ public class Stage1Tests {
         installation.assertModLaunched(isolatedLaunch);
         assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
+
+    @Test
+    public void testMultipleCustomTweakerMods() throws Exception {
+        Installation installation = new Installation();
+        installation.setup();
+        installation.addExampleMod();
+        installation.addExample2Mod();
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        installation.assertModLaunched(isolatedLaunch);
+        installation.assertMod2Launched(isolatedLaunch);
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
 }
