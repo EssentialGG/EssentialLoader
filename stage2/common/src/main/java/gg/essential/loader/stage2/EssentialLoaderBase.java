@@ -46,7 +46,7 @@ public abstract class EssentialLoaderBase {
         "essential.download.url",
         System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
     );
-    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/updates/latest/%s/";
+    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/essential/updates/latest/%s/";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_NAME = "Essential (%s).jar";
     private static final int FRAME_WIDTH = 470, FRAME_HEIGHT = 240;
