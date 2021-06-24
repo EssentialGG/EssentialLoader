@@ -1,5 +1,6 @@
 package gg.essential.loader.stage1;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.launchwrapper.Launch;
@@ -162,7 +163,8 @@ public final class EssentialLoader {
                 response = IOUtils.toString(inputStream, Charset.defaultCharset());
             }
 
-            responseObject = new JsonParser().parse(response).getAsJsonObject();
+            JsonElement jsonElement = new JsonParser().parse(response);
+            responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
         } catch (final IOException e) {
             LOGGER.error("Error occurred checking for updates for game version {}.", this.gameVersion, e);
             return null;

@@ -1,5 +1,6 @@
 package gg.essential.loader.stage2;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import gg.essential.loader.stage2.components.CircleButton;
@@ -95,7 +96,8 @@ public abstract class EssentialLoaderBase {
                 response = IOUtils.toString(inputStream, Charset.defaultCharset());
             }
 
-            responseObject = new JsonParser().parse(response).getAsJsonObject();
+            JsonElement jsonElement = new JsonParser().parse(response);
+            responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
         } catch (final IOException e) {
             LOGGER.error("Error occurred when verifying game version {}.", this.gameVersion, e);
             return;
