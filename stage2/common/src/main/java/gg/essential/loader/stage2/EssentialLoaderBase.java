@@ -39,6 +39,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -77,7 +78,7 @@ public abstract class EssentialLoaderBase {
         this.gameVersion = gameVersion;
     }
 
-    public void load() {
+    public void load() throws IOException {
         if (this.isInClassPath() && this.isInitialized()) {
             return;
         }
@@ -95,7 +96,7 @@ public abstract class EssentialLoaderBase {
         FileMeta meta = null;
         if (needUpdate || AUTO_UPDATE) {
             meta = fetchLatestMetadata();
-            if (meta == null) {
+            if (meta == null && needUpdate) {
                 return;
             }
         }
@@ -109,13 +110,19 @@ public abstract class EssentialLoaderBase {
         if (needUpdate) {
             this.initFrame();
 
-            if (essentialFile.exists()) {
-                essentialFile.delete();
+            File downloadedFile = File.createTempFile("essential-download-", "");
+            if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
+                Files.deleteIfExists(essentialFile.toPath());
+                Files.move(downloadedFile.toPath(), essentialFile.toPath());
+            } else {
+                LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
+                Files.deleteIfExists(downloadedFile.toPath());
             }
+        }
 
-            if (!this.downloadFile(meta.url, essentialFile, meta.checksum)) {
-                return;
-            }
+        // Check if we can continue, otherwise do not even try
+        if (!essentialFile.exists()) {
+            return;
         }
 
         this.addToClasspath(essentialFile);
@@ -252,7 +259,7 @@ public abstract class EssentialLoaderBase {
 
             try (
                 final InputStream inputStream = connection.getInputStream();
-                final FileOutputStream fileOutputStream = new FileOutputStream(target)
+                final FileOutputStream fileOutputStream = new FileOutputStream(target, true)
             ) {
                 final byte[] buffer = new byte[1024];
 

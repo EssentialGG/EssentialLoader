@@ -2,6 +2,7 @@ package gg.essential.loader;
 
 import gg.essential.loader.fixtures.Installation;
 import gg.essential.loader.fixtures.IsolatedLaunch;
+import gg.essential.loader.util.Delete;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -31,6 +32,22 @@ public class IntegrationTests {
         installation.addExampleMod();
 
         installation.launchFML();
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
+    @Test
+    public void testOfflineLaunch() throws Exception {
+        Installation installation = new Installation();
+        installation.setup();
+        installation.addExampleMod();
+
+        installation.launchFML();
+
+        Delete.recursively(installation.apiDir);
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 

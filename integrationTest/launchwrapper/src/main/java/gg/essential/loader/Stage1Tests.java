@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,66 +34,131 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testUnsupportedVersion() throws Exception {
+    public void testUnsupportedVersionOnFirstLaunch() throws Exception {
+        testUnsupportedVersion(false);
+    }
+
+    @Test
+    public void testUnsupportedVersionOnSecondLaunch() throws Exception {
+        testUnsupportedVersion(true);
+    }
+
+    public void testUnsupportedVersion(boolean secondLaunch) throws Exception {
         Installation installation = new Installation();
         installation.setup();
         installation.addExampleMod();
+
+        if (secondLaunch) {
+            installation.launchFML();
+        }
 
         Files.write(installation.stage2Meta, new byte[0]);
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     @Test
-    public void testJsonSyntaxInvalid() throws Exception {
+    public void testJsonSyntaxInvalidFirstLaunch() throws Exception {
+        testJsonSyntaxInvalid(false);
+    }
+
+    @Test
+    public void testJsonSyntaxInvalidOnSecondLaunch() throws Exception {
+        testJsonSyntaxInvalid(true);
+    }
+
+    public void testJsonSyntaxInvalid(boolean secondLaunch) throws Exception {
         Installation installation = new Installation();
         installation.setup();
         installation.addExampleMod();
+
+        if (secondLaunch) {
+            installation.launchFML();
+        }
 
         Files.write(installation.stage2Meta, "{ oh no }".getBytes(StandardCharsets.UTF_8));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     @Test
-    public void testJsonContentInvalid() throws Exception {
+    public void testJsonContentInvalidOnFirstLaunch() throws Exception {
+        testJsonContentInvalid(false);
+    }
+
+    @Test
+    public void testJsonContentInvalidOnSecondLaunch() throws Exception {
+        testJsonContentInvalid(true);
+    }
+
+    public void testJsonContentInvalid(boolean secondLaunch) throws Exception {
         Installation installation = new Installation();
         installation.setup();
         installation.addExampleMod();
+
+        if (secondLaunch) {
+            installation.launchFML();
+        }
 
         Files.write(installation.stage2Meta, "{ \"url\": 42 }".getBytes(StandardCharsets.UTF_8));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     @Test
-    public void testServerError() throws Exception {
+    public void testServerErrorOnFirstLaunch() throws Exception {
+        testServerError(false);
+    }
+
+    @Test
+    public void testServerErrorOnSecondLaunch() throws Exception {
+        testServerError(true);
+    }
+
+    public void testServerError(boolean secondLaunch) throws Exception {
         Installation installation = new Installation();
         installation.setup();
         installation.addExampleMod();
+
+        if (secondLaunch) {
+            installation.launchFML();
+        }
 
         Files.delete(installation.stage2Meta);
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     @Test
-    public void testDownloadChecksumMismatch() throws Exception {
+    public void testDownloadChecksumMismatchOnFirstLaunch() throws Exception {
+        testDownloadChecksumMismatch(false);
+    }
+
+    @Test
+    public void testDownloadChecksumMismatchOnSecondLaunch() throws Exception {
+        testDownloadChecksumMismatch(true);
+    }
+
+    public void testDownloadChecksumMismatch(boolean secondLaunch) throws Exception {
         Installation installation = new Installation();
         installation.setup();
         installation.addExampleMod();
+
+        if (secondLaunch) {
+            installation.launchFML();
+        }
 
         Gson gson = new Gson();
         JsonObject meta = gson.fromJson(new String(Files.readAllBytes(installation.stage2Meta)), JsonObject.class);
@@ -102,24 +168,38 @@ public class Stage1Tests {
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     @Test
-    public void testDownloadServerError() throws Exception {
+    public void testDownloadServerErrorOnFirstLaunch() throws Exception {
+        testDownloadServerError(false);
+    }
+
+    @Test
+    public void testDownloadServerErrorOnSecondLaunch() throws Exception {
+        testDownloadServerError(true);
+    }
+
+    public void testDownloadServerError(boolean secondLaunch) throws Exception {
         Installation installation = new Installation();
         installation.setup();
         installation.addExampleMod();
 
+        if (secondLaunch) {
+            installation.launchFML();
+        }
+
         Gson gson = new Gson();
         JsonObject meta = gson.fromJson(new String(Files.readAllBytes(installation.stage2Meta)), JsonObject.class);
         meta.addProperty("url", "https://127.0.0.1:9/invalid");
+        meta.addProperty("checksum", "00000000000000000000000000000000"); // to get it to update on second launch
         Files.write(installation.stage2Meta, gson.toJson(meta).getBytes(StandardCharsets.UTF_8));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     @Test
