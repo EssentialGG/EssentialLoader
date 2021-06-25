@@ -87,6 +87,45 @@ public abstract class EssentialLoaderBase {
             throw new IllegalStateException("Unable to create essential directory, no permissions?");
         }
 
+        final File essentialFile = new File(dataDir, String.format(FILE_NAME, this.gameVersion));
+
+        boolean needUpdate = !essentialFile.exists();
+
+        // Fetch latest version metadata (if required)
+        FileMeta meta = null;
+        if (needUpdate || AUTO_UPDATE) {
+            meta = fetchLatestMetadata();
+            if (meta == null) {
+                return;
+            }
+        }
+
+        // Check if our local version matches the latest
+        if (!needUpdate && meta != null && !meta.checksum.equals(this.getChecksum(essentialFile))) {
+            needUpdate = true;
+        }
+
+
+        if (needUpdate) {
+            this.initFrame();
+
+            if (essentialFile.exists()) {
+                essentialFile.delete();
+            }
+
+            if (!this.downloadFile(meta.url, essentialFile, meta.checksum)) {
+                return;
+            }
+        }
+
+        this.addToClasspath(essentialFile);
+
+        if (!this.isInClassPath()) {
+            throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
+        }
+    }
+
+    private FileMeta fetchLatestMetadata() {
         JsonObject responseObject;
         try {
             final URLConnection connection = this.prepareConnection(
@@ -101,13 +140,13 @@ public abstract class EssentialLoaderBase {
             JsonElement jsonElement = new JsonParser().parse(response);
             responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
         } catch (final IOException | JsonParseException e) {
-            LOGGER.error("Error occurred when verifying game version {}.", this.gameVersion, e);
-            return;
+            LOGGER.error("Error occurred checking for updates for game version {}.", this.gameVersion, e);
+            return null;
         }
 
         if (responseObject == null) {
             LOGGER.warn("Essential does not support the following game version: {}", this.gameVersion);
-            return;
+            return null;
         }
 
         final JsonElement
@@ -119,33 +158,10 @@ public abstract class EssentialLoaderBase {
 
         if (StringUtils.isEmpty(url) || StringUtils.isEmpty(checksum)) {
             LOGGER.warn("Unexpected response object data (url={}, checksum={})", jsonUrl, jsonChecksum);
-            return;
+            return null;
         }
 
-        final File essentialFile = new File(dataDir, String.format(FILE_NAME, this.gameVersion));
-
-        if (
-            !essentialFile.exists() ||
-            (AUTO_UPDATE && essentialFile.exists() && !checksum.equals(this.getChecksum(essentialFile)))
-        ) {
-            this.initFrame();
-
-            if (AUTO_UPDATE) {
-                if (essentialFile.exists()) {
-                    essentialFile.delete();
-                }
-
-                if (!this.downloadFile(url, essentialFile, checksum)) {
-                    return;
-                }
-            }
-        }
-
-        this.addToClasspath(essentialFile);
-
-        if (!this.isInClassPath()) {
-            throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
-        }
+        return new FileMeta(url, checksum);
     }
 
     private String getChecksum(final File input) {
@@ -331,5 +347,15 @@ public abstract class EssentialLoaderBase {
 
         this.frame = frame;
         this.progressBar = progressBar;
+    }
+
+    private static class FileMeta {
+        String url;
+        String checksum;
+
+        public FileMeta(String url, String checksum) {
+            this.url = url;
+            this.checksum = checksum;
+        }
     }
 }
