@@ -23,6 +23,7 @@ import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 public final class EssentialLoader {
 
@@ -81,7 +82,7 @@ public final class EssentialLoader {
         FileMeta meta = null;
         if (needUpdate || AUTO_UPDATE) {
             meta = fetchLatestMetadata();
-            if (meta == null) {
+            if (meta == null && needUpdate) {
                 return;
             }
         }
@@ -93,12 +94,19 @@ public final class EssentialLoader {
 
         // Fetch it
         if (needUpdate) {
-            Files.deleteIfExists(stage2File);
-            if (!downloadFile(meta, stage2File)) {
+            Path downloadedFile = Files.createTempFile("essential-download-", "");
+            if (downloadFile(meta, downloadedFile)) {
+                Files.deleteIfExists(stage2File);
+                Files.move(downloadedFile, stage2File);
+            } else {
                 LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
-                Files.deleteIfExists(stage2File); // clean up partial files
-                return;
+                Files.deleteIfExists(downloadedFile);
             }
+        }
+
+        // Check if we can continue, otherwise do not even try
+        if (!Files.exists(stage2File)) {
+            return;
         }
 
         // Add stage2 file to launch class loader (with an exception) and its parent (which will end up load it)
@@ -199,7 +207,7 @@ public final class EssentialLoader {
     private boolean downloadFile(FileMeta meta, Path target) {
         try {
             final URLConnection connection = this.prepareConnection(meta.url);
-            Files.copy(connection.getInputStream(), target);
+            Files.copy(connection.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
         } catch (final IOException e) {
             LOGGER.error("Error occurred when downloading file '{}'.", meta.url, e);
             return false;
