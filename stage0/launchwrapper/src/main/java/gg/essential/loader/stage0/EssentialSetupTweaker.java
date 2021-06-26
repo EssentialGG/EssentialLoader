@@ -29,6 +29,13 @@ public class EssentialSetupTweaker implements ITweaker {
     }
 
     private static ITweaker loadStage1(ITweaker stage0) throws Exception {
+        // ForgeGradle just doesn't pass a game dir even though it's a required argument...
+        // So we need to set this manually to allow people to launch in the development environment without requiring
+        // additional setup.
+        if (Launch.minecraftHome == null) {
+            Launch.minecraftHome = new File(".");
+        }
+
         final Path dataDir = Launch.minecraftHome.toPath()
             .resolve("essential")
             .resolve("loader")
