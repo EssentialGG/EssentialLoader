@@ -77,7 +77,14 @@ def integrationTest = tasks.register("integrationTest", Test) {
 }
 check.dependsOn(integrationTest)
 
-def configureExampleModJar = { String tweaker, Configuration mixin = null -> return {
+def includeMixin(AbstractArchiveTask task, Configuration mixin) {
+    task.dependsOn(mixin)
+    task.from({ mixin.collect { zipTree(it) } }) {
+        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    }
+}
+
+def configureExampleModJar = { String tweaker, Configuration mixin = null -> return { AbstractArchiveTask task ->
     archiveBaseName.set(name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
@@ -91,15 +98,12 @@ def configureExampleModJar = { String tweaker, Configuration mixin = null -> ret
     }
 
     if (mixin != null) {
-        dependsOn(mixin)
-        from({ mixin.collect { zipTree(it) } }) {
-            exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-        }
+        includeMixin(task, mixin)
         manifest.attributes "MixinConfigs": "examplemod.mixins.json"
     }
 } }
 
-def configureExample2ModJar = { String tweaker, Configuration mixin = null -> return {
+def configureExample2ModJar = { String tweaker, Configuration mixin = null -> return { AbstractArchiveTask task ->
     archiveBaseName.set(name)
     from(sourceSets.example2Mod.output)
     dependsOn(configurations.example2ModRuntimeClasspath)
@@ -113,10 +117,7 @@ def configureExample2ModJar = { String tweaker, Configuration mixin = null -> re
     }
 
     if (mixin != null) {
-        dependsOn(mixin)
-        from({ mixin.collect { zipTree(it) } }) {
-            exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-        }
+        includeMixin(task, mixin)
         manifest.attributes "MixinConfigs": "example2mod.mixins.json"
     }
 } }
@@ -139,6 +140,7 @@ tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExampl
 tasks.register("essentialJar", Jar) {
     archiveBaseName.set("essential")
     from(sourceSets.essential.output)
+    includeMixin(it, configurations.mixin07)
 }
 
 tasks.register("dummyStage1Jar", Jar) {
@@ -154,6 +156,7 @@ tasks.register("dummyStage2Jar", Jar) {
 tasks.register("dummyStage3Jar", Jar) {
     archiveBaseName.set("dummyStage3")
     from(sourceSets.dummyStage3.output)
+    includeMixin(it, configurations.mixin07)
 }
 
 tasks.register("setupDownloadsApi", Sync) {
