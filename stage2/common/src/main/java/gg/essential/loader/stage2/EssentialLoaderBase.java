@@ -130,6 +130,8 @@ public abstract class EssentialLoaderBase {
         if (!this.isInClassPath()) {
             throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
         }
+
+        loadPlatform();
     }
 
     private FileMeta fetchLatestMetadata() {
@@ -198,6 +200,8 @@ public abstract class EssentialLoaderBase {
 
         return urlConnection;
     }
+
+    protected abstract void loadPlatform();
 
     protected abstract void addToClasspath(final File file);
 
