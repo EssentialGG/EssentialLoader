@@ -13,6 +13,7 @@ public class Installation {
     private static final Path originalApiDir = Paths.get("build", "downloadsApi");
     private static final Path originalExampleModFile = originalApiDir.resolve("v1/mods/example/mod/updates/stable/forge_1-8-8.jar");
     private static final Path originalExample2ModFile = originalApiDir.resolve("v1/mods/example/mod2/updates/stable/forge_1-8-8.jar");
+    private static final Path originalKotlinModFile = originalApiDir.resolve("v1/mods/example/kotlin/updates/stable/forge_1-8-8.jar");
 
     public final Path gameDir = Files.createTempDirectory("game");
     public final Path modsDir = gameDir.resolve("mods");
@@ -55,6 +56,11 @@ public class Installation {
 
     public void addExample2Mod(String branch) throws IOException {
         Files.copy(withBranch(originalExample2ModFile, branch), modsDir.resolve("example2mod.jar"));
+    }
+
+    public void addOldKotlinMod() throws IOException {
+        // Alphabetically before everything else to be extra annoying
+        Files.copy(withBranch(originalKotlinModFile, "old"), modsDir.resolve("_kotlin.jar"));
     }
 
     public IsolatedLaunch launch(String tweaker) throws Exception {

@@ -22,8 +22,20 @@ public class Main {
     public static void main(String[] args) {
         ModClassLoader modClassLoader = new ModClassLoader(Main.class.getClassLoader());
         ModDiscoverer modDiscoverer = new ModDiscoverer();
+        modDiscoverer.findClasspathMods(modClassLoader);
         modDiscoverer.findModDirMods(new File(Launch.minecraftHome, "mods"));
-        LoadController loadController = new LoadController(Loader.instance());
+        LoadController loadController = new LoadController(Loader.instance()) {
+            @Override
+            public void errorOccurred(ModContainer modContainer, Throwable exception) {
+                // The NetworkRegistry requires MC classes, but we don't care cause we're done by that point
+                if (exception instanceof NoClassDefFoundError && exception.getMessage().equals("wn")) return;
+
+                // Immediately re-throw any exceptions which occur during mod init
+                if (exception instanceof Error) throw (Error) exception;
+                if (exception instanceof RuntimeException) throw (RuntimeException) exception;
+                throw new RuntimeException(exception);
+            }
+        };
         EventBus eventBus = new EventBus();
         for (ModContainer modContainer : modDiscoverer.identifyMods()) {
             if (modContainer instanceof ModContainerHack) {

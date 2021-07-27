@@ -33,6 +33,7 @@ public class TestableLaunch {
         classLoader = new LaunchClassLoader(ucl.getURLs());
         classLoader.addClassLoaderExclusion("com.example.mod.LoadState");
         classLoader.addClassLoaderExclusion("com.example.mod2.LoadState");
+        classLoader.addClassLoaderExclusion("gg.essential.LoadState");
         blackboard = new HashMap<>();
         Thread.currentThread().setContextClassLoader(classLoader);
     }

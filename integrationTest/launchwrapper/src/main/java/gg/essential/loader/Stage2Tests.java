@@ -198,4 +198,17 @@ public class Stage2Tests {
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
+
+    @Test
+    public void testOldKotlinOnClasspath() throws Exception {
+        Installation installation = new Installation();
+        installation.setup();
+        installation.addExampleMod();
+        installation.addOldKotlinMod();
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
 }
