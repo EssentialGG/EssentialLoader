@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EssentialLoader extends EssentialLoaderBase {
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
@@ -94,6 +95,26 @@ public class EssentialLoader extends EssentialLoaderBase {
                 if (Launch.blackboard.get("mixin.initialised") == null) {
                     preloadLibrary(path, fileSystem.getPath("org", "spongepowered"), resourceCache, negativeResourceCache);
                 }
+            }
+
+            if (Launch.classLoader.getClassBytes("pl.asie.foamfix.coremod.FoamFixCore") != null) {
+                // FoamFix will by default replace the resource cache map with a weak one, thereby negating our hack.
+                // To work around that, we preempt its replacement and put in a map which will throw an exception when
+                // iterated.
+                LOGGER.info("Detected FoamFix, locking LaunchClassLoader.resourceCache");
+                resourceCacheField.set(Launch.classLoader, new ConcurrentHashMap<String,byte[]>(resourceCache) {
+                    // FoamFix will call this before overwriting the resourceCache field
+                    @Override
+                    public Set<Entry<String, byte[]>> entrySet() {
+                        throw new RuntimeException("Suppressing FoamFix LaunchWrapper weak resource cache.") {
+                            // It'll then catch the exception and print it, which we can make less noisy.
+                            @Override
+                            public void printStackTrace() {
+                                LOGGER.info(this.getMessage());
+                            }
+                        };
+                    }
+                });
             }
         } catch (Exception e) {
             LOGGER.error("Failed to pre-load dependencies: ", e);
