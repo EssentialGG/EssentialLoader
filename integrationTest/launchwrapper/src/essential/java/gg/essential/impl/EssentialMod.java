@@ -1,6 +1,8 @@
 package gg.essential.impl;
 
 import gg.essential.LoadState;
+import kotlin.EarlyLoadedKotlin;
+import kotlin.LazyLoadedKotlin;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.fml.common.Mod;
 
@@ -14,6 +16,9 @@ public class EssentialMod {
         if (!LoadState.tweaker) {
             throw new IllegalStateException("Tweaker failed to load");
         }
+
+        LazyLoadedKotlin.assertCorrectVersionPresent();
+        EarlyLoadedKotlin.assertCorrectVersionPresent();
 
         LoadState.mod = true;
     }

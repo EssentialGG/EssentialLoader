@@ -6,6 +6,7 @@ repositories {
 sourceSets {
     exampleMod
     example2Mod
+    oldKotlinMod
     essential
     dummyStage1
     dummyStage2
@@ -57,6 +58,8 @@ dependencies {
     mixin08("org.spongepowered:mixin:0.8.2") {
         transitive = false
     }
+
+    oldKotlinModCompileOnly(forge)
 
     essentialCompileOnly(launchwrapper)
     essentialCompileOnly(forge)
@@ -137,6 +140,14 @@ tasks.register("example2ModWithMixin08Jar", Jar, configureExample2ModJar("com.ex
 tasks.register("exampleModEssentialTweakerWithMixin08Jar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin08))
 tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin08))
 
+tasks.register("oldKotlinModJar", Jar) {
+    archiveBaseName.set("oldKotlinMod")
+    from(sourceSets.oldKotlinMod.output)
+    manifest {
+        attributes "FMLCorePlugin": "com.example.oldkotlin.CoreMod"
+    }
+}
+
 tasks.register("essentialJar", Jar) {
     archiveBaseName.set("essential")
     from(sourceSets.essential.output)
@@ -191,6 +202,8 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-08/$platformForge")
     mod(tasks.exampleModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-08/$platformForge")
     mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-08/$platformForge")
+
+    mod(tasks.oldKotlinModJar.archiveFile, "v1/mods/example/kotlin/updates/old/$platformForge")
 
     mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
     mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
