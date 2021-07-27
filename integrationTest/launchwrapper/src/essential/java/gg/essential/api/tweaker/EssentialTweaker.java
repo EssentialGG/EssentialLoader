@@ -1,15 +1,14 @@
 package gg.essential.api.tweaker;
 
+import gg.essential.LoadState;
 import net.minecraft.launchwrapper.Launch;
 
 import java.io.File;
 
 @SuppressWarnings("unused")
 public class EssentialTweaker {
-    public static boolean loaded;
-
     public static void initialize(File gameDir) {
-        loaded = true;
+        LoadState.tweaker = true;
 
         ClassLoader expectedLoader = Launch.classLoader.getClass().getClassLoader();
         ClassLoader actualLoader = EssentialTweaker.class.getClassLoader();

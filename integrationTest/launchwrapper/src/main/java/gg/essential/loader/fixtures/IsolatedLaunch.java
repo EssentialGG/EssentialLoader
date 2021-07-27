@@ -47,8 +47,8 @@ public class IsolatedLaunch {
 
     public boolean isEssentialLoaded() throws Exception {
         try {
-            return getClass("gg.essential.api.tweaker.EssentialTweaker")
-                .getDeclaredField("loaded")
+            return getClass("gg.essential.LoadState")
+                .getDeclaredField("mod")
                 .getBoolean(null);
         } catch (ClassNotFoundException ignored) {
             return false;

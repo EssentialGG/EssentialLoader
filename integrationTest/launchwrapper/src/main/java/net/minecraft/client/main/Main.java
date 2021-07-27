@@ -22,6 +22,7 @@ public class Main {
     public static void main(String[] args) {
         ModClassLoader modClassLoader = new ModClassLoader(Main.class.getClassLoader());
         ModDiscoverer modDiscoverer = new ModDiscoverer();
+        modDiscoverer.findClasspathMods(modClassLoader);
         modDiscoverer.findModDirMods(new File(Launch.minecraftHome, "mods"));
         LoadController loadController = new LoadController(Loader.instance());
         EventBus eventBus = new EventBus();
