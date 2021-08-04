@@ -283,4 +283,31 @@ public class Stage1Tests {
         assertTrue(isolatedLaunch.getMod2LoadState("mixin"), "Example2 mixin plugin ran");
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
+
+    @Test
+    public void testWithThirdPartyQueuedMixin07() throws Exception {
+        testWithThirdPartyQueuedMixin("07");
+    }
+
+    @Test
+    public void testWithThirdPartyQueuedMixin08() throws Exception {
+        testWithThirdPartyQueuedMixin("08");
+    }
+
+    public void testWithThirdPartyQueuedMixin(String mixinVersion) throws Exception {
+        Installation installation = new Installation();
+        installation.setup();
+        installation.addExampleMod("mixin-tweaker-with-mixin-" + mixinVersion);
+        installation.addExample2Mod("essential-tweaker-with-mixin-" + mixinVersion);
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
+        assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
+        assertTrue(isolatedLaunch.getModLoadState("mixin"), "Example mixin plugin ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("mixin"), "Example2 mixin plugin ran");
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
 }

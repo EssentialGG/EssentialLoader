@@ -2,15 +2,25 @@ package com.example.mod;
 
 import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+import org.spongepowered.asm.mixin.MixinEnvironment;
 
 import java.util.Map;
 
 public class ExampleCoreMod implements IFMLLoadingPlugin {
     {
+        try {
+            verifyMixinLoaded();
+        } catch (NoClassDefFoundError ignored) { // only care about it in tests where we use mixin
+        }
+
         if (getClass().getClassLoader() != Launch.classLoader) {
             throw new IllegalStateException("CoreMod must be loaded via Launch class loader.");
         }
         LoadState.coreMod = true;
+    }
+
+    private void verifyMixinLoaded() {
+        MixinEnvironment.getDefaultEnvironment(); // verifies that mixin has been initialized properly
     }
 
     @Override

@@ -96,6 +96,7 @@ def configureExampleModJar = { String tweaker, Configuration mixin = null -> ret
     manifest {
         attributes "FMLCorePlugin": "com.example.mod.ExampleCoreMod",
                 "FMLCorePluginContainsFMLMod": "Yes, yes it does",
+                "ForceLoadAsMod": "true",
                 "TweakClass": tweaker,
                 "TweakOrder": "0"
     }
@@ -115,6 +116,7 @@ def configureExample2ModJar = { String tweaker, Configuration mixin = null -> re
     manifest {
         attributes "FMLCorePlugin": "com.example.mod2.ExampleCoreMod",
                 "FMLCorePluginContainsFMLMod": "Yes, yes it does",
+                "ForceLoadAsMod": "true",
                 "TweakClass": tweaker,
                 "TweakOrder": "0"
     }
@@ -134,11 +136,15 @@ tasks.register("exampleModWithMixin07Jar", Jar, configureExampleModJar("com.exam
 tasks.register("example2ModWithMixin07Jar", Jar, configureExample2ModJar("com.example.mod2.tweaker.ExampleModTweaker", configurations.mixin07))
 tasks.register("exampleModEssentialTweakerWithMixin07Jar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin07))
 tasks.register("example2ModEssentialTweakerWithMixin07Jar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin07))
+tasks.register("exampleModMixinTweakerWithMixin07Jar", Jar, configureExampleModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin07))
+tasks.register("example2ModMixinTweakerWithMixin07Jar", Jar, configureExample2ModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin07))
 
 tasks.register("exampleModWithMixin08Jar", Jar, configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker", configurations.mixin08))
 tasks.register("example2ModWithMixin08Jar", Jar, configureExample2ModJar("com.example.mod2.tweaker.ExampleModTweaker", configurations.mixin08))
 tasks.register("exampleModEssentialTweakerWithMixin08Jar", Jar, configureExampleModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin08))
 tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExample2ModJar("gg.essential.loader.stage0.EssentialSetupTweaker", configurations.mixin08))
+tasks.register("exampleModMixinTweakerWithMixin08Jar", Jar, configureExampleModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
+tasks.register("example2ModMixinTweakerWithMixin08Jar", Jar, configureExample2ModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 
 tasks.register("oldKotlinModJar", Jar) {
     archiveBaseName.set("oldKotlinMod")
@@ -201,11 +207,15 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-07/$platformForge")
     mod(tasks.exampleModEssentialTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-07/$platformForge")
     mod(tasks.example2ModEssentialTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-07/$platformForge")
+    mod(tasks.exampleModMixinTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/mixin-tweaker-with-mixin-07/$platformForge")
+    mod(tasks.example2ModMixinTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/mixin-tweaker-with-mixin-07/$platformForge")
 
     mod(tasks.exampleModWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/stable-with-mixin-08/$platformForge")
     mod(tasks.example2ModWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-08/$platformForge")
     mod(tasks.exampleModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-08/$platformForge")
     mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-08/$platformForge")
+    mod(tasks.exampleModMixinTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/mixin-tweaker-with-mixin-08/$platformForge")
+    mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/mixin-tweaker-with-mixin-08/$platformForge")
 
     mod(tasks.oldKotlinModJar.archiveFile, "v1/mods/example/kotlin/updates/old/$platformForge")
 

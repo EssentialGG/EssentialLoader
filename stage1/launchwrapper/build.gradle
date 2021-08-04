@@ -1,4 +1,4 @@
-version = "1"
+version = "2"
 
 repositories {
     maven { url "https://maven.minecraftforge.net/" }
