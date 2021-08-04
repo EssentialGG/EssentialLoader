@@ -1,7 +1,16 @@
-version = "1.0.0-SNAPSHOT"
+version = "1"
 
 repositories {
     maven { url "https://maven.minecraftforge.net/" }
+}
+
+jar {
+    inputs.property("project.version", project.version)
+
+    manifest {
+        attributes("Name": "gg/essential/loader/stage1/")
+        attributes("Implementation-Version": project.version)
+    }
 }
 
 dependencies {

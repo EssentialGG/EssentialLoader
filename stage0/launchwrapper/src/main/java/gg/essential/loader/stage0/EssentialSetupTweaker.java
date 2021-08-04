@@ -3,6 +3,8 @@ package gg.essential.loader.stage0;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.InputStream;
@@ -12,12 +14,19 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 
 @SuppressWarnings("unused")
 public class EssentialSetupTweaker implements ITweaker {
+    private static final String STAGE1_RESOURCE = "gg/essential/loader/stage0/stage1.jar";
     private static final String STAGE1_PKG = "gg.essential.loader.stage1.";
+    private static final String STAGE1_PKG_PATH = STAGE1_PKG.replace('.', '/');
     private static final String STAGE1_CLS = STAGE1_PKG + "EssentialSetupTweaker";
+    private static final Logger LOGGER = LogManager.getLogger(EssentialSetupTweaker.class);
     private final ITweaker stage1;
 
     public EssentialSetupTweaker() {
@@ -52,13 +61,40 @@ public class EssentialSetupTweaker implements ITweaker {
         // If there's an update, use that
         // (we cannot just replace the file at runtime because of file locks the JVM holds on it)
         if (Files.exists(stage1UpdateFile)) {
+            LOGGER.info("Found update for stage1.");
             Files.deleteIfExists(stage1File);
             Files.move(stage1UpdateFile, stage1File);
         }
 
-        // If there is no stage1 file yet, extract our built-in one
-        if (!Files.exists(stage1File)) {
-            try (InputStream in = EssentialSetupTweaker.class.getResourceAsStream("stage1.jar")) {
+        // Check to see if there is a newer stage1 version somewhere on the classpath
+        URL latestUrl = null;
+        int latestVersion = -1;
+
+        // newer than the already extracted one, that is
+        if (Files.exists(stage1File)) {
+            latestVersion = getVersion(stage1Url);
+            LOGGER.debug("Found stage1 version {}: {}", latestVersion, stage1Url);
+        }
+
+        Enumeration<URL> resources = EssentialSetupTweaker.class.getClassLoader().getResources(STAGE1_RESOURCE);
+        if (!resources.hasMoreElements()) {
+            LOGGER.warn("Found no embedded stage1 jar files.");
+        }
+        while (resources.hasMoreElements()) {
+            URL url = resources.nextElement();
+            int version = getVersion(url);
+            LOGGER.debug("Found stage1 version {}: {}", version, url);
+            if (version > latestVersion) {
+                latestVersion = version;
+                latestUrl = url;
+            }
+        }
+
+        // If there is a jar which is newer than the extracted one, use it instead
+        if (latestUrl != null) {
+            LOGGER.info("Updating stage1 to version {} from {}", latestVersion, latestUrl);
+            try (InputStream in = latestUrl.openStream()) {
+                Files.deleteIfExists(stage1File);
                 Files.copy(in, stage1File);
             }
         }
@@ -73,6 +109,20 @@ public class EssentialSetupTweaker implements ITweaker {
         return (ITweaker) Class.forName(STAGE1_CLS, true, classLoader)
             .getConstructor(ITweaker.class)
             .newInstance(stage0);
+    }
+
+    private static int getVersion(URL file) {
+        try (JarInputStream in = new JarInputStream(file.openStream(), false)) {
+            Manifest manifest = in.getManifest();
+            Attributes attributes = manifest.getMainAttributes();
+            if (!STAGE1_PKG_PATH.equals(attributes.getValue("Name"))) {
+                return -1;
+            }
+            return Integer.parseInt(attributes.getValue("Implementation-Version"));
+        } catch (Exception e) {
+            LOGGER.warn("Failed to read version from " + file, e);
+            return -1;
+        }
     }
 
     @Override

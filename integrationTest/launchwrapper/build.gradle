@@ -157,6 +157,10 @@ tasks.register("essentialJar", Jar) {
 tasks.register("dummyStage1Jar", Jar) {
     archiveBaseName.set("dummyStage1")
     from(sourceSets.dummyStage1.output)
+    manifest {
+        attributes("Name": "gg/essential/loader/stage1/")
+        attributes("Implementation-Version": 999999)
+    }
 }
 
 tasks.register("dummyStage2Jar", Jar) {
