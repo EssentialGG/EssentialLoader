@@ -1,0 +1,51 @@
+configure(subprojects.findAll { it.name != "common" }) {
+    apply plugin: 'maven-publish'
+
+    def variant = project.name
+
+    configurations {
+        bundle
+    }
+
+    dependencies {
+        bundle(compileOnly(parent.project("common")))
+    }
+
+    jar {
+        dependsOn configurations.bundle
+        from { configurations.bundle.collect { zipTree(it) } }
+
+        from(evaluationDependsOn(":stage1:$variant").tasks.named("jar").map { it.outputs }) {
+            rename { "gg/essential/loader/stage0/stage1.jar" }
+        }
+    }
+
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                artifactId = "loader-$variant"
+                def branch = this.properties.get("branch")
+                if (branch == "master") branch = null
+                afterEvaluate {
+                    version = [
+                            branch,
+                            project.version,
+                    ].findAll { it != null }.join("-")
+                }
+                artifact jar
+            }
+        }
+
+        repositories {
+            maven {
+                name 'nexus'
+                url "https://repo.sk1er.club/repository/maven-${this.properties.getOrDefault("IS_CI", false) ? "snapshots" : "releases"}/"
+
+                credentials {
+                    username project.nexus_user
+                    password project.nexus_password
+                }
+            }
+        }
+    }
+}

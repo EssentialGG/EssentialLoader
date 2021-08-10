@@ -26,7 +26,7 @@ dependencies {
     // Intentionally using a different version than stage1 to make sure it can determine the version correctly
     def forge = "net.minecraftforge:forge:1.8.8-11.15.0.1655:universal"
 
-    implementation("org.junit.jupiter:junit-jupiter:5.7.2")
+    implementation(project.parent.project("common"))
 
     // Versions based on the one which MC include by default in 1.8.9 (minimal supported version)
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json

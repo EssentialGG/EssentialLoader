@@ -18,6 +18,7 @@ import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.security.CodeSigner;
 import java.security.CodeSource;
+import java.security.Permission;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ public class IsolatedLaunch {
 
     public void launch(Path gameDir, String tweaker) throws Exception {
         System.out.println("Launching " + tweaker + " in " + gameDir);
+        System.setSecurityManager(new NoExitAllowed());
         Class<?> cls = getClass("gg.essential.loader.fixtures.TestableLaunch");
         Object obj = cls.newInstance();
         cls.getDeclaredMethod("launch", File.class, String.class).invoke(obj, gameDir.toFile(), tweaker);
@@ -64,6 +66,7 @@ public class IsolatedLaunch {
             "java.",
             "javax.",
             "sun.",
+            "com.google.common.jimfs.",
             "org.apache.logging."
         );
 
@@ -131,6 +134,21 @@ public class IsolatedLaunch {
                 classes.put(name, cls);
                 return cls;
             }
+        }
+    }
+
+    private static class NoExitAllowed extends SecurityManager {
+        @Override
+        public void checkPermission(Permission perm) {
+            String name = perm.getName();
+            if (name != null && name.startsWith("exitVM.")) {
+                throw new SecurityException("No exit allowed in tests");
+            }
+        }
+
+        @Override
+        public void checkPermission(Permission perm, Object context) {
+            this.checkPermission(perm);
         }
     }
 }

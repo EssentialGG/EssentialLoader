@@ -1,0 +1,109 @@
+repositories {
+    maven { url "https://maven.fabricmc.net/" }
+}
+
+sourceSets {
+    exampleMod
+    essential
+    minecraft
+}
+
+def minecraftJar = tasks.register("minecraftJar", Jar) {
+    archiveBaseName.set("minecraft")
+    from(sourceSets.minecraft.output)
+}
+
+dependencies {
+    implementation(project.parent.project("common"))
+
+    // Versions based on the one which MC includes by default in 1.14.4 (minimal supported version)
+    // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.14.4.json
+    runtimeOnly("org.apache.commons:commons-lang3:3.5")
+    runtimeOnly("commons-io:commons-io:2.5")
+    runtimeOnly("commons-codec:commons-codec:1.10")
+    runtimeOnly("org.apache.logging.log4j:log4j-api:2.8.1")
+    implementation("com.google.code.gson:gson:2.8.0")
+    implementation("com.google.guava:guava:21.0")
+    runtimeOnly("com.mojang:authlib:1.5.25")
+
+    // Fabric Loader
+    implementation("net.fabricmc:fabric-loader:0.11.6")
+    // Fabric Loader runtime deps
+    // https://github.com/FabricMC/fabric-loader/blob/5692a30/src/main/resources/fabric-installer.launchwrapper.json
+    def asmVersion = "9.2"
+    runtimeOnly("net.minecraft:launchwrapper:1.12")
+    runtimeOnly("net.fabricmc:tiny-mappings-parser:0.2.2.14")
+    runtimeOnly("net.fabricmc:sponge-mixin:0.9.4+mixin.0.8.2")
+    runtimeOnly("net.fabricmc:tiny-remapper:0.4.2")
+    runtimeOnly("net.fabricmc:access-widener:1.0.0")
+    runtimeOnly("net.fabricmc:fabric-loader-sat4j:2.3.5.4")
+    runtimeOnly("com.google.jimfs:jimfs:1.2-fabric")
+    runtimeOnly("org.ow2.asm:asm:$asmVersion")
+    runtimeOnly("org.ow2.asm:asm-analysis:$asmVersion")
+    runtimeOnly("org.ow2.asm:asm-commons:$asmVersion")
+    runtimeOnly("org.ow2.asm:asm-tree:$asmVersion")
+    runtimeOnly("org.ow2.asm:asm-util:$asmVersion")
+    // need this to be a jar file for fabric loader to work
+    runtimeOnly(files({ minecraftJar.get().outputs }) {
+        builtBy minecraftJar
+    })
+
+    exampleModImplementation(project(":stage0:fabric"))
+    exampleModCompileOnly("net.fabricmc:fabric-loader:0.11.6")
+    exampleModCompileOnly("net.fabricmc:sponge-mixin:0.9.4+mixin.0.8.2")
+    exampleModCompileOnly("org.ow2.asm:asm-commons:9.2")
+    exampleModCompileOnly(sourceSets.minecraft.output)
+
+    essentialCompileOnly("net.fabricmc:fabric-loader:0.11.6")
+    essentialCompileOnly("net.fabricmc:sponge-mixin:0.9.4+mixin.0.8.2")
+    essentialCompileOnly(sourceSets.minecraft.output)
+}
+
+def integrationTest = tasks.register("integrationTest", Test) {
+    testClassesDirs = sourceSets.main.output.classesDirs
+    classpath = sourceSets.main.runtimeClasspath
+
+    useJUnitPlatform()
+
+    inputs.dir(tasks.setupDownloadsApi.destinationDir)
+    dependsOn(tasks.setupDownloadsApi)
+}
+check.dependsOn(integrationTest)
+
+tasks.register("exampleModJar", Jar) {
+    archiveBaseName.set(name)
+    from(sourceSets.exampleMod.output)
+    dependsOn(configurations.exampleModRuntimeClasspath)
+    from({ configurations.exampleModRuntimeClasspath.files }) {
+        rename { "META-INF/jars/loader-launchwrapper-1.0.0.jar" }
+    }
+}
+
+tasks.register("essentialJar", Jar) {
+    archiveBaseName.set("essential")
+    from(sourceSets.essential.output)
+}
+
+tasks.register("setupDownloadsApi", Sync) {
+    def downloadsApi = new File(project.buildDir, "downloadsApi")
+    into(downloadsApi)
+
+    def mod = { Provider<RegularFile> source, String dst ->
+        def dstJar = "${dst}.jar"
+        preserve.include(dst)
+        preserve.include(dstJar)
+        from(source) {
+            rename { dstJar }
+        }
+        doLast {
+            def file = new File(downloadsApi, dstJar).absoluteFile
+            new File(downloadsApi, dst).write("""{ "url": "${file.toURI()}", "checksum": "${file.bytes.md5()}" }""")
+        }
+    }
+    def platformFabric = "fabric_1-14-4"
+
+    mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformFabric")
+
+    mod(evaluationDependsOn(':stage2:fabric').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformFabric")
+    mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformFabric")
+}

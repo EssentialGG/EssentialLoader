@@ -34,6 +34,7 @@ public class TestableLaunch {
         classLoader.addClassLoaderExclusion("com.example.mod.LoadState");
         classLoader.addClassLoaderExclusion("com.example.mod2.LoadState");
         classLoader.addClassLoaderExclusion("gg.essential.LoadState");
+        classLoader.addClassLoaderExclusion("com.google.common.jimfs.");
         blackboard = new HashMap<>();
         Thread.currentThread().setContextClassLoader(classLoader);
     }

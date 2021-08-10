@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "examplemod",
+  "version": "1.0.0",
+  "name": "Example Mod",
+  "description": "An example mod.",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.example.mod.ExampleMod::init"]
+  },
+  "mixins": ["examplemod.mixins.json"],
+  "depends": {},
+  "jars": [
+    {
+      "file": "META-INF/jars/loader-launchwrapper-1.0.0.jar"
+    }
+  ]
+}

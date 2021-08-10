@@ -1,0 +1,21 @@
+configure(subprojects.findAll { it.name != "common" }) {
+    configurations {
+        bundle
+    }
+
+    dependencies {
+        bundle(implementation(parent.project("common")))
+    }
+
+    jar {
+        dependsOn configurations.bundle
+        from { configurations.bundle.collect { zipTree(it) } }
+
+        inputs.property("project.version", project.version)
+        manifest {
+            attributes("Name": "gg/essential/loader/stage1/")
+            attributes("Implementation-Version": project.version)
+        }
+    }
+
+}

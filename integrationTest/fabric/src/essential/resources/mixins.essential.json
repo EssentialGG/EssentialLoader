@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_8",
+  "package": "gg.essential.impl.mixins",
+  "refmap": "mixins.essential.refmap.json",
+  "mixins": [
+    "MixinMain"
+  ]
+}

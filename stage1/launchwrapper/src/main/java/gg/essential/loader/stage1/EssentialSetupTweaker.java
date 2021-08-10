@@ -32,7 +32,7 @@ public class EssentialSetupTweaker implements ITweaker {
         platform.setupPreLoad(this);
 
         this.loader = EssentialLoader.getInstance(platform.getVersion());
-        this.loader.load();
+        this.loader.load(Launch.minecraftHome.toPath());
 
         platform.setupPostLoad(this);
     }

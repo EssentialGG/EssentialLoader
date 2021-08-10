@@ -1,40 +1,5 @@
-apply plugin: 'maven-publish'
-
 version = "1.1.0"
 
 dependencies {
     compileOnly("net.minecraft:launchwrapper:1.12")
-}
-
-jar {
-    from(evaluationDependsOn(":stage1:launchwrapper").tasks.named("jar").map { it.outputs }) {
-        rename { "gg/essential/loader/stage0/stage1.jar" }
-    }
-}
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            artifactId = "loader-launchwrapper"
-            def branch = this.properties.get("branch")
-            if (branch == "master") branch = null
-            version = [
-                    branch,
-                    project.version,
-            ].findAll { it != null }.join("-")
-            artifact jar
-        }
-    }
-
-    repositories {
-        maven {
-            name 'nexus'
-            url "https://repo.sk1er.club/repository/maven-${this.properties.getOrDefault("IS_CI", false) ? "snapshots" : "releases"}/"
-
-            credentials {
-                username project.nexus_user
-                password project.nexus_password
-            }
-        }
-    }
 }

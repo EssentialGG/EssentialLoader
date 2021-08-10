@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "essential",
+  "version": "${version}",
+  "environment": "client",
+  "mixins": [
+    "mixins.essential.json"
+  ],
+  "entrypoints": {
+    "client": ["gg.essential.impl.EssentialMod"]
+  },
+  "name": "Essential",
+  "description": "Provides essential features to Minecraft and our Partners.",
+  "authors": ["ModCore Inc"],
+  "contact": {
+    "homepage": "https://essential.gg/"
+  },
+  "custom": {
+    "test": "value"
+  }
+}
