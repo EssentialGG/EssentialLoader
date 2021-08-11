@@ -326,7 +326,7 @@ public abstract class EssentialLoaderBase {
 
         // Logo
         try {
-            final Image icon = ImageIO.read(Objects.requireNonNull(getClass().getResource("/essential.png")));
+            final Image icon = ImageIO.read(Objects.requireNonNull(getClass().getResource("/assets/essential-loader-stage2/essential.png")));
             final JLabel label = new JLabel(new ImageIcon(icon));
             label.setBorder(new EmptyBorder(35, 0, 0, 0));
             label.setAlignmentX(Container.CENTER_ALIGNMENT);
