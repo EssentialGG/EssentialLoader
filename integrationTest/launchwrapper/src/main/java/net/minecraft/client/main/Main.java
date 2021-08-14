@@ -47,6 +47,9 @@ public class Main {
                 ));
             }
         }
+
+        // Simulate regular exit (MC does this as well, instead of just returning from main)
+        System.exit(0);
     }
 
     static {

@@ -18,6 +18,7 @@ import java.lang.reflect.Method;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.nio.file.Path;
 import java.security.CodeSigner;
 import java.security.CodeSource;
@@ -34,7 +35,8 @@ public class IsolatedLaunch {
     public void launch(Path gameDir, String tweaker) throws Exception {
         System.out.println("Launching " + tweaker + " in " + gameDir);
 
-        System.setSecurityManager(new NoExitAllowed());
+        ExitCatchingSecurityManager exitCatchingSecurityManager = new ExitCatchingSecurityManager();
+        System.setSecurityManager(exitCatchingSecurityManager);
         try {
             Class<?> cls = getClass(LAUNCH_CLASS_NAME);
 
@@ -55,6 +57,11 @@ public class IsolatedLaunch {
                 "--gameDir", gameDir.toString(),
                 "--tweakClass", tweaker,
             });
+        } catch (Throwable t) {
+            if (exitCatchingSecurityManager.didRegularExit) {
+                return;
+            }
+            throw t;
         } finally {
             System.setSecurityManager(new EverythingIsAllowedSecurityManager());
         }
@@ -126,8 +133,12 @@ public class IsolatedLaunch {
                         URL jarUrl;
                         byte[] bytes;
                         try {
-                            JarURLConnection urlConnection = (JarURLConnection) getResource(name.replace('.', '/') + ".class").openConnection();
-                            jarUrl = urlConnection.getJarFileURL();
+                            URLConnection urlConnection = getResource(name.replace('.', '/') + ".class").openConnection();
+                            if (urlConnection instanceof JarURLConnection) {
+                                jarUrl = ((JarURLConnection) urlConnection).getJarFileURL();
+                            } else {
+                                jarUrl = urlConnection.getURL();
+                            }
                             try (InputStream in = urlConnection.getInputStream()) {
                                 bytes = ByteStreams.toByteArray(in);
                             }
@@ -183,11 +194,17 @@ public class IsolatedLaunch {
         }
     }
 
-    private static class NoExitAllowed extends SecurityManager {
+    private static class ExitCatchingSecurityManager extends SecurityManager {
+        private boolean didRegularExit;
+
         @Override
         public void checkPermission(Permission perm) {
             String name = perm.getName();
             if (name != null && name.startsWith("exitVM.")) {
+                if (name.equals("exitVM.0")) {
+                    didRegularExit = true;
+                    throw new RegularSystemExit();
+                }
                 throw new SecurityException("No exit allowed in tests");
             }
         }
@@ -195,6 +212,12 @@ public class IsolatedLaunch {
         @Override
         public void checkPermission(Permission perm, Object context) {
             this.checkPermission(perm);
+        }
+    }
+
+    private static class RegularSystemExit extends SecurityException {
+        public RegularSystemExit() {
+            super("System.exit(0)");
         }
     }
 }
