@@ -36,6 +36,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
@@ -217,10 +219,14 @@ public abstract class EssentialLoaderBase {
 
     protected abstract boolean isInClassPath();
 
-    public void initialize() {
+    public final void initialize() {
         if (!isInClassPath()) {
             return;
         }
+        doInitialize();
+    }
+
+    protected void doInitialize() {
         try {
             Class.forName(CLASS_NAME)
                 .getDeclaredMethod("initialize", File.class)
@@ -228,6 +234,10 @@ public abstract class EssentialLoaderBase {
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
         }
+    }
+
+    protected static URI asJar(URI uri) throws URISyntaxException {
+        return new URI("jar:" + uri.getScheme(), uri.getHost(), uri.getPath(), uri.getFragment());
     }
 
     private boolean downloadFile(final String url, final File target, String expectedHash) {

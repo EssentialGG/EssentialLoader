@@ -15,8 +15,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -99,10 +97,6 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected boolean isInClassPath() {
         return this.getModClassLoader().getResource(CLASS_NAME.replace('.', '/') + ".class") != null;
-    }
-
-    private static URI asJar(URI uri) throws URISyntaxException {
-        return new URI("jar:" + uri.getScheme(), uri.getHost(), uri.getPath(), uri.getFragment());
     }
 
     /**

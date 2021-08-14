@@ -1,15 +1,22 @@
 package gg.essential.loader.stage2;
 
+import gg.essential.loader.stage2.relaunch.Relaunch;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
@@ -20,15 +27,19 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 public class EssentialLoader extends EssentialLoaderBase {
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private static final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
+
+    private URL ourMixinUrl;
 
     public EssentialLoader(Path gameDir, String gameVersion) {
         super(gameDir, gameVersion);
@@ -46,9 +57,10 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected void addToClasspath(final File file) {
         Path path = file.toPath();
+        URL url;
         try {
             // Add to launch class loader
-            final URL url = file.toURI().toURL();
+            url = file.toURI().toURL();
             Launch.classLoader.addURL(url);
 
             // And its parent (for those classes that are excluded from the launch class loader)
@@ -60,11 +72,41 @@ public class EssentialLoader extends EssentialLoaderBase {
             throw new RuntimeException("Unexpected error", e);
         }
 
+        ourMixinUrl = url;
+
         // Pre-load the resource cache of the launch class loader with the class files of some of our libraries.
         // Doing so will allow us to load our version, even if there is an older version already on the classpath
         // before our jar. This will of course only work if they have not already been loaded but in that case
         // there's really not much we can do about it anyway.
         try {
+            Field classLoaderExceptionsField = LaunchClassLoader.class.getDeclaredField("classLoaderExceptions");
+            classLoaderExceptionsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Set<String> classLoaderExceptions = (Set<String>) classLoaderExceptionsField.get(Launch.classLoader);
+
+            Field transformerExceptionsField = LaunchClassLoader.class.getDeclaredField("transformerExceptions");
+            transformerExceptionsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Set<String> transformerExceptions = (Set<String>) transformerExceptionsField.get(Launch.classLoader);
+
+            // Some mods (BetterFoliage) will exclude kotlin from transformations, thereby voiding our pre-loading.
+            boolean kotlinExcluded = Stream.concat(classLoaderExceptions.stream(), transformerExceptions.stream())
+                .anyMatch(prefix -> prefix.startsWith("kotlin"));
+            if (kotlinExcluded && !Relaunch.HAPPENED) {
+                LOGGER.warn("Found Kotlin to be excluded from LaunchClassLoader transformations. This may cause issues.");
+                LOGGER.debug("classLoaderExceptions:");
+                for (String classLoaderException : classLoaderExceptions) {
+                    LOGGER.debug("  - {}", classLoaderException);
+                }
+                LOGGER.debug("transformerExceptions:");
+                for (String transformerException : transformerExceptions) {
+                    LOGGER.debug("  - {}", transformerException);
+                }
+                if (Relaunch.ENABLED) {
+                    throw new RelaunchRequest();
+                }
+            }
+
             Field resourceCacheField = LaunchClassLoader.class.getDeclaredField("resourceCache");
             resourceCacheField.setAccessible(true);
             @SuppressWarnings("unchecked")
@@ -116,6 +158,8 @@ public class EssentialLoader extends EssentialLoaderBase {
                     }
                 });
             }
+        } catch (RelaunchRequest relaunchRequest) {
+            Relaunch.relaunch(url);
         } catch (Exception e) {
             LOGGER.error("Failed to pre-load dependencies: ", e);
         }
@@ -149,6 +193,9 @@ public class EssentialLoader extends EssentialLoaderBase {
                             LOGGER.warn("Likely source: {}", Launch.classLoader.findResource(file));
                         } catch (Throwable t) {
                             LOGGER.warn("Unable to determine likely source:", t);
+                        }
+                        if (Relaunch.ENABLED) {
+                            throw new RelaunchRequest();
                         }
                     }
                     negativeResourceCache.remove(name);
@@ -201,4 +248,75 @@ public class EssentialLoader extends EssentialLoaderBase {
         List<ITweaker> tweaks = (List<ITweaker>) Launch.blackboard.get("Tweaks");
         tweaks.add((ITweaker) Class.forName(MIXIN_TWEAKER, true, Launch.classLoader).newInstance());
     }
+
+    @Override
+    protected void doInitialize() {
+        String outdatedMixin = isMixinOutdated();
+        if (outdatedMixin != null) {
+            LOGGER.warn("Found an old version of Mixin ({}). This may cause issues.", outdatedMixin);
+            if (Relaunch.ENABLED) {
+                Relaunch.relaunch(ourMixinUrl);
+            }
+        }
+
+        super.doInitialize();
+    }
+
+    private String isMixinOutdated() {
+        String loadedVersion = String.valueOf(Launch.blackboard.get("mixin.initialised"));
+        String bundledVersion = getMixinVersion(ourMixinUrl);
+        int[] loadedParts = parseMixinVersion(loadedVersion);
+        int[] bundledParts = parseMixinVersion(bundledVersion);
+        if (loadedParts == null || bundledParts == null) {
+            return null;
+        }
+        for (int i = 0; i < loadedParts.length; i++) {
+            if (loadedParts[i] < bundledParts[i]) {
+                return loadedVersion;
+            } else if (loadedParts[i] > bundledParts[i]) {
+                break;
+            }
+        }
+        return null;
+    }
+
+    private int[] parseMixinVersion(String version) {
+        if (version == null) {
+            return null;
+        }
+        String[] parts = version.split("[.-]");
+        int[] numbers = new int[3];
+        for (int i = 0; i < parts.length && i < numbers.length; i++) {
+            try {
+                numbers[i] = Integer.parseInt(parts[i]);
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Failed to parse mixin version \"{}\".", version);
+                LOGGER.debug(e);
+                return null;
+            }
+        }
+        return numbers;
+    }
+
+    private String getMixinVersion(URL ourMixinUrl) {
+        try (FileSystem fileSystem = FileSystems.newFileSystem(asJar(ourMixinUrl.toURI()), Collections.emptyMap())) {
+            Path bootstrapPath = fileSystem.getPath("org", "spongepowered", "asm", "launch", "MixinBootstrap.class");
+            try (InputStream inputStream = Files.newInputStream(bootstrapPath)) {
+                ClassReader reader = new ClassReader(inputStream);
+                ClassNode classNode = new ClassNode(Opcodes.ASM5);
+                reader.accept(classNode, 0);
+                for (FieldNode field : classNode.fields) {
+                    if (field.name.equals("VERSION")) {
+                        return String.valueOf(field.value);
+                    }
+                }
+                LOGGER.warn("Failed to determine version of bundled mixin: no VERSION field in MixinBootstrap");
+            }
+        } catch (URISyntaxException | IOException e) {
+            LOGGER.warn("Failed to determine version of bundled mixin:", e);
+        }
+        return null;
+    }
+
+    private static class RelaunchRequest extends RuntimeException {}
 }
