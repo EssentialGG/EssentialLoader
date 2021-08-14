@@ -1,6 +1,6 @@
-package com.example.mod;
+package sun.com.example.mod2;
 
-// The test code excludes this class from the launch class loader, so it can be safely accessed from everywhere
+// Being in the sun package excludes this class from the launch class loader, so it can be safely accessed from everywhere
 public class LoadState {
     public static boolean tweaker = false;
     public static boolean coreMod = false;

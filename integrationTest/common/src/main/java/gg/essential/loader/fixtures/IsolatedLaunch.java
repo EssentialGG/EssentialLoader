@@ -46,9 +46,6 @@ public class IsolatedLaunch {
 
             Object launchClassLoader = cls.getDeclaredField("classLoader").get(null);
             Method addExclusion = launchClassLoader.getClass().getDeclaredMethod("addClassLoaderExclusion", String.class);
-            addExclusion.invoke(launchClassLoader, "com.example.mod.LoadState");
-            addExclusion.invoke(launchClassLoader, "com.example.mod2.LoadState");
-            addExclusion.invoke(launchClassLoader, "gg.essential.LoadState");
             addExclusion.invoke(launchClassLoader, "com.google.common.jimfs.");
 
             Method launchMethod = cls.getDeclaredMethod("launch", String[].class);
@@ -68,20 +65,20 @@ public class IsolatedLaunch {
     }
 
     public boolean getModLoadState(String field) throws Exception {
-        return getClass("com.example.mod.LoadState")
+        return getClass("sun.com.example.mod.LoadState")
             .getDeclaredField(field)
             .getBoolean(null);
     }
 
     public boolean getMod2LoadState(String field) throws Exception {
-        return getClass("com.example.mod2.LoadState")
+        return getClass("sun.com.example.mod2.LoadState")
             .getDeclaredField(field)
             .getBoolean(null);
     }
 
     public boolean isEssentialLoaded() throws Exception {
         try {
-            return getClass("gg.essential.LoadState")
+            return getClass("sun.gg.essential.LoadState")
                 .getDeclaredField("mod")
                 .getBoolean(null);
         } catch (ClassNotFoundException ignored) {

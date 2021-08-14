@@ -4,6 +4,7 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
+import sun.com.example.mod2.LoadState;
 import java.util.List;
 import java.util.Set;
 

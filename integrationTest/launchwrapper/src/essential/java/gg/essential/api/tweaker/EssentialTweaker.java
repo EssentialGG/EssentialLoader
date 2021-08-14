@@ -1,6 +1,6 @@
 package gg.essential.api.tweaker;
 
-import gg.essential.LoadState;
+import sun.gg.essential.LoadState;
 import net.minecraft.launchwrapper.Launch;
 
 import java.io.File;

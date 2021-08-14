@@ -1,6 +1,6 @@
 package com.example.mod.mixin;
 
-import com.example.mod.LoadState;
+import sun.com.example.mod.LoadState;
 import net.minecraft.client.main.Main;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

@@ -1,6 +1,6 @@
 package gg.essential.impl;
 
-import gg.essential.LoadState;
+import sun.gg.essential.LoadState;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;

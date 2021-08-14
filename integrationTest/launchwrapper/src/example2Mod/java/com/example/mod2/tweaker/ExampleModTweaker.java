@@ -1,6 +1,6 @@
 package com.example.mod2.tweaker;
 
-import com.example.mod2.LoadState;
+import sun.com.example.mod2.LoadState;
 import gg.essential.loader.stage0.EssentialSetupTweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 

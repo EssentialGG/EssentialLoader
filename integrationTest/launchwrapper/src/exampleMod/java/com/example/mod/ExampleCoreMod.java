@@ -4,6 +4,7 @@ import net.minecraft.launchwrapper.Launch;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 
+import sun.com.example.mod.LoadState;
 import java.util.Map;
 
 public class ExampleCoreMod implements IFMLLoadingPlugin {

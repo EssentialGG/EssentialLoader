@@ -1,6 +1,6 @@
 package gg.essential.impl;
 
-import gg.essential.LoadState;
+import sun.gg.essential.LoadState;
 import kotlin.EarlyLoadedKotlin;
 import kotlin.LazyLoadedKotlin;
 import net.minecraft.launchwrapper.Launch;
