@@ -26,9 +26,7 @@ import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
-import java.awt.Dimension;
 import java.awt.Image;
-import java.awt.Toolkit;
 import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.io.FileInputStream;
@@ -359,10 +357,7 @@ public abstract class EssentialLoaderBase {
 
         container.add(panel);
 
-        // Show the frame
-        final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-
-        frame.setLocation((int) (screenSize.getWidth() - FRAME_WIDTH) / 2, (int) (screenSize.getHeight() - FRAME_HEIGHT) / 2);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setVisible(true);
 
