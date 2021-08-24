@@ -25,6 +25,12 @@ public class EssentialSetupTweaker implements ITweaker {
     public EssentialSetupTweaker(ITweaker stage0) throws Exception {
         this.stage0 = stage0;
 
+        if (DelayedStage0Tweaker.isRequired()) {
+            DelayedStage0Tweaker.prepare(stage0);
+            this.loader = null;
+            return;
+        }
+
         final Forge forge = Forge.getIfPresent();
         final Unknown unknown = new Unknown.Impl();
         final Platform platform = forge != null ? forge : unknown;
@@ -43,6 +49,10 @@ public class EssentialSetupTweaker implements ITweaker {
 
     @Override
     public void injectIntoClassLoader(LaunchClassLoader classLoader) {
+        if (this.loader == null) {
+            DelayedStage0Tweaker.inject();
+            return;
+        }
         this.loader.initialize();
     }
 

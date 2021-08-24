@@ -18,6 +18,8 @@ public abstract class BaseInstallation {
     public final Path gameDir = Files.createTempDirectory("game");
     public final Path modsDir = gameDir.resolve("mods");
     public final Path apiDir = gameDir.resolve("downloadsApi");
+    public final Path mixin07JarFile = apiDir.resolve("v1/mods/essential/mixin/updates/07/" + getPlatformVersion() + ".jar");
+    public final Path stage0JarFile = apiDir.resolve("v1/mods/essential/loader-stage0/updates/stable/" + getPlatformVersion() + ".jar");
     public final Path stage1Dummy = apiDir.resolve("v1/mods/essential/loader-stage1/updates/dummy/" + getPlatformVersion());
     public final Path stage2Meta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/stable/" + getPlatformVersion());
     public final Path stage2DummyMeta = withBranch(stage2Meta, "dummy");

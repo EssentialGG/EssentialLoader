@@ -228,6 +228,8 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
     mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
     mod(tasks.essentialWithMixin08Jar.archiveFile, "v1/mods/essential/essential/updates/mixin-08/$platformForge")
+    mod(provider { configurations.mixin07.singleFile }, "v1/mods/essential/mixin/updates/07/$platformForge")
+    mod(evaluationDependsOn(':stage0:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage0/updates/stable/$platformForge")
     mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")
     mod(tasks.dummyStage2Jar.archiveFile, "v1/mods/essential/loader-stage2/updates/dummy/$platformForge")
     mod(tasks.dummyStage3Jar.archiveFile, "v1/mods/essential/essential/updates/dummy/$platformForge")

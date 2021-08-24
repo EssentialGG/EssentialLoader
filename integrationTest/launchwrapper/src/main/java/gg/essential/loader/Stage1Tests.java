@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -308,6 +309,27 @@ public class Stage1Tests {
         assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
         assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
         assertTrue(isolatedLaunch.getMod2LoadState("mixin"), "Example2 mixin plugin ran");
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
+    @Test
+    public void testEssentialTweakerModsInDev() throws Exception {
+        Installation installation = new Installation();
+        installation.setup();
+        installation.addExample2Mod("essential-tweaker");
+
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.addToClasspath(installation.stage0JarFile.toUri().toURL());
+        isolatedLaunch.addToClasspath(installation.mixin07JarFile.toUri().toURL());
+        isolatedLaunch.addToClasspath(Paths.get("build", "classes", "java", "exampleMod").toUri().toURL());
+        isolatedLaunch.addArg("--tweakClass", "gg.essential.loader.stage0.EssentialSetupTweaker");
+        isolatedLaunch.setProperty("fml.coreMods.load", "com.example.mod.ExampleCoreMod");
+        isolatedLaunch.launch();
+
+        assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
+        assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
+        assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 }
