@@ -17,7 +17,6 @@ public class ExampleCoreMod implements IFMLLoadingPlugin {
         if (getClass().getClassLoader() != Launch.classLoader) {
             throw new IllegalStateException("CoreMod must be loaded via Launch class loader.");
         }
-        LoadState.coreMod = true;
     }
 
     private void verifyMixinLoaded() {
@@ -26,6 +25,7 @@ public class ExampleCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public String[] getASMTransformerClass() {
+        LoadState.coreMod = true;
         return new String[0];
     }
 
