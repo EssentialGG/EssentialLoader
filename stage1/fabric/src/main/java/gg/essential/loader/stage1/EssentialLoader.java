@@ -19,7 +19,7 @@ public final class EssentialLoader extends EssentialLoaderBase {
 
     @Override
     protected ClassLoader addToClassLoader(URL stage2Url) {
-        // Create a class loader with which to load stage1
+        // Create a class loader with which to load stage2
         return new URLClassLoader(new URL[]{ stage2Url }, getClass().getClassLoader());
     }
 }
