@@ -81,11 +81,11 @@ public class IntegrationTests {
         thread.start();
         IsolatedLaunch isolatedLaunch;
         try {
-            System.setProperty("essential.download.url", "http://127.0.0.1:" + socket.getLocalPort());
-            System.setProperty("essential.autoUpdate", "false");
-            isolatedLaunch = installation.launchFabric();
+            isolatedLaunch = installation.newLaunchFabric();
+            isolatedLaunch.setProperty("essential.download.url", "http://127.0.0.1:" + socket.getLocalPort());
+            isolatedLaunch.setProperty("essential.autoUpdate", "false");
+            isolatedLaunch.launch();
         } finally {
-            System.setProperty("essential.autoUpdate", "true");
             try {
                 socket.close();
             } catch (IOException e) {

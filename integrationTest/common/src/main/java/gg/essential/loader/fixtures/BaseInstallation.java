@@ -38,7 +38,6 @@ public abstract class BaseInstallation {
 
     protected void setupDownloadsApi() throws IOException {
         Copy.recursively(originalApiDir, apiDir);
-        System.setProperty("essential.download.url", apiDir.toUri().toString());
     }
 
     public void addExampleMod() throws IOException {
@@ -62,10 +61,19 @@ public abstract class BaseInstallation {
         Files.copy(withBranch(originalKotlinModFile, "old"), modsDir.resolve("_kotlin.jar"));
     }
 
-    public IsolatedLaunch launch(String tweaker) throws Exception {
-        IsolatedLaunch isolatedLaunch = new IsolatedLaunch();
-        isolatedLaunch.launch(gameDir, tweaker);
+    public IsolatedLaunch newLaunch(String tweaker) {
+        IsolatedLaunch isolatedLaunch = new IsolatedLaunch(gameDir, tweaker);
+        isolatedLaunch.setProperty("essential.download.url", apiDir.toUri().toString());
         return isolatedLaunch;
+    }
+
+    protected static IsolatedLaunch launch(IsolatedLaunch isolatedLaunch) throws Exception {
+        isolatedLaunch.launch();
+        return isolatedLaunch;
+    }
+
+    public IsolatedLaunch launch(String tweaker) throws Exception {
+        return launch(newLaunch(tweaker));
     }
 
     public void assertModLaunched(IsolatedLaunch isolatedLaunch) throws Exception {

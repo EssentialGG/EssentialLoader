@@ -23,17 +23,47 @@ import java.nio.file.Path;
 import java.security.CodeSigner;
 import java.security.CodeSource;
 import java.security.Permission;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class IsolatedLaunch {
     private static final String LAUNCH_CLASS_NAME = "net.minecraft.launchwrapper.Launch";
-    private final IsolatedClassLoader loader = new IsolatedClassLoader();
+    private final Properties systemProperties = new Properties();
+    private final List<URL> classpath = new ArrayList<>();
+    private final List<String> args = new ArrayList<>();
+    private IsolatedClassLoader loader;
 
-    public void launch(Path gameDir, String tweaker) throws Exception {
-        System.out.println("Launching " + tweaker + " in " + gameDir);
+    public IsolatedLaunch(Path gameDir, String primaryTweaker) {
+        this.systemProperties.putAll(System.getProperties());
+        this.addToClasspath(((URLClassLoader) ClassLoader.getSystemClassLoader()).getURLs());
+        this.addArg("--gameDir", gameDir.toString());
+        this.addArg("--tweakClass", primaryTweaker);
+    }
+
+    public void setProperty(String key, String value) {
+        this.systemProperties.put(key, value);
+    }
+
+    public void addToClasspath(URL... urls) {
+        this.classpath.addAll(Arrays.asList(urls));
+    }
+
+    public void addArg(String key, String value) {
+        this.args.add(key);
+        this.args.add(value);
+    }
+
+    public void launch() throws Exception {
+        System.out.println("Launching " + String.join(" ", this.args));
+
+        this.loader = new IsolatedClassLoader(this.classpath.toArray(new URL[0]));
+
+        Properties originalProperties = System.getProperties();
+        System.setProperties(this.systemProperties);
 
         ExitCatchingSecurityManager exitCatchingSecurityManager = new ExitCatchingSecurityManager();
         System.setSecurityManager(exitCatchingSecurityManager);
@@ -50,10 +80,7 @@ public class IsolatedLaunch {
 
             Method launchMethod = cls.getDeclaredMethod("launch", String[].class);
             launchMethod.setAccessible(true);
-            launchMethod.invoke(obj, (Object) new String[] {
-                "--gameDir", gameDir.toString(),
-                "--tweakClass", tweaker,
-            });
+            launchMethod.invoke(obj, (Object) this.args.toArray(new String[0]));
         } catch (Throwable t) {
             if (exitCatchingSecurityManager.didRegularExit) {
                 return;
@@ -61,6 +88,8 @@ public class IsolatedLaunch {
             throw t;
         } finally {
             System.setSecurityManager(new EverythingIsAllowedSecurityManager());
+
+            System.setProperties(originalProperties);
         }
     }
 
@@ -101,8 +130,8 @@ public class IsolatedLaunch {
 
         private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
 
-        public IsolatedClassLoader() {
-            super(((URLClassLoader) getSystemClassLoader()).getURLs());
+        public IsolatedClassLoader(URL[] urls) {
+            super(urls);
         }
 
         @Override

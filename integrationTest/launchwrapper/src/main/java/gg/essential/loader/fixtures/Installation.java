@@ -16,7 +16,11 @@ public class Installation extends BaseInstallation {
         return "forge_1-8-8";
     }
 
+    public IsolatedLaunch newLaunchFML() {
+        return newLaunch("net.minecraftforge.fml.common.launcher.FMLTweaker");
+    }
+
     public IsolatedLaunch launchFML() throws Exception {
-        return launch("net.minecraftforge.fml.common.launcher.FMLTweaker");
+        return launch(newLaunchFML());
     }
 }

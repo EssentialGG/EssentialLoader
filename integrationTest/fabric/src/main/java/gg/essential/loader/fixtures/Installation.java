@@ -24,13 +24,17 @@ public class Installation extends BaseInstallation {
         return "fabric_1-14-4";
     }
 
-    public IsolatedLaunch launchFabric() throws Exception {
+    public IsolatedLaunch newLaunchFabric() throws Exception {
         // Clean up old JimFS instances which may linger around (stored in a weak map) from previous launches
         try {
             FileSystems.getFileSystem(new URI("jimfs://nestedJarStore")).close();
         } catch (ProviderNotFoundException | FileSystemNotFoundException ignored) {
         }
 
-        return launch("net.fabricmc.loader.launch.FabricClientTweaker");
+        return this.newLaunch("net.fabricmc.loader.launch.FabricClientTweaker");
+    }
+
+    public IsolatedLaunch launchFabric() throws Exception {
+        return launch(newLaunchFabric());
     }
 }

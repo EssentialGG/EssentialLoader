@@ -206,13 +206,9 @@ public class Stage2Tests {
         installation.addExampleMod();
         installation.addOldKotlinMod();
 
-        IsolatedLaunch isolatedLaunch;
-        try {
-            System.setProperty("essential.loader.relaunch", "false"); // do not want to re-launch for this one
-            isolatedLaunch = installation.launchFML();
-        } finally {
-            System.clearProperty("essential.loader.relaunch");
-        }
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.setProperty("essential.loader.relaunch", "false"); // do not want to re-launch for this one
+        isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -237,13 +233,9 @@ public class Stage2Tests {
         installation.setup();
         installation.addExampleMod("stable-with-mixin-07");
 
-        IsolatedLaunch isolatedLaunch;
-        try {
-            System.setProperty("essential.branch", "mixin-08");
-            isolatedLaunch = installation.launchFML();
-        } finally {
-            System.clearProperty("essential.branch");
-        }
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.setProperty("essential.branch", "mixin-08");
+        isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -255,13 +247,9 @@ public class Stage2Tests {
         installation.setup();
         installation.addExampleMod();
 
-        IsolatedLaunch isolatedLaunch;
-        try {
-            System.setProperty("examplemod.exclude_kotlin_from_transformers", "true");
-            isolatedLaunch = installation.launchFML();
-        } finally {
-            System.clearProperty("examplemod.exclude_kotlin_from_transformers");
-        }
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.setProperty("examplemod.exclude_kotlin_from_transformers", "true");
+        isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
