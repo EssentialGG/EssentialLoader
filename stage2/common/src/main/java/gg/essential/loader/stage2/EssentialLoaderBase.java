@@ -23,6 +23,7 @@ import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 
 public abstract class EssentialLoaderBase {
 
@@ -44,11 +45,16 @@ public abstract class EssentialLoaderBase {
     private final String gameVersion;
     private final LoaderUI ui;
 
-    public EssentialLoaderBase(final Path gameDir, final String gameVersion) {
+    public EssentialLoaderBase(final Path gameDir, final String gameVersion, final boolean lwjgl3) {
         this.gameDir = gameDir.toFile();
         this.gameVersion = gameVersion;
 
-        this.ui = new LoaderSwingUI();
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
+            this.ui = new LoaderLoggingUI();
+        } else {
+            this.ui = new LoaderSwingUI();
+        }
     }
 
     public void load() throws IOException {

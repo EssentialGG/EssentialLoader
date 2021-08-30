@@ -42,7 +42,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     private URL ourMixinUrl;
 
     public EssentialLoader(Path gameDir, String gameVersion) {
-        super(gameDir, gameVersion);
+        super(gameDir, gameVersion, false);
     }
 
     @Override

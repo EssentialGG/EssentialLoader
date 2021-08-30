@@ -30,7 +30,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     private final LoaderInternals loaderInternals = new LoaderInternals();
 
     public EssentialLoader(Path gameDir, String gameVersion) {
-        super(gameDir, gameVersion);
+        super(gameDir, gameVersion, true);
     }
 
     @Override
