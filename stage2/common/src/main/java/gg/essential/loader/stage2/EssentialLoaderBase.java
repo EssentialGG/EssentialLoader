@@ -287,6 +287,7 @@ public abstract class EssentialLoaderBase {
             LOGGER.error("Error occurred when downloading file '{}'.", url, e);
             return false;
         } finally {
+            this.frame.enableInputMethods(false);
             this.frame.dispose();
         }
     }
