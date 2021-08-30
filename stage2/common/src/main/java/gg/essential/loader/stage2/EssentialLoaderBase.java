@@ -4,30 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import gg.essential.loader.stage2.components.CircleButton;
-import gg.essential.loader.stage2.components.EssentialProgressBarUI;
-import gg.essential.loader.stage2.components.MotionPanel;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.imageio.ImageIO;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.Image;
-import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -41,7 +23,6 @@ import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 
 public abstract class EssentialLoaderBase {
 
@@ -57,25 +38,17 @@ public abstract class EssentialLoaderBase {
     private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/essential/updates/" + BRANCH + "/%s/";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_NAME = "Essential (%s).jar";
-    private static final int FRAME_WIDTH = 470, FRAME_HEIGHT = 240;
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
-
-    private final Color
-        COLOR_BACKGROUND = new Color(33, 34, 38),
-        COLOR_FOREGROUND = new Color(141, 141, 143),
-        COLOR_TITLE_BACKGROUND = new Color(27, 28, 31),
-        COLOR_PROGRESS_FILL = new Color(1, 165, 82),
-        COLOR_EXIT = new Color(248, 203, 25);
 
     private final File gameDir;
     private final String gameVersion;
-
-    private JFrame frame;
-    private JProgressBar progressBar;
+    private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion) {
         this.gameDir = gameDir.toFile();
         this.gameVersion = gameVersion;
+
+        this.ui = new LoaderSwingUI();
     }
 
     public void load() throws IOException {
@@ -108,7 +81,7 @@ public abstract class EssentialLoaderBase {
 
 
         if (needUpdate) {
-            this.initFrame();
+            this.ui.start();
 
             File downloadedFile = File.createTempFile("essential-download-", "");
             if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
@@ -267,8 +240,9 @@ public abstract class EssentialLoaderBase {
         try {
             final URLConnection connection = this.prepareConnection(url);
             final int contentLength = connection.getContentLength();
-            this.progressBar.setMaximum(contentLength);
+            this.ui.setDownloadSize(contentLength);
 
+            int totalRead = 0;
             try (
                 final InputStream inputStream = connection.getInputStream();
                 final FileOutputStream fileOutputStream = new FileOutputStream(target, true)
@@ -278,7 +252,8 @@ public abstract class EssentialLoaderBase {
                 int read;
                 while ((read = inputStream.read(buffer)) > 0) {
                     fileOutputStream.write(buffer, 0, read);
-                    this.progressBar.setValue((this.progressBar.getValue()) + 1024);
+                    totalRead += read;
+                    this.ui.setDownloaded(totalRead);
                 }
 
                 return true;
@@ -287,83 +262,8 @@ public abstract class EssentialLoaderBase {
             LOGGER.error("Error occurred when downloading file '{}'.", url, e);
             return false;
         } finally {
-            this.frame.enableInputMethods(false);
-            this.frame.dispose();
+            this.ui.complete();
         }
-    }
-
-    private void initFrame() {
-        try {
-            UIManager.setLookAndFeel(NimbusLookAndFeel.class.getName());
-        } catch (Exception ignored) {
-        }
-
-        // Initialize the frame
-        final JFrame frame = new JFrame();
-        frame.setUndecorated(true);
-        frame.setSize(FRAME_WIDTH, FRAME_HEIGHT);
-        frame.setResizable(false);
-
-        frame.setShape(new RoundRectangle2D.Double(0, 0, FRAME_WIDTH, FRAME_HEIGHT, 16, 16));
-        frame.setTitle("Updating Essential...");
-
-        // Setting the background and the layout
-        final Container container = frame.getContentPane();
-        container.setBackground(COLOR_BACKGROUND);
-        container.setLayout(new BoxLayout(container, BoxLayout.PAGE_AXIS));
-
-        // Title bar
-        final MotionPanel titleBar = new MotionPanel(frame);
-        titleBar.setLayout(null);
-        titleBar.setBackground(COLOR_TITLE_BACKGROUND);
-        titleBar.setBounds(0, 0, FRAME_WIDTH, 30);
-        container.add(titleBar);
-
-        final JLabel title = new JLabel("Updating Essential...");
-        title.setBounds(16, 16, 150, 16);
-        title.setForeground(COLOR_FOREGROUND);
-        titleBar.add(title, BorderLayout.LINE_START);
-
-        final CircleButton exit = new CircleButton();
-        exit.setBackground(COLOR_EXIT);
-        exit.setForeground(COLOR_EXIT);
-        exit.setBounds(FRAME_WIDTH - 32, 16, 16, 16);
-        exit.setFocusPainted(false);
-        titleBar.add(exit, BorderLayout.LINE_END);
-
-        exit.addActionListener(e -> frame.dispose());
-
-        // Logo
-        try {
-            final Image icon = ImageIO.read(Objects.requireNonNull(getClass().getResource("/assets/essential-loader-stage2/essential.png")));
-            final JLabel label = new JLabel(new ImageIcon(icon));
-            label.setBorder(new EmptyBorder(35, 0, 0, 0));
-            label.setAlignmentX(Container.CENTER_ALIGNMENT);
-            container.add(label);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // Progress
-        final JProgressBar progressBar = new JProgressBar();
-        progressBar.setForeground(COLOR_PROGRESS_FILL);
-        progressBar.setBackground(COLOR_BACKGROUND);
-        progressBar.setUI(new EssentialProgressBarUI());
-        progressBar.setBorderPainted(false);
-
-        final JPanel panel = new JPanel();
-        panel.setBackground(COLOR_BACKGROUND);
-        panel.setBorder(new EmptyBorder(25, 0, 0, 0));
-        panel.add(progressBar);
-
-        container.add(panel);
-
-        frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.setVisible(true);
-
-        this.frame = frame;
-        this.progressBar = progressBar;
     }
 
     private static class FileMeta {
