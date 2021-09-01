@@ -7,6 +7,8 @@ import com.google.gson.JsonParser;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,8 +23,12 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Locale;
 
 public abstract class EssentialLoaderBase {
@@ -32,11 +38,8 @@ public abstract class EssentialLoaderBase {
         "essential.download.url",
         System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
     );
-    private static final String BRANCH = System.getProperty(
-        "essential.branch",
-        System.getenv().getOrDefault("ESSENTIAL_BRANCH", "stable")
-    );
-    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/essential/updates/" + BRANCH + "/%s/";
+    private static final String DEFAULT_BRANCH = "stable";
+    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/essential/updates/%s/%s/";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_NAME = "Essential (%s).jar";
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
@@ -71,10 +74,12 @@ public abstract class EssentialLoaderBase {
 
         boolean needUpdate = !essentialFile.exists();
 
+        String branch = determineBranch();
+
         // Fetch latest version metadata (if required)
         FileMeta meta = null;
         if (needUpdate || AUTO_UPDATE) {
-            meta = fetchLatestMetadata();
+            meta = fetchLatestMetadata(branch);
             if (meta == null && needUpdate) {
                 return;
             }
@@ -113,11 +118,73 @@ public abstract class EssentialLoaderBase {
         loadPlatform();
     }
 
-    private FileMeta fetchLatestMetadata() {
+    private String determineBranch() {
+        final String DEFAULT_SOURCE = "default";
+        List<Pair<String, String>> configs = Arrays.asList(
+            Pair.of("property", System.getProperty("essential.branch")),
+            Pair.of("environment", System.getenv().get("ESSENTIAL_BRANCH")),
+            Pair.of("file", determineBranchFromFile()),
+            Pair.of(DEFAULT_SOURCE, DEFAULT_BRANCH)
+        );
+
+        String resultBranch = null;
+        String resultSource = null;
+        for (Pair<String, String> config : configs) {
+            String source = config.getKey();
+            String branch = config.getValue();
+
+            if (branch == null) {
+                LOGGER.trace("Checked {} for Essential branch, was not supplied.", source);
+                continue;
+            }
+
+            if (resultBranch != null) {
+                if (!source.equals(DEFAULT_SOURCE)) {
+                    LOGGER.warn(
+                        "Essential branch supplied via {} as \"{}\" but ignored because {} is more important.",
+                        source, branch, resultSource
+                    );
+                }
+                continue;
+            }
+
+            Level level = source.equals(DEFAULT_SOURCE) ? Level.DEBUG : Level.INFO;
+            LOGGER.log(level, "Essential branch set to \"{}\" via {}.", branch, source);
+
+            resultBranch = branch;
+            resultSource = source;
+        }
+        return resultBranch;
+    }
+
+    private String determineBranchFromFile() {
+        final String BRANCH_FILE_NAME = "essential_branch.txt";
+        try {
+            Enumeration<URL> resources = getClass().getClassLoader().getResources(BRANCH_FILE_NAME);
+            if (!resources.hasMoreElements()) {
+                return null;
+            }
+
+            URL url = resources.nextElement();
+            String branch = IOUtils.toString(url, StandardCharsets.UTF_8).trim();
+            LOGGER.info("Found {} for branch \"{}\".", url, branch);
+
+            while (resources.hasMoreElements()) {
+                LOGGER.warn("Found extra branch file, ignoring: {}", resources.nextElement());
+            }
+
+            return branch;
+        } catch (Exception e) {
+            LOGGER.warn("Failed to check for " + BRANCH_FILE_NAME + " file on classpath:", e);
+            return null;
+        }
+    }
+
+    private FileMeta fetchLatestMetadata(String branch) {
         JsonObject responseObject;
         try {
             final URLConnection connection = this.prepareConnection(
-                String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
+                String.format(VERSION_URL, branch, this.gameVersion.replace(".", "-"))
             );
 
             String response;
