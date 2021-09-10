@@ -56,7 +56,7 @@ public abstract class EssentialLoaderBase {
         if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
             this.ui = new LoaderLoggingUI();
         } else {
-            this.ui = new LoaderSwingUI();
+            this.ui = LoaderUI.all(new LoaderLoggingUI(), new LoaderSwingUI());
         }
     }
 
