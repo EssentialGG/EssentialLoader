@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -54,7 +55,7 @@ public abstract class EssentialLoaderBase {
 
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
-            this.ui = new LoaderLoggingUI();
+            this.ui = LoaderUI.all(new LoaderLoggingUI(), new ForkedJvmLoaderSwingUI());
         } else {
             this.ui = LoaderUI.all(new LoaderLoggingUI(), new LoaderSwingUI());
         }
