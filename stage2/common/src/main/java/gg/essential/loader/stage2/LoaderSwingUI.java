@@ -54,6 +54,11 @@ public class LoaderSwingUI implements LoaderUI {
 
         // Initialize the frame
         final JFrame frame = new JFrame();
+        try {
+            frame.setIconImage(ImageIO.read(getClass().getResource("/assets/essential-loader-stage2/icon.png")));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         frame.setUndecorated(true);
         frame.setSize(FRAME_WIDTH, FRAME_HEIGHT);
         frame.setResizable(false);
