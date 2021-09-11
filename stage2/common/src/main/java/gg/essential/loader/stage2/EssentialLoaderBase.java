@@ -60,11 +60,13 @@ public abstract class EssentialLoaderBase {
         this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        LoaderUI gui;
         if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
-            this.ui = LoaderUI.all(new LoaderLoggingUI(), new ForkedJvmLoaderSwingUI());
+            gui = new ForkedJvmLoaderSwingUI();
         } else {
-            this.ui = LoaderUI.all(new LoaderLoggingUI(), new LoaderSwingUI());
+            gui = new LoaderSwingUI();
         }
+        this.ui = LoaderUI.all(new LoaderLoggingUI().updatesEveryMillis(1000), gui.updatesEveryMillis(1000 / 60));
     }
 
     public void load() throws IOException {

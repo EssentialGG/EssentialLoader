@@ -37,4 +37,58 @@ public interface LoaderUI {
             }
         };
     }
+
+    default LoaderUI updatesEveryMillis(int msPerUpdate) {
+        return new Adapter(this) {
+            private long lastUpdate = 0;
+            private int lastSize;
+
+            @Override
+            public void setDownloaded(int bytes) {
+                this.lastSize = bytes;
+
+                long now = System.currentTimeMillis();
+                if (now - this.lastUpdate <= msPerUpdate) {
+                    return;
+                }
+                this.lastUpdate = now;
+
+                super.setDownloaded(bytes);
+            }
+
+            @Override
+            public void complete() {
+                super.setDownloaded(this.lastSize);
+                super.complete();
+            }
+        };
+    }
+
+    class Adapter implements LoaderUI {
+        private final LoaderUI inner;
+
+        public Adapter(LoaderUI inner) {
+            this.inner = inner;
+        }
+
+        @Override
+        public void start() {
+            inner.start();
+        }
+
+        @Override
+        public void setDownloadSize(int bytes) {
+            inner.setDownloadSize(bytes);
+        }
+
+        @Override
+        public void setDownloaded(int bytes) {
+            inner.setDownloaded(bytes);
+        }
+
+        @Override
+        public void complete() {
+            inner.complete();
+        }
+    }
 }

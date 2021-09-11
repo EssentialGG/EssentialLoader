@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 
 public class LoaderLoggingUI implements LoaderUI {
     private static final Logger LOGGER = LogManager.getLogger(LoaderLoggingUI.class);
-    private long lastUpdate = 0;
     private int size;
 
     @Override
@@ -21,12 +20,6 @@ public class LoaderLoggingUI implements LoaderUI {
 
     @Override
     public void setDownloaded(int bytes) {
-        long now = System.currentTimeMillis();
-        if (now - lastUpdate <= 1000) {
-            return;
-        }
-        lastUpdate = now;
-
         LOGGER.info("{}KB / {}KB ({}%)", bytes / 1024, size / 1024, bytes * 100 / size);
     }
 
