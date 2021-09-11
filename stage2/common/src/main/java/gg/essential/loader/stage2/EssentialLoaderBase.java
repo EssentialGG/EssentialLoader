@@ -32,6 +32,9 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 
+import static gg.essential.loader.stage2.Utils.findMostRecentFile;
+import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
+
 public abstract class EssentialLoaderBase {
 
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoaderBase.class);
@@ -42,16 +45,19 @@ public abstract class EssentialLoaderBase {
     private static final String DEFAULT_BRANCH = "stable";
     private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/essential/updates/%s/%s/";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
-    private static final String FILE_NAME = "Essential (%s).jar";
+    private static final String FILE_BASE_NAME = "Essential (%s)";
+    private static final String FILE_EXTENSION = "jar";
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
     private final File gameDir;
     private final String gameVersion;
+    private final String fileBaseName;
     private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion, final boolean lwjgl3) {
         this.gameDir = gameDir.toFile();
         this.gameVersion = gameVersion;
+        this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
@@ -71,7 +77,7 @@ public abstract class EssentialLoaderBase {
             throw new IllegalStateException("Unable to create essential directory, no permissions?");
         }
 
-        final File essentialFile = new File(dataDir, String.format(FILE_NAME, this.gameVersion));
+        File essentialFile = findMostRecentFile(dataDir.toPath(), this.fileBaseName, FILE_EXTENSION).getKey().toFile();
 
         boolean needUpdate = !essentialFile.exists();
 
@@ -97,7 +103,16 @@ public abstract class EssentialLoaderBase {
 
             File downloadedFile = File.createTempFile("essential-download-", "");
             if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
-                Files.deleteIfExists(essentialFile.toPath());
+                try {
+                    Files.deleteIfExists(essentialFile.toPath());
+                } catch (IOException e) {
+                    LOGGER.warn("Failed to delete old Essential file, will try again later.", e);
+                }
+
+                // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
+                // and if not, we need to write to the next higher one.
+                essentialFile = findNextMostRecentFile(dataDir.toPath(), this.fileBaseName, FILE_EXTENSION).toFile();
+
                 Files.move(downloadedFile.toPath(), essentialFile.toPath());
             } else {
                 LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
