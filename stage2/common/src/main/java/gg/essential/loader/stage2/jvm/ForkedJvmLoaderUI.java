@@ -70,6 +70,7 @@ public abstract class ForkedJvmLoaderUI implements LoaderUI {
         DataInputStream in = new DataInputStream(System.in);
         while (true) {
             switch (in.read()) {
+                case -1:
                 case 0:
                     loaderUI.complete();
                     return;
