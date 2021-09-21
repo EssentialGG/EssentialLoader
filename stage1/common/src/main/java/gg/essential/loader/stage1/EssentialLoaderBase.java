@@ -142,7 +142,7 @@ public abstract class EssentialLoaderBase {
 
             httpURLConnection.setRequestMethod("GET");
             httpURLConnection.setUseCaches(true);
-            httpURLConnection.setReadTimeout(3000);
+            httpURLConnection.setConnectTimeout(3000);
             httpURLConnection.setReadTimeout(3000);
             httpURLConnection.setDoOutput(true);
 
