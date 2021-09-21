@@ -199,9 +199,10 @@ public abstract class EssentialLoaderBase {
     }
 
     private FileMeta fetchLatestMetadata(String branch) {
+        URLConnection connection = null;
         JsonObject responseObject;
         try {
-            final URLConnection connection = this.prepareConnection(
+            connection = this.prepareConnection(
                 String.format(VERSION_URL, branch, this.gameVersion.replace(".", "-"))
             );
 
@@ -214,6 +215,7 @@ public abstract class EssentialLoaderBase {
             responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
         } catch (final IOException | JsonParseException e) {
             LOGGER.error("Error occurred checking for updates for game version {}.", this.gameVersion, e);
+            logConnectionInfoOnError(connection);
             return null;
         }
 
@@ -328,8 +330,9 @@ public abstract class EssentialLoaderBase {
     }
 
     private boolean attemptDownload(final String url, final File target) {
+        URLConnection connection = null;
         try {
-            final URLConnection connection = this.prepareConnection(url);
+            connection = this.prepareConnection(url);
             final int contentLength = connection.getContentLength();
             this.ui.setDownloadSize(contentLength);
 
@@ -351,10 +354,19 @@ public abstract class EssentialLoaderBase {
             }
         } catch (final IOException e) {
             LOGGER.error("Error occurred when downloading file '{}'.", url, e);
+            logConnectionInfoOnError(connection);
             return false;
         } finally {
             this.ui.complete();
         }
+    }
+
+    private void logConnectionInfoOnError(URLConnection connection) {
+        if (connection == null) {
+            return;
+        }
+        LOGGER.error("url: {}", connection.getURL());
+        LOGGER.error("cf-ray: {}", connection.getHeaderField("cf-ray"));
     }
 
     private static class FileMeta {
