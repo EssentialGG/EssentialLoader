@@ -255,8 +255,8 @@ public abstract class EssentialLoaderBase {
 
             httpURLConnection.setRequestMethod("GET");
             httpURLConnection.setUseCaches(true);
-            httpURLConnection.setConnectTimeout(3000);
-            httpURLConnection.setReadTimeout(3000);
+            httpURLConnection.setConnectTimeout(30_000);
+            httpURLConnection.setReadTimeout(30_000);
             httpURLConnection.setDoOutput(true);
 
             httpURLConnection.addRequestProperty("User-Agent", "Mozilla/5.0 (Essential Initializer)");
