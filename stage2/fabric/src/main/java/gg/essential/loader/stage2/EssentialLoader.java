@@ -101,7 +101,7 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     /**
      * This class provides access to internal of Fabric Loader.
-     * As such, any access must be made with utmost care (except errors due to incompatible class changes) and where
+     * As such, any access must be made with utmost care (expect errors due to incompatible class changes) and where
      * possible have an appropriate fallback so we do not explode when Fabric Loader's internals change.
      */
     private class LoaderInternals {
