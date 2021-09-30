@@ -7,6 +7,7 @@ import net.fabricmc.loader.api.metadata.ModMetadata;
 import net.fabricmc.loader.launch.common.FabricLauncherBase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.Mixins;
 
 import java.io.File;
@@ -97,6 +98,43 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected boolean isInClassPath() {
         return this.getModClassLoader().getResource(CLASS_NAME.replace('.', '/') + ".class") != null;
+    }
+
+    @Override
+    protected void doInitialize() {
+        super.doInitialize();
+
+        try {
+            chainLoadMixins();
+        } catch (Throwable t) {
+            LOGGER.error("Failed to load mixin configs:", t);
+        }
+    }
+
+    // Usually our mixins are chain-loaded just fine. Mixin will load newly added configs every time a new class is
+    // loaded until the first mixin is actually applied.
+    // It is however possible, even though strongly discouraged, that a third-party preLaunch entrypoint starts loading
+    // MC classes (likely unintentional, e.g. https://github.com/ejektaflex/Kambrik/issues/7) which are targeted by
+    // fourth-party mixins (in the aforementioned case, fabric-api mixins) before we get to register our mixins.
+    // In that case, our mixins will not be loaded and stuff would break.
+    // In a desperate last attempt to save what can be saved, we will go and reflect right into Mixin's inners to take
+    // the loading into our own hands.
+    // This will fail if Mixin changes (we'll just have to adapt then), or if the classes we want to mixin into
+    // have already been loaded (though in that case there's nothing we can do except getting the third-party mod
+    // fixed). But that is fine because this is not the default path, so only a small hand of users will be affected.
+    private void chainLoadMixins() throws ReflectiveOperationException {
+        if (Mixins.getUnvisitedCount() == 0) {
+            return; // nothing to do, Mixin already chain-loaded our config by itself
+        }
+
+        MixinEnvironment environment = MixinEnvironment.getDefaultEnvironment();
+        Object transformer = environment.getActiveTransformer();
+        Field processorField = transformer.getClass().getDeclaredField("processor");
+        processorField.setAccessible(true);
+        Object processor = processorField.get(transformer);
+        Method select = processor.getClass().getDeclaredMethod("select", MixinEnvironment.class);
+        select.setAccessible(true);
+        select.invoke(processor, environment);
     }
 
     /**
