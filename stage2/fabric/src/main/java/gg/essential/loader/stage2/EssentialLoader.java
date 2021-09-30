@@ -111,11 +111,6 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     @Override
-    protected boolean isInClassPath() {
-        return this.getModClassLoader().getResource(CLASS_NAME.replace('.', '/') + ".class") != null;
-    }
-
-    @Override
     protected void doInitialize() {
         super.doInitialize();
 

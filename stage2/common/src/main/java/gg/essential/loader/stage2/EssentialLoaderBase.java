@@ -70,10 +70,6 @@ public abstract class EssentialLoaderBase {
     }
 
     public void load() throws IOException {
-        if (this.isInClassPath() && this.isInitialized()) {
-            return;
-        }
-
         final File dataDir = new File(this.gameDir, "essential");
         if (!dataDir.exists() && !dataDir.mkdirs()) {
             throw new IllegalStateException("Unable to create essential directory, no permissions?");
@@ -273,17 +269,9 @@ public abstract class EssentialLoaderBase {
 
     protected abstract void addToClasspath(final File file);
 
-    private boolean isInitialized() {
-        try {
-            return Class.forName(CLASS_NAME, false, getModClassLoader())
-                .getField("initialized")
-                .getBoolean(null);
-        } catch (Throwable ignored) {
-        }
-        return false;
+    protected boolean isInClassPath() {
+        return this.getModClassLoader().getResource(CLASS_NAME.replace('.', '/') + ".class") != null;
     }
-
-    protected abstract boolean isInClassPath();
 
     public final void initialize() {
         if (!isInClassPath()) {
