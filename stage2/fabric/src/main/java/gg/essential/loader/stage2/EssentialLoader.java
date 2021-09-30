@@ -38,7 +38,8 @@ public class EssentialLoader extends EssentialLoaderBase {
     protected void loadPlatform() {
     }
 
-    private ClassLoader getModClassLoader() {
+    @Override
+    protected ClassLoader getModClassLoader() {
         return this.getClass()
             // gets the class loader set up by stage1 to load stage2 (this class)
             .getClassLoader()

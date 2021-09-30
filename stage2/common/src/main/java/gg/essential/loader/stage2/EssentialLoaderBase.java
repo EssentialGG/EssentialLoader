@@ -269,11 +269,13 @@ public abstract class EssentialLoaderBase {
 
     protected abstract void loadPlatform();
 
+    protected abstract ClassLoader getModClassLoader();
+
     protected abstract void addToClasspath(final File file);
 
     private boolean isInitialized() {
         try {
-            return Class.forName(CLASS_NAME)
+            return Class.forName(CLASS_NAME, false, getModClassLoader())
                 .getField("initialized")
                 .getBoolean(null);
         } catch (Throwable ignored) {
@@ -292,7 +294,7 @@ public abstract class EssentialLoaderBase {
 
     protected void doInitialize() {
         try {
-            Class.forName(CLASS_NAME)
+            Class.forName(CLASS_NAME, false, getModClassLoader())
                 .getDeclaredMethod("initialize", File.class)
                 .invoke(null, gameDir);
         } catch (Throwable e) {

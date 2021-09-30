@@ -55,6 +55,18 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     @Override
+    protected ClassLoader getModClassLoader() {
+        // FIXME we should ideally be using the launch class loader to load our bootstrap class but currently that
+        //  causes our bootstrap code to break because the launch class loader creates a separate code source for
+        //  each class rather than for the whole jar.
+        //  We should switch this (because it allows us to use preloadLibrary on our api package) once our bootstrap
+        //  loads fine under the launch class loader (the required change has been committed to master but needs to be
+        //  deployed before we can switch here).
+        // return Launch.classLoader;
+        return Launch.classLoader.getClass().getClassLoader();
+    }
+
+    @Override
     protected void addToClasspath(final File file) {
         Path path = file.toPath();
         URL url;
