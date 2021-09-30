@@ -66,30 +66,44 @@ public class EssentialLoader extends EssentialLoaderBase {
         throw new RuntimeException("Failed to add Essential jar to parent ClassLoader. See preceding exception(s).");
     }
 
-    private void addFakeMod(final Path path, final URL url) throws Exception {
-        ModMetadata metadata;
-        try (FileSystem fileSystem = FileSystems.newFileSystem(asJar(url.toURI()), Collections.emptyMap())) {
+    private ModMetadata parseMetadata(final Path path) throws Exception {
+        try (FileSystem fileSystem = FileSystems.newFileSystem(asJar(path.toUri()), Collections.emptyMap())) {
             Path fabricJson = fileSystem.getPath("fabric.mod.json");
             if (!Files.exists(fabricJson)) {
-                return; // no fabric.mod.json, nothing we can do
+                return null; // no fabric.mod.json, nothing we can do
             }
-            metadata = this.loaderInternals.parseModMetadata(path, fabricJson);
+            return this.loaderInternals.parseModMetadata(path, fabricJson);
         }
+    }
+
+    private void addFakeMod(final Path path, final URL url) throws Exception {
+        ModMetadata metadata = parseMetadata(path);
         this.loaderInternals.injectFakeMod(path, url, metadata);
     }
 
     @Override
     protected void addToClasspath(final File file) {
+        Path path = file.toPath();
+
+        if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
+            try {
+                RuntimeModRemapper runtimeModRemapper = new RuntimeModRemapper(loaderInternals);
+                path = runtimeModRemapper.remap(path, parseMetadata(path));
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to remap Essential to dev mappings", e);
+            }
+        }
+
         final URL url;
         try {
-            url = file.toURI().toURL();
+            url = path.toUri().toURL();
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
         addToClassLoader(url);
 
         try {
-            addFakeMod(file.toPath(), url);
+            addFakeMod(path, url);
         } catch (Throwable t) {
             LOGGER.warn("Failed to add dummy mod container. Essential will be missing from mod menu.", t);
         }
@@ -142,7 +156,7 @@ public class EssentialLoader extends EssentialLoaderBase {
      * As such, any access must be made with utmost care (expect errors due to incompatible class changes) and where
      * possible have an appropriate fallback so we do not explode when Fabric Loader's internals change.
      */
-    private class LoaderInternals {
+    public class LoaderInternals {
         private Class<?> findImplClass(final String name) throws ClassNotFoundException {
             // try newer first cause it may still have deprecated fallback impls for the old classes
             try {
@@ -180,6 +194,25 @@ public class EssentialLoader extends EssentialLoaderBase {
                         .invoke(null, in, modPath.toString(), Collections.emptyList());
                 }
             }
+        }
+
+        public URL remapMap(ModMetadata metadata, URL url) throws ReflectiveOperationException {
+            Class<?> LoaderModMetadata = findImplClass("metadata.LoaderModMetadata");
+            Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
+            Class<?> ModResolver = findImplClass("discovery.ModResolver");
+            Class<?> RuntimeModRemapper = findImplClass("discovery.RuntimeModRemapper");
+
+            Method getInMemoryFs = ModResolver.getDeclaredMethod("getInMemoryFs");
+            Method remap = RuntimeModRemapper.getDeclaredMethod("remap", Collection.class, FileSystem.class);
+            Method getOriginUrl = ModCandidate.getDeclaredMethod("getOriginUrl");
+
+            Object candidate = ModCandidate.getConstructor(LoaderModMetadata, URL.class, int.class, boolean.class)
+                .newInstance(metadata, url, /* depth */ 0, /* needsRemap */ true);
+            FileSystem fileSystem = (FileSystem) getInMemoryFs.invoke(null);
+
+            Object result = remap.invoke(null, Collections.singleton(candidate), fileSystem);
+            Object remappedCandidate = ((Collection<?>) result).iterator().next();
+            return (URL) getOriginUrl.invoke(remappedCandidate);
         }
 
         @SuppressWarnings("unchecked")

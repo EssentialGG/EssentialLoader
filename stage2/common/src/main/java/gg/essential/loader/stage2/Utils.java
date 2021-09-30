@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -84,5 +85,19 @@ public class Utils {
             return mostRecent.getLeft();
         }
         return dir.resolve(baseName + "." + (mostRecent.getRight() + 1) + "." + ext);
+    }
+
+    public static Path mapFileBaseName(Path path, Function<String, String> mapper) {
+        return path.resolveSibling(mapFileBaseName(path.getFileName().toString(), mapper));
+    }
+
+    public static String mapFileBaseName(String fileName, Function<String, String> mapper) {
+        int separator = fileName.lastIndexOf('.');
+        if (separator == -1) {
+            return mapper.apply(fileName);
+        }
+        String base = fileName.substring(0, separator);
+        String ext = fileName.substring(separator);
+        return mapper.apply(base) + ext;
     }
 }

@@ -9,4 +9,5 @@ dependencies {
     // Versions based on the one which MC includes by default in 1.14.4
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.14.4.json
     compileOnly("org.apache.logging.log4j:log4j-api:2.8.1")
+    compileOnly("commons-codec:commons-codec:1.10")
 }
