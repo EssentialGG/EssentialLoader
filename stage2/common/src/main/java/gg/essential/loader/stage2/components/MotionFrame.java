@@ -8,20 +8,20 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 
 /**
- * When user dragged on this panel, the frame will moves
+ * When user dragged on this panel, the frame will move
  */
-public class MotionPanel extends JPanel {
-    private Point initialClick;
-
-    public MotionPanel(final JFrame parent) {
-        addMouseListener(new MouseAdapter() {
+public class MotionFrame {
+    public static void addMotion(final JFrame parent) {
+        Point[] initialClick = {null};
+    
+        parent.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
-                initialClick = e.getPoint();
-                getComponentAt(initialClick);
+                initialClick[0] = e.getPoint();
+                parent.getComponentAt(initialClick[0]);
             }
         });
-
-        addMouseMotionListener(new MouseMotionAdapter() {
+    
+        parent.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
                 // get location of Window
@@ -29,8 +29,8 @@ public class MotionPanel extends JPanel {
                 int thisY = parent.getLocation().y;
 
                 // Determine how much the mouse moved since the initial click
-                int xMoved = (thisX + e.getX()) - (thisX + initialClick.x);
-                int yMoved = (thisY + e.getY()) - (thisY + initialClick.y);
+                int xMoved = (thisX + e.getX()) - (thisX + initialClick[0].x);
+                int yMoved = (thisY + e.getY()) - (thisY + initialClick[0].y);
 
                 // Move window to this position
                 int X = thisX + xMoved;
