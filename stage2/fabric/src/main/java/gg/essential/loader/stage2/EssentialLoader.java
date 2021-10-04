@@ -17,10 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -68,13 +65,17 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     private ModMetadata parseMetadata(final Path path) throws Exception {
-        try (FileSystem fileSystem = FileSystems.newFileSystem(asJar(path.toUri()), Collections.emptyMap())) {
-            Path fabricJson = fileSystem.getPath("fabric.mod.json");
-            if (!Files.exists(fabricJson)) {
-                return null; // no fabric.mod.json, nothing we can do
-            }
-            return this.loaderInternals.parseModMetadata(path, fabricJson);
+        FileSystem fileSystem;
+        try {
+            fileSystem = FileSystems.newFileSystem(asJar(path.toUri()), Collections.emptyMap());
+        } catch (FileSystemAlreadyExistsException fileSystemAlreadyExistsException) {
+            fileSystem = FileSystems.getFileSystem(asJar(path.toUri()));
         }
+        Path fabricJson = fileSystem.getPath("fabric.mod.json");
+        if (!Files.exists(fabricJson)) {
+            return null; // no fabric.mod.json, nothing we can do
+        }
+        return this.loaderInternals.parseModMetadata(path, fabricJson);
     }
 
     private void addFakeMod(final Path path, final URL url) throws Exception {
