@@ -290,7 +290,7 @@ public abstract class EssentialLoaderBase {
         }
     }
 
-    protected static URI asJar(URI uri) throws URISyntaxException {
+    public static URI asJar(URI uri) throws URISyntaxException {
         return new URI("jar:" + uri.getScheme(), uri.getHost(), uri.getPath(), uri.getFragment());
     }
 

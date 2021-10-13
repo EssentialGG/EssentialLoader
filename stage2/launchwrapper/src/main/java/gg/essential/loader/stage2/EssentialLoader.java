@@ -1,22 +1,17 @@
 package gg.essential.loader.stage2;
 
 import gg.essential.loader.stage2.relaunch.Relaunch;
+import gg.essential.loader.stage2.utils.Versions;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
@@ -27,7 +22,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class EssentialLoader extends EssentialLoaderBase {
-    private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
+    public static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private static final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
 
     private URL ourMixinUrl;
@@ -263,58 +257,12 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     private String isMixinOutdated() {
         String loadedVersion = String.valueOf(Launch.blackboard.get("mixin.initialised"));
-        String bundledVersion = getMixinVersion(ourMixinUrl);
-        int[] loadedParts = parseMixinVersion(loadedVersion);
-        int[] bundledParts = parseMixinVersion(bundledVersion);
-        if (loadedParts == null || bundledParts == null) {
+        String bundledVersion = Versions.getMixinVersion(ourMixinUrl);
+        if (Versions.compare("mixin", loadedVersion, bundledVersion) < 0) {
+            return loadedVersion;
+        } else {
             return null;
         }
-        for (int i = 0; i < loadedParts.length; i++) {
-            if (loadedParts[i] < bundledParts[i]) {
-                return loadedVersion;
-            } else if (loadedParts[i] > bundledParts[i]) {
-                break;
-            }
-        }
-        return null;
-    }
-
-    private int[] parseMixinVersion(String version) {
-        if (version == null) {
-            return null;
-        }
-        String[] parts = version.split("[.-]");
-        int[] numbers = new int[3];
-        for (int i = 0; i < parts.length && i < numbers.length; i++) {
-            try {
-                numbers[i] = Integer.parseInt(parts[i]);
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Failed to parse mixin version \"{}\".", version);
-                LOGGER.debug(e);
-                return null;
-            }
-        }
-        return numbers;
-    }
-
-    private String getMixinVersion(URL ourMixinUrl) {
-        try (FileSystem fileSystem = FileSystems.newFileSystem(asJar(ourMixinUrl.toURI()), Collections.emptyMap())) {
-            Path bootstrapPath = fileSystem.getPath("org", "spongepowered", "asm", "launch", "MixinBootstrap.class");
-            try (InputStream inputStream = Files.newInputStream(bootstrapPath)) {
-                ClassReader reader = new ClassReader(inputStream);
-                ClassNode classNode = new ClassNode(Opcodes.ASM5);
-                reader.accept(classNode, 0);
-                for (FieldNode field : classNode.fields) {
-                    if (field.name.equals("VERSION")) {
-                        return String.valueOf(field.value);
-                    }
-                }
-                LOGGER.warn("Failed to determine version of bundled mixin: no VERSION field in MixinBootstrap");
-            }
-        } catch (URISyntaxException | IOException e) {
-            LOGGER.warn("Failed to determine version of bundled mixin:", e);
-        }
-        return null;
     }
 
     private static class RelaunchRequest extends RuntimeException {}
