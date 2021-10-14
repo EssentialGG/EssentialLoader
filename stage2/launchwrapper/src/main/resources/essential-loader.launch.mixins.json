@@ -1,0 +1,8 @@
+{
+  "package": "gg.essential.loader.stage2.relaunch.mixins",
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "forge.Mixin_SkipFMLSecurityManager"
+  ]
+}

@@ -1,7 +1,31 @@
+repositories {
+    maven { url "https://repo.spongepowered.org/maven" }
+}
+
+sourceSets {
+    /**
+     * Our meta-mixin classes and service registrations are in a separate source set (and nested jar) because they
+     * must only be loaded if Mixin 0.8 is available. Loading them on 0.7.x will result in a crash.
+     */
+    metaMixin
+}
+
+configurations {
+    metaMixinCompileOnly.extendsFrom(compileOnly)
+}
+
 dependencies {
     compileOnly("net.minecraft:launchwrapper:1.12")
 
     // Versions based on the one which MC include by default in 1.8.9 (minimal supported version)
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
     compileOnly("com.google.guava:guava:17.0")
+
+    compileOnly("org.spongepowered:mixin:0.8")
+}
+
+jar {
+    from(sourceSets.metaMixin.output) {
+        into("gg/essential/loader/stage2/relaunch/mixin-services")
+    }
 }

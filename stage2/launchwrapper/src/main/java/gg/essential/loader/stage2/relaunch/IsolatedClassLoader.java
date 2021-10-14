@@ -49,6 +49,11 @@ class IsolatedClassLoader extends URLClassLoader {
     }
 
     @Override
+    public void addURL(URL url) {
+        super.addURL(url);
+    }
+
+    @Override
     public Class<?> loadClass(String name) throws ClassNotFoundException {
         // Fast path
         Class<?> cls = classes.get(name);

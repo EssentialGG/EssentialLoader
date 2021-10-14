@@ -4,7 +4,6 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -60,15 +59,14 @@ public class Relaunch {
                 LOGGER.debug("    {}", url);
             }
 
-            RelaunchClassLoader relaunchClassLoader = new RelaunchClassLoader(urls.toArray(new URL[0]), systemClassLoader);
+            RelaunchClassLoader relaunchClassLoader =
+                new RelaunchClassLoader(urls.toArray(new URL[0]), systemClassLoader, essentialUrl);
 
             Class<?> innerLaunch = Class.forName(Launch.class.getName(), false, relaunchClassLoader);
             Method innerMainMethod = innerLaunch.getDeclaredMethod("main", String[].class);
             innerMainMethod.invoke(null, (Object) getLaunchArgs());
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException("Unexpected re-launch failure", e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
         } finally {
             // Clear marker. This only relevant for our tests, production calls System.exit and never returns.
             System.clearProperty(HAPPENED_PROPERTY);
