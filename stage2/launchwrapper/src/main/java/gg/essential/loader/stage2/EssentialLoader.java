@@ -79,6 +79,14 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         ourMixinUrl = url;
 
+        String outdatedAsm = isAsmOutdated(url);
+        if (outdatedAsm != null) {
+            LOGGER.warn("Found an old version of ASM ({}). This may cause issues.", outdatedAsm);
+            if (Relaunch.ENABLED) {
+                Relaunch.relaunch(url);
+            }
+        }
+
         // Pre-load the resource cache of the launch class loader with the class files of some of our libraries.
         // Doing so will allow us to load our version, even if there is an older version already on the classpath
         // before our jar. This will of course only work if they have not already been loaded but in that case
@@ -258,7 +266,19 @@ public class EssentialLoader extends EssentialLoaderBase {
     private String isMixinOutdated() {
         String loadedVersion = String.valueOf(Launch.blackboard.get("mixin.initialised"));
         String bundledVersion = Versions.getMixinVersion(ourMixinUrl);
+        LOGGER.debug("Found Mixin {} loaded, we bundle {}", loadedVersion, bundledVersion);
         if (Versions.compare("mixin", loadedVersion, bundledVersion) < 0) {
+            return loadedVersion;
+        } else {
+            return null;
+        }
+    }
+
+    private String isAsmOutdated(URL ourUrl) {
+        String loadedVersion = org.objectweb.asm.ClassWriter.class.getPackage().getImplementationVersion();
+        String bundledVersion = Versions.getAsmVersion(ourUrl);
+        LOGGER.debug("Found ASM {} loaded, we bundle {}", loadedVersion, bundledVersion);
+        if (Versions.compare("ASM", loadedVersion, bundledVersion) < 0) {
             return loadedVersion;
         } else {
             return null;

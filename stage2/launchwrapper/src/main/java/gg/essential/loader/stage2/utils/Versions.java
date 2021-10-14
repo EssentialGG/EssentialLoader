@@ -76,4 +76,22 @@ public class Versions {
         }
         return null;
     }
+
+    public static String getAsmVersion(URL jarUrl) {
+        try (FileSystem fileSystem = FileSystems.newFileSystem(asJar(jarUrl.toURI()), Collections.emptyMap())) {
+            // There is no nice way to get the version while we explode the ASM jar directly into our jar.
+            // So we take an educated guess based on stuff we care about.
+            Path asmPath = fileSystem.getPath("org", "objectweb", "asm");
+            if (Files.exists(asmPath.resolve("commons").resolve("ClassRemapper.class"))) {
+                return "5.2"; // default with 1.12.2, sufficient for Mixin 0.8
+            } else if (Files.exists(asmPath.resolve("Opcodes.class"))) {
+                return "5.0.3"; // default with 1.8.9, not sufficient for Mixin 0.8
+            } else {
+                return null;
+            }
+        } catch (URISyntaxException | IOException e) {
+            LOGGER.warn("Failed to determine version of bundled asm:", e);
+        }
+        return null;
+    }
 }

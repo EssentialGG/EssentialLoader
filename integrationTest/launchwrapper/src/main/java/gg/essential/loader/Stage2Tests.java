@@ -254,4 +254,17 @@ public class Stage2Tests {
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
+
+    @Test
+    public void testRelaunchDueToOldAsm(Installation installation) throws Exception {
+        installation.addExampleMod();
+
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.setProperty("essential.branch", "asm-52");
+        isolatedLaunch.setProperty("examplemod.require_asm52", "true");
+        isolatedLaunch.launch();
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
 }

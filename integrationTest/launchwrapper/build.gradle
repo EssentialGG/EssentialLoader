@@ -19,6 +19,7 @@ configurations {
 
     mixin07
     mixin08
+    asm52
 }
 
 dependencies {
@@ -58,6 +59,7 @@ dependencies {
     mixin08("org.spongepowered:mixin:0.8.2") {
         transitive = false
     }
+    asm52("org.ow2.asm:asm-debug-all:5.2")
 
     oldKotlinModCompileOnly(forge)
 
@@ -166,6 +168,15 @@ tasks.register("essentialWithMixin08Jar", Jar) {
     includeMixin(it, configurations.mixin08)
 }
 
+tasks.register("essentialWithAsm52Jar", Jar) {
+    archiveBaseName.set("essential-asm52")
+    from(sourceSets.essential.output)
+    includeMixin(it, configurations.mixin07)
+
+    dependsOn(configurations.asm52)
+    from({ configurations.asm52.collect { zipTree(it) } })
+}
+
 tasks.register("dummyStage1Jar", Jar) {
     archiveBaseName.set("dummyStage1")
     from(sourceSets.dummyStage1.output)
@@ -228,6 +239,7 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
     mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
     mod(tasks.essentialWithMixin08Jar.archiveFile, "v1/mods/essential/essential/updates/mixin-08/$platformForge")
+    mod(tasks.essentialWithAsm52Jar.archiveFile, "v1/mods/essential/essential/updates/asm-52/$platformForge")
     mod(provider { configurations.mixin07.singleFile }, "v1/mods/essential/mixin/updates/07/$platformForge")
     mod(evaluationDependsOn(':stage0:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage0/updates/stable/$platformForge")
     mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")
