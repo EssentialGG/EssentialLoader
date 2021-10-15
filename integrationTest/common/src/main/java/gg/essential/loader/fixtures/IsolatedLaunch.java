@@ -13,6 +13,7 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.JarURLConnection;
@@ -65,6 +66,9 @@ public class IsolatedLaunch {
         Properties originalProperties = System.getProperties();
         System.setProperties(this.systemProperties);
 
+        PrintStream orgSysOut = System.out;
+        PrintStream orgSysErr = System.err;
+
         ExitCatchingSecurityManager exitCatchingSecurityManager = new ExitCatchingSecurityManager();
         System.setSecurityManager(exitCatchingSecurityManager);
         try {
@@ -88,6 +92,9 @@ public class IsolatedLaunch {
             throw t;
         } finally {
             System.setSecurityManager(new EverythingIsAllowedSecurityManager());
+
+            System.setOut(orgSysOut);
+            System.setErr(orgSysErr);
 
             System.setProperties(originalProperties);
         }
