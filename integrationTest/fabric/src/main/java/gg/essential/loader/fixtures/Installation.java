@@ -9,6 +9,16 @@ import java.nio.file.spi.FileSystemProvider;
 
 public class Installation extends BaseInstallation {
 
+    static {
+        // Initialize this as early as possible so it actually takes effect inside the isolated launch.
+        // See https://github.com/google/jimfs/commit/f2503678be1a49023c27a023058f8202b9deea74
+        try {
+            Class.forName("com.google.common.jimfs.JimfsFileSystemProvider");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Installation() throws IOException {
         // Current fabric-loader breaks on LegacyLauncher if there is a JiJ mod and MC needs to be decompiled, so we
         // launch once without any mods to get the decompiled MC and can the proceed as usual.
