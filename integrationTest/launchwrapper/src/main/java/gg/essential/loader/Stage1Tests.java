@@ -16,9 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Stage1Tests {
     @Test
-    public void testUpdate() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testUpdate(Installation installation) throws Exception {
         installation.addExampleMod();
 
         installation.launchFML();
@@ -35,18 +33,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testUnsupportedVersionOnFirstLaunch() throws Exception {
-        testUnsupportedVersion(false);
+    public void testUnsupportedVersionOnFirstLaunch(Installation installation) throws Exception {
+        testUnsupportedVersion(installation, false);
     }
 
     @Test
-    public void testUnsupportedVersionOnSecondLaunch() throws Exception {
-        testUnsupportedVersion(true);
+    public void testUnsupportedVersionOnSecondLaunch(Installation installation) throws Exception {
+        testUnsupportedVersion(installation, true);
     }
 
-    public void testUnsupportedVersion(boolean secondLaunch) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testUnsupportedVersion(Installation installation, boolean secondLaunch) throws Exception {
         installation.addExampleMod();
 
         if (secondLaunch) {
@@ -62,18 +58,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testJsonSyntaxInvalidFirstLaunch() throws Exception {
-        testJsonSyntaxInvalid(false);
+    public void testJsonSyntaxInvalidFirstLaunch(Installation installation) throws Exception {
+        testJsonSyntaxInvalid(installation, false);
     }
 
     @Test
-    public void testJsonSyntaxInvalidOnSecondLaunch() throws Exception {
-        testJsonSyntaxInvalid(true);
+    public void testJsonSyntaxInvalidOnSecondLaunch(Installation installation) throws Exception {
+        testJsonSyntaxInvalid(installation, true);
     }
 
-    public void testJsonSyntaxInvalid(boolean secondLaunch) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testJsonSyntaxInvalid(Installation installation, boolean secondLaunch) throws Exception {
         installation.addExampleMod();
 
         if (secondLaunch) {
@@ -89,18 +83,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testJsonContentInvalidOnFirstLaunch() throws Exception {
-        testJsonContentInvalid(false);
+    public void testJsonContentInvalidOnFirstLaunch(Installation installation) throws Exception {
+        testJsonContentInvalid(installation, false);
     }
 
     @Test
-    public void testJsonContentInvalidOnSecondLaunch() throws Exception {
-        testJsonContentInvalid(true);
+    public void testJsonContentInvalidOnSecondLaunch(Installation installation) throws Exception {
+        testJsonContentInvalid(installation, true);
     }
 
-    public void testJsonContentInvalid(boolean secondLaunch) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testJsonContentInvalid(Installation installation, boolean secondLaunch) throws Exception {
         installation.addExampleMod();
 
         if (secondLaunch) {
@@ -116,18 +108,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testServerErrorOnFirstLaunch() throws Exception {
-        testServerError(false);
+    public void testServerErrorOnFirstLaunch(Installation installation) throws Exception {
+        testServerError(installation, false);
     }
 
     @Test
-    public void testServerErrorOnSecondLaunch() throws Exception {
-        testServerError(true);
+    public void testServerErrorOnSecondLaunch(Installation installation) throws Exception {
+        testServerError(installation, true);
     }
 
-    public void testServerError(boolean secondLaunch) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testServerError(Installation installation, boolean secondLaunch) throws Exception {
         installation.addExampleMod();
 
         if (secondLaunch) {
@@ -143,18 +133,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testDownloadChecksumMismatchOnFirstLaunch() throws Exception {
-        testDownloadChecksumMismatch(false);
+    public void testDownloadChecksumMismatchOnFirstLaunch(Installation installation) throws Exception {
+        testDownloadChecksumMismatch(installation, false);
     }
 
     @Test
-    public void testDownloadChecksumMismatchOnSecondLaunch() throws Exception {
-        testDownloadChecksumMismatch(true);
+    public void testDownloadChecksumMismatchOnSecondLaunch(Installation installation) throws Exception {
+        testDownloadChecksumMismatch(installation, true);
     }
 
-    public void testDownloadChecksumMismatch(boolean secondLaunch) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testDownloadChecksumMismatch(Installation installation, boolean secondLaunch) throws Exception {
         installation.addExampleMod();
 
         if (secondLaunch) {
@@ -173,18 +161,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testDownloadServerErrorOnFirstLaunch() throws Exception {
-        testDownloadServerError(false);
+    public void testDownloadServerErrorOnFirstLaunch(Installation installation) throws Exception {
+        testDownloadServerError(installation, false);
     }
 
     @Test
-    public void testDownloadServerErrorOnSecondLaunch() throws Exception {
-        testDownloadServerError(true);
+    public void testDownloadServerErrorOnSecondLaunch(Installation installation) throws Exception {
+        testDownloadServerError(installation, true);
     }
 
-    public void testDownloadServerError(boolean secondLaunch) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testDownloadServerError(Installation installation, boolean secondLaunch) throws Exception {
         installation.addExampleMod();
 
         if (secondLaunch) {
@@ -204,9 +190,7 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testMultipleCustomTweakerMods() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testMultipleCustomTweakerMods(Installation installation) throws Exception {
         installation.addExampleMod();
         installation.addExample2Mod();
 
@@ -218,9 +202,7 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testMultipleEssentialTweakerMods() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testMultipleEssentialTweakerMods(Installation installation) throws Exception {
         installation.addExampleMod("essential-tweaker");
         installation.addExample2Mod("essential-tweaker");
 
@@ -234,18 +216,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testMultipleCustomTweakerModsWithMixin07() throws Exception {
-        testMultipleCustomTweakerModsWithMixin("07");
+    public void testMultipleCustomTweakerModsWithMixin07(Installation installation) throws Exception {
+        testMultipleCustomTweakerModsWithMixin(installation, "07");
     }
 
     @Test
-    public void testMultipleCustomTweakerModsWithMixin08() throws Exception {
-        testMultipleCustomTweakerModsWithMixin("08");
+    public void testMultipleCustomTweakerModsWithMixin08(Installation installation) throws Exception {
+        testMultipleCustomTweakerModsWithMixin(installation, "08");
     }
 
-    public void testMultipleCustomTweakerModsWithMixin(String mixinVersion) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testMultipleCustomTweakerModsWithMixin(Installation installation, String mixinVersion) throws Exception {
         installation.addExampleMod("stable-with-mixin-" + mixinVersion);
         installation.addExample2Mod("stable-with-mixin-" + mixinVersion);
 
@@ -259,18 +239,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testMultipleEssentialTweakerModsWithMixin07() throws Exception {
-        testMultipleEssentialTweakerModsWithMixin("07");
+    public void testMultipleEssentialTweakerModsWithMixin07(Installation installation) throws Exception {
+        testMultipleEssentialTweakerModsWithMixin(installation, "07");
     }
 
     @Test
-    public void testMultipleEssentialTweakerModsWithMixin08() throws Exception {
-        testMultipleEssentialTweakerModsWithMixin("08");
+    public void testMultipleEssentialTweakerModsWithMixin08(Installation installation) throws Exception {
+        testMultipleEssentialTweakerModsWithMixin(installation, "08");
     }
 
-    public void testMultipleEssentialTweakerModsWithMixin(String mixinVersion) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testMultipleEssentialTweakerModsWithMixin(Installation installation, String mixinVersion) throws Exception {
         installation.addExampleMod("essential-tweaker-with-mixin-" + mixinVersion);
         installation.addExample2Mod("essential-tweaker-with-mixin-" + mixinVersion);
 
@@ -286,18 +264,16 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testWithThirdPartyQueuedMixin07() throws Exception {
-        testWithThirdPartyQueuedMixin("07");
+    public void testWithThirdPartyQueuedMixin07(Installation installation) throws Exception {
+        testWithThirdPartyQueuedMixin(installation, "07");
     }
 
     @Test
-    public void testWithThirdPartyQueuedMixin08() throws Exception {
-        testWithThirdPartyQueuedMixin("08");
+    public void testWithThirdPartyQueuedMixin08(Installation installation) throws Exception {
+        testWithThirdPartyQueuedMixin(installation, "08");
     }
 
-    public void testWithThirdPartyQueuedMixin(String mixinVersion) throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testWithThirdPartyQueuedMixin(Installation installation, String mixinVersion) throws Exception {
         installation.addExampleMod("mixin-tweaker-with-mixin-" + mixinVersion);
         installation.addExample2Mod("essential-tweaker-with-mixin-" + mixinVersion);
 
@@ -313,9 +289,7 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testEssentialTweakerModsInDev() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testEssentialTweakerModsInDev(Installation installation) throws Exception {
         installation.addExample2Mod("essential-tweaker");
 
         IsolatedLaunch isolatedLaunch = installation.newLaunchFML();

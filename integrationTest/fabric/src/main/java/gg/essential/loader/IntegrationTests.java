@@ -14,9 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IntegrationTests {
     @Test
-    public void testFirstLaunch() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testFirstLaunch(Installation installation) throws Exception {
         installation.addExampleMod();
 
         IsolatedLaunch isolatedLaunch = installation.launchFabric();
@@ -26,9 +24,7 @@ public class IntegrationTests {
     }
 
     @Test
-    public void testSecondLaunch() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testSecondLaunch(Installation installation) throws Exception {
         installation.addExampleMod();
 
         installation.launchFabric();
@@ -40,9 +36,7 @@ public class IntegrationTests {
     }
 
     @Test
-    public void testOfflineLaunch() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testOfflineLaunch(Installation installation) throws Exception {
         installation.addExampleMod();
 
         installation.launchFabric();
@@ -56,9 +50,7 @@ public class IntegrationTests {
     }
 
     @Test
-    public void testNoAutoUpdateLaunch() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testNoAutoUpdateLaunch(Installation installation) throws Exception {
         installation.addExampleMod();
 
         installation.launchFabric();

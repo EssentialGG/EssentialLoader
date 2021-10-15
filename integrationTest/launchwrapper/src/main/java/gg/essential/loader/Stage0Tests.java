@@ -14,9 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class Stage0Tests {
     @Test
-    public void testUpdateFromFile() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testUpdateFromFile(Installation installation) throws Exception {
         installation.addExampleMod();
 
         installation.launchFML();
@@ -35,9 +33,7 @@ public class Stage0Tests {
     }
 
     @Test
-    public void testUpdateFromClasspath() throws Exception {
-        Installation installation = new Installation();
-        installation.setup();
+    public void testUpdateFromClasspath(Installation installation) throws Exception {
         installation.addExampleMod();
 
         installation.launchFML();

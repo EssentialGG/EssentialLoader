@@ -1,6 +1,7 @@
 package gg.essential.loader.fixtures;
 
 import gg.essential.loader.util.Copy;
+import gg.essential.loader.util.Delete;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,7 +10,7 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public abstract class BaseInstallation {
+public abstract class BaseInstallation implements AutoCloseable {
     private final Path originalApiDir = Paths.get("build", "downloadsApi");
     private final Path originalExampleModFile = originalApiDir.resolve("v1/mods/example/mod/updates/stable/" + getPlatformVersion() + ".jar");
     private final Path originalExample2ModFile = originalApiDir.resolve("v1/mods/example/mod2/updates/stable/" + getPlatformVersion() + ".jar");
@@ -88,6 +89,11 @@ public abstract class BaseInstallation {
         assertTrue(isolatedLaunch.getMod2LoadState("tweaker"), "Example2 Tweaker ran");
         assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
         assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
+    }
+
+    @Override
+    public void close() throws IOException {
+        Delete.recursively(gameDir);
     }
 
     public static Path withBranch(Path endpoint, String branch) {
