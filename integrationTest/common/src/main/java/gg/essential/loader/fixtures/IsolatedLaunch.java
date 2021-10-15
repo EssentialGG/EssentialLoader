@@ -233,6 +233,11 @@ public class IsolatedLaunch {
                 }
                 throw new SecurityException("No exit allowed in tests");
             }
+
+            if ("shutdownHooks".equals(name) && getClassContext()[2].getName().contains("log4j")) {
+                // These cause quite severe memory leaks given how many classes we load with each launch
+                throw new SecurityException("No shutdown hooks allowed in tests");
+            }
         }
 
         @Override
