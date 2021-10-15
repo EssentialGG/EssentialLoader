@@ -9,6 +9,7 @@ import java.net.URLConnection;
 import java.security.CodeSigner;
 import java.security.CodeSource;
 import java.util.function.BiFunction;
+import java.util.jar.Manifest;
 
 class RelaunchClassLoader extends IsolatedClassLoader {
     static { registerAsParallelCapable(); }
@@ -24,6 +25,7 @@ class RelaunchClassLoader extends IsolatedClassLoader {
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         URL jarUrl;
+        Manifest jarManifest;
         byte[] bytes;
         try {
             URL url = getResource(name.replace('.', '/') + ".class");
@@ -33,16 +35,35 @@ class RelaunchClassLoader extends IsolatedClassLoader {
             URLConnection urlConnection = url.openConnection();
             if (urlConnection instanceof JarURLConnection) {
                 // usually the case
-                jarUrl = ((JarURLConnection) urlConnection).getJarFileURL();
+                JarURLConnection jarConnection = (JarURLConnection) urlConnection;
+                jarUrl = jarConnection.getJarFileURL();
+                jarManifest = jarConnection.getManifest();
             } else {
                 // only in strange setups (like our integration tests), just use some url as fallback
                 jarUrl = url;
+                jarManifest = null;
             }
             try (InputStream in = urlConnection.getInputStream()) {
                 bytes = ByteStreams.toByteArray(in);
             }
         } catch (Exception e) {
             throw new ClassNotFoundException(name, e);
+        }
+
+        // If the class has a package, define that based on the manifest
+        int pkgIndex = name.lastIndexOf('.');
+        if (pkgIndex > 0) {
+            String pkgName = name.substring(0, pkgIndex);
+            if (getPackage(pkgName) == null) {
+                try {
+                    if (jarManifest != null) {
+                        definePackage(pkgName, jarManifest, jarUrl);
+                    } else {
+                        definePackage(pkgName, null, null, null, null, null, null, jarUrl);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
         }
 
         bytes = transformer.apply(name, bytes);
