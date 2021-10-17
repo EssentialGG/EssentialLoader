@@ -9,6 +9,7 @@ import net.minecraftforge.fml.relauncher.FMLRelaunchLog;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 /**
  * When launched in a dev environment via a `--tweakClass` argument, we will load in an earlier cycle than in production
@@ -92,5 +93,20 @@ public class DelayedStage0Tweaker implements ITweaker {
         @SuppressWarnings("unchecked")
         List<String> nextCycle = (List<String>) Launch.blackboard.get("TweakClasses");
         nextCycle.add(DelayedStage0Tweaker.class.getName());
+
+        // Tweaker arguments are consumed by Launch.launch, so when relaunching we assume the FMLTweaker to be the only
+        // one passed in (as common for production). However, if we end up here, then the Essential tweaker has also
+        // been passed (as common for dev) next to the FMLTweaker (rather than being chain-loaded by it).
+        // If we do not re-add ourselves to the tweaker list when we re-launch, then we may not get called at all (or
+        // too late if there are command line supplied coremods relying on us), so we add ourselves to the launchArgs
+        // which FMLTweaker makes available (and which we use in Relaunch to take an educated guess at the original
+        // arguments).
+        @SuppressWarnings("unchecked")
+        Map<String, String> launchArgs = (Map<String, String>) Launch.blackboard.get("launchArgs");
+        String prevValue = launchArgs.put("--tweakClass", "gg.essential.loader.stage0.EssentialSetupTweaker");
+        if (prevValue != null) {
+            throw new UnsupportedOperationException("Cannot re-register Essential tweaker because \""
+                + prevValue + "\" was already there. This will require a more complex implementation.");
+        }
     }
 }
