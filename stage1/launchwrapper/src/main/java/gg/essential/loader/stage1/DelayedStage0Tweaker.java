@@ -28,7 +28,14 @@ public class DelayedStage0Tweaker implements ITweaker {
 
     @SuppressWarnings("unused")
     public DelayedStage0Tweaker() throws Exception {
+        if (commandLineCoremods.length > 0) {
+            // Temporarily restore these in case we need to re-launch (they do not need to be delayed in that case)
+            System.setProperty(COMMAND_LINE_COREMODS_PROP, String.join(",", commandLineCoremods));
+        }
+
         this.stage1 = new EssentialSetupTweaker(realStage0);
+
+        System.clearProperty(COMMAND_LINE_COREMODS_PROP);
 
         for (String commandLineCoremod : commandLineCoremods) {
             FMLRelaunchLog.info("Found a command line coremod : %s", commandLineCoremod);
@@ -78,7 +85,7 @@ public class DelayedStage0Tweaker implements ITweaker {
         realStage0 = stage0;
 
         commandLineCoremods = System.getProperty(COMMAND_LINE_COREMODS_PROP, "").split(",");
-        System.clearProperty("fml.coreMods.load");
+        System.clearProperty(COMMAND_LINE_COREMODS_PROP);
     }
 
     public static void inject() {
