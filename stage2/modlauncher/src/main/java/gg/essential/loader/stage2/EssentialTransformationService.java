@@ -9,6 +9,7 @@ import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileLocator;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 import net.minecraftforge.fml.loading.moddiscovery.ModValidator;
+import net.minecraftforge.forgespi.locating.IModFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -21,18 +22,24 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class EssentialTransformationService implements ITransformationService {
     private static final Logger LOGGER = LogManager.getLogger(EssentialTransformationService.class);
 
     private final ModLocator modLocator = new ModLocator();
-    private final List<Path> jars = new ArrayList<>();
+    private final List<SecureJar> pluginJars = new ArrayList<>();
+    private final List<SecureJar> gameJars = new ArrayList<>();
     private boolean modsInjected;
 
     public void addToClasspath(final File file) {
-        this.jars.add(file.toPath());
+        final SecureJar jar = SecureJar.from(file.toPath());
+        final String modType = jar.getManifest().getMainAttributes().getValue("FMLModType");
+        if (IModFile.Type.LANGPROVIDER.name().equals(modType) || IModFile.Type.LIBRARY.name().equals(modType)) {
+            this.pluginJars.add(jar);
+        } else {
+            this.gameJars.add(jar);
+        }
     }
 
     @Override
@@ -80,8 +87,8 @@ public class EssentialTransformationService implements ITransformationService {
             @SuppressWarnings("unchecked")
             List<ModFile> modFiles = (List<ModFile>) candidateModsField.get(modValidator);
 
-            for (Path jar : this.jars) {
-                ModFile modFile = ModFile.newFMLInstance(this.modLocator, jar);
+            for (SecureJar jar : this.gameJars) {
+                ModFile modFile = ModFile.newFMLInstance(this.modLocator, jar.getPrimaryPath());
                 modFile.identifyMods();
                 modFiles.add(modFile);
             }
@@ -98,7 +105,7 @@ public class EssentialTransformationService implements ITransformationService {
         if (injectMods()) {
             modsInjected = true;
         }
-        return List.of();
+        return List.of(new Resource(IModuleLayerManager.Layer.PLUGIN, this.pluginJars));
     }
 
     @Override
@@ -109,8 +116,7 @@ public class EssentialTransformationService implements ITransformationService {
         if (!modsInjected) {
             LOGGER.error("Failed to inject Essential into Forge mod list, falling back to Mixin-only operation. " +
                 "Mod will not be listed in Forge's mod list.");
-            List<SecureJar> secureJars = this.jars.stream().map(SecureJar::from).collect(Collectors.toList());
-            return Collections.singletonList(new Resource(IModuleLayerManager.Layer.GAME, secureJars));
+            return Collections.singletonList(new Resource(IModuleLayerManager.Layer.GAME, this.gameJars));
         }
         return List.of();
     }
