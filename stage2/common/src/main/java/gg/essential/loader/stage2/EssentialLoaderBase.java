@@ -25,12 +25,17 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
@@ -123,7 +128,10 @@ public abstract class EssentialLoaderBase {
             return;
         }
 
-        this.addToClasspath(essentialFile);
+        final List<Path> jars = new ArrayList<>();
+        jars.add(essentialFile.toPath());
+        jars.addAll(this.extractJarsInJar(essentialFile.toPath()));
+        this.addToClasspath(jars);
 
         if (this.classpathUpdatesImmediately() && !this.isInClassPath()) {
             throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
@@ -263,9 +271,50 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
+    private List<Path> extractJarsInJar(Path outerJar) throws IOException {
+        final Path extractedJarsRoot = gameDir.toPath()
+            .resolve("essential")
+            .resolve("libraries")
+            .resolve(gameVersion);
+        Files.createDirectories(extractedJarsRoot);
+
+        final List<Path> extractedJars = new ArrayList<>();
+
+        try (FileSystem fileSystem = FileSystems.newFileSystem(outerJar, (ClassLoader) null)) {
+            final Path innerJarsRoot = fileSystem.getPath("META-INF", "jars");
+            if (!Files.isDirectory(innerJarsRoot)) {
+                return extractedJars;
+            }
+            for (Path innerJar : Files.list(innerJarsRoot).collect(Collectors.toList())) {
+                // For now, we'll assume that the file name is sufficiently unique of an identifier
+                final Path extractedJar = extractedJarsRoot.resolve(innerJar.getFileName().toString());
+                if (Files.exists(extractedJar)) {
+                    LOGGER.debug("Already extracted: {}", innerJar);
+                } else {
+                    LOGGER.debug("Extracting {} to {}", innerJar, extractedJar);
+                    // Copy to tmp jar first, so we do not leave behind incomplete jars
+                    final Path tmpJar = Files.createTempFile(extractedJarsRoot, "tmp", ".jar");
+                    Files.copy(innerJar, tmpJar, StandardCopyOption.REPLACE_EXISTING);
+                    // Then (if successful) perform an atomic rename
+                    Files.move(tmpJar, extractedJar, StandardCopyOption.ATOMIC_MOVE);
+                }
+                // Store the extracted path for later
+                extractedJars.add(extractedJar);
+            }
+        }
+
+        return extractedJars;
+    }
+
     protected abstract void loadPlatform();
 
     protected abstract ClassLoader getModClassLoader();
+
+    protected void addToClasspath(final List<Path> jars) {
+        for (final Path jar : jars) {
+            this.addToClasspath(jar.toFile());
+        }
+    }
 
     protected abstract void addToClasspath(final File file);
 
