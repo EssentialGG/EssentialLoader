@@ -5,6 +5,8 @@ import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.fml.relauncher.CoreModManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.util.jar.JarFile;
 
 @SuppressWarnings("unused")
 public class EssentialSetupTweaker implements ITweaker {
+    private static final Logger LOGGER = LogManager.getLogger(EssentialSetupTweaker.class);
     private final ITweaker stage0;
     private final EssentialLoader loader;
 
@@ -202,7 +205,7 @@ public class EssentialSetupTweaker implements ITweaker {
                             sourceFiles.add(new SourceFile(file, coreMod, mixin));
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOGGER.error("Failed to read manifest from " + url + ":", e);
                     }
                 }
                 return sourceFiles;

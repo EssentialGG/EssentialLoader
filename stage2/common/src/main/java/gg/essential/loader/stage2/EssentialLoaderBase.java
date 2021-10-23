@@ -125,7 +125,7 @@ public abstract class EssentialLoaderBase {
 
         this.addToClasspath(essentialFile);
 
-        if (!this.isInClassPath()) {
+        if (this.classpathUpdatesImmediately() && !this.isInClassPath()) {
             throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
         }
 
@@ -268,6 +268,13 @@ public abstract class EssentialLoaderBase {
     protected abstract ClassLoader getModClassLoader();
 
     protected abstract void addToClasspath(final File file);
+
+    /**
+     * Whether {@link #addToClasspath(File)} takes effect immediately or only at a later stage of loading.
+     */
+    protected boolean classpathUpdatesImmediately() {
+        return true;
+    }
 
     protected boolean isInClassPath() {
         return this.getModClassLoader().getResource(CLASS_NAME.replace('.', '/') + ".class") != null;

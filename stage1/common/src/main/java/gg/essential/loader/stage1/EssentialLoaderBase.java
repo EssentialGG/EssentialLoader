@@ -110,6 +110,10 @@ public abstract class EssentialLoaderBase {
             .invoke(this.stage2);
     }
 
+    public Object getStage2() {
+        return stage2;
+    }
+
     protected abstract ClassLoader addToClassLoader(URL stage2Url) throws Exception;
 
     public void initialize() {
