@@ -1,5 +1,7 @@
 package gg.essential.loader.stage2;
 
+import com.google.common.io.MoreFiles;
+import com.google.common.io.RecursiveDeleteOption;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.LanguageAdapter;
@@ -21,6 +23,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -192,23 +196,51 @@ public class EssentialLoader extends EssentialLoaderBase {
             }
         }
 
-        public URL remapMod(ModMetadata metadata, URL url) throws ReflectiveOperationException {
+        @SuppressWarnings("UnstableApiUsage")
+        public void remapMod(ModMetadata metadata, Path inputPath, Path outputPath) throws Exception {
             Class<?> LoaderModMetadata = findImplClass("metadata.LoaderModMetadata");
             Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
             Class<?> ModResolver = findImplClass("discovery.ModResolver");
             Class<?> RuntimeModRemapper = findImplClass("discovery.RuntimeModRemapper");
 
-            Method getInMemoryFs = ModResolver.getDeclaredMethod("getInMemoryFs");
-            Method remap = RuntimeModRemapper.getDeclaredMethod("remap", Collection.class, FileSystem.class);
-            Method getOriginUrl = ModCandidate.getDeclaredMethod("getOriginUrl");
+            try {
+                // fabric loader 0.11
+                Method getInMemoryFs = ModResolver.getDeclaredMethod("getInMemoryFs");
+                Method remap = RuntimeModRemapper.getDeclaredMethod("remap", Collection.class, FileSystem.class);
+                Method getOriginUrl = ModCandidate.getDeclaredMethod("getOriginUrl");
 
-            Object candidate = ModCandidate.getConstructor(LoaderModMetadata, URL.class, int.class, boolean.class)
-                .newInstance(metadata, url, /* depth */ 0, /* needsRemap */ true);
-            FileSystem fileSystem = (FileSystem) getInMemoryFs.invoke(null);
+                Object candidate = ModCandidate.getConstructor(LoaderModMetadata, URL.class, int.class, boolean.class)
+                    .newInstance(metadata, inputPath.toUri().toURL(), /* depth */ 0, /* needsRemap */ true);
+                FileSystem fileSystem = (FileSystem) getInMemoryFs.invoke(null);
 
-            Object result = remap.invoke(null, Collections.singleton(candidate), fileSystem);
-            Object remappedCandidate = ((Collection<?>) result).iterator().next();
-            return (URL) getOriginUrl.invoke(remappedCandidate);
+                Object result = remap.invoke(null, Collections.singleton(candidate), fileSystem);
+                Object remappedCandidate = ((Collection<?>) result).iterator().next();
+                URL remappedUrl = (URL) getOriginUrl.invoke(remappedCandidate);
+
+                try (InputStream in = remappedUrl.openStream()) {
+                    Files.copy(in, outputPath);
+                }
+            } catch (NoSuchMethodException e) {
+                // fabric loader 0.12
+                Method remap = RuntimeModRemapper.getDeclaredMethod("remap", Collection.class, Path.class, Path.class);
+                Method getPath = ModCandidate.getDeclaredMethod("getPath");
+                Method createCandidate = ModCandidate.getDeclaredMethod("createPlain", Path.class, LoaderModMetadata, boolean.class, Collection.class);
+
+                createCandidate.setAccessible(true);
+
+                Object candidate = createCandidate.invoke(null, inputPath, metadata, /* needsRemap */ true, /* nestedMods */ Collections.emptyList());
+
+                Path tmpDir = Files.createTempDirectory("remap-tmp");
+                Path outDir = Files.createTempDirectory("remap-out");
+                try {
+                    remap.invoke(null, Collections.singleton(candidate), tmpDir, outDir);
+                    Path resultPath = (Path) getPath.invoke(candidate);
+                    Files.move(resultPath, outputPath);
+                } finally {
+                    MoreFiles.deleteRecursively(tmpDir, RecursiveDeleteOption.ALLOW_INSECURE);
+                    MoreFiles.deleteRecursively(outDir, RecursiveDeleteOption.ALLOW_INSECURE);
+                }
+            }
         }
 
         @SuppressWarnings("unchecked")
