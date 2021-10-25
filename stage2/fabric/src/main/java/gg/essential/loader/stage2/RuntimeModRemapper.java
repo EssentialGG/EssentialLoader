@@ -60,7 +60,7 @@ public class RuntimeModRemapper {
             LOGGER.info("Remapping Essential to development mappings...");
             LOGGER.info("This may take a few seconds but will only happen once (or when mappings/classpath change).");
 
-            URL remappedUrl = loaderInternals.remapMap(metadata, path.toUri().toURL());
+            URL remappedUrl = loaderInternals.remapMod(metadata, path.toUri().toURL());
 
             try (InputStream in = remappedUrl.openStream()) {
                 Files.copy(in, devPath);

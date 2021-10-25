@@ -192,7 +192,7 @@ public class EssentialLoader extends EssentialLoaderBase {
             }
         }
 
-        public URL remapMap(ModMetadata metadata, URL url) throws ReflectiveOperationException {
+        public URL remapMod(ModMetadata metadata, URL url) throws ReflectiveOperationException {
             Class<?> LoaderModMetadata = findImplClass("metadata.LoaderModMetadata");
             Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
             Class<?> ModResolver = findImplClass("discovery.ModResolver");
