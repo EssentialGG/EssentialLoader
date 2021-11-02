@@ -36,6 +36,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
@@ -285,7 +286,11 @@ public abstract class EssentialLoaderBase {
             if (!Files.isDirectory(innerJarsRoot)) {
                 return extractedJars;
             }
-            for (Path innerJar : Files.list(innerJarsRoot).collect(Collectors.toList())) {
+            List<Path> innerJars;
+            try (Stream<Path> stream = Files.list(innerJarsRoot)) {
+                innerJars = stream.collect(Collectors.toList());
+            }
+            for (Path innerJar : innerJars) {
                 // For now, we'll assume that the file name is sufficiently unique of an identifier
                 final Path extractedJar = extractedJarsRoot.resolve(innerJar.getFileName().toString());
                 if (Files.exists(extractedJar)) {

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Utils {
     /**
@@ -30,7 +31,11 @@ public class Utils {
     public static Pair<Path, Integer> findMostRecentFile(Path dir, String baseName, String ext) throws IOException {
         String dotExt = "." + ext;
         // List all files
-        List<Pair<Path, Integer>> files = Files.list(dir)
+        List<Path> rawFiles;
+        try (Stream<Path> stream = Files.list(dir)) {
+            rawFiles = stream.collect(Collectors.toList());
+        }
+        List<Pair<Path, Integer>> files = rawFiles.stream()
             // and determine their eligibility and numerical suffix
             .map(it -> {
                 // Essential (version).1.jar
