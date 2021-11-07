@@ -120,6 +120,22 @@ public class EssentialLoader extends EssentialLoaderBase {
                 }
             }
 
+            if (Launch.classLoader.getClassBytes("net.darkhax.surge.Surge") != null && !Relaunch.HAPPENED) {
+                // Surge includes signatures for all the classes in is jar, including Mixin. As a result, if any other
+                // mod ships a Mixin version different from Surge (like we do), it'll explode because of mis-matching
+                // signatures.
+                // To work around that, we'll re-launch. That works because our relaunch class loader does not implement
+                // signature loading.
+                LOGGER.warn("Found Surge. This mod includes signatures for its bundled Mixin and will explode if " +
+                    "a different Mixin version (even a more recent one) is loaded.");
+                if (Relaunch.ENABLED) {
+                    LOGGER.warn("Trying to work around the issue by re-launching which will ignore signatures.");
+                    throw new RelaunchRequest();
+                } else {
+                    LOGGER.warn("Cannot apply workaround because re-launching is disabled.");
+                }
+            }
+
             Field resourceCacheField = LaunchClassLoader.class.getDeclaredField("resourceCache");
             resourceCacheField.setAccessible(true);
             @SuppressWarnings("unchecked")
