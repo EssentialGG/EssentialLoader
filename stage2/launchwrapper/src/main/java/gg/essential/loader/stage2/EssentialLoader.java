@@ -120,14 +120,15 @@ public class EssentialLoader extends EssentialLoaderBase {
                 }
             }
 
-            if (Launch.classLoader.getClassBytes("net.darkhax.surge.Surge") != null && !Relaunch.HAPPENED) {
-                // Surge includes signatures for all the classes in is jar, including Mixin. As a result, if any other
-                // mod ships a Mixin version different from Surge (like we do), it'll explode because of mis-matching
-                // signatures.
+            // Some mods include signatures for all the classes in their jar, including Mixin. As a result, if any other
+            // mod ships a Mixin version different from theirs (we likely do), it'll explode because of mis-matching
+            // signatures.
+            String signedMixinMod = findSignedMixin();
+            if (signedMixinMod != null && !Relaunch.HAPPENED) {
                 // To work around that, we'll re-launch. That works because our relaunch class loader does not implement
                 // signature loading.
-                LOGGER.warn("Found Surge. This mod includes signatures for its bundled Mixin and will explode if " +
-                    "a different Mixin version (even a more recent one) is loaded.");
+                LOGGER.warn("Found {}. This mod includes signatures for its bundled Mixin and will explode if " +
+                    "a different Mixin version (even a more recent one) is loaded.", signedMixinMod);
                 if (Relaunch.ENABLED) {
                     LOGGER.warn("Trying to work around the issue by re-launching which will ignore signatures.");
                     throw new RelaunchRequest();
@@ -299,6 +300,16 @@ public class EssentialLoader extends EssentialLoaderBase {
         } else {
             return null;
         }
+    }
+
+    private String findSignedMixin() throws IOException {
+        if (hasClass("net.darkhax.surge.Surge")) return "Surge";
+        if (hasClass("me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin")) return "Phosphor";
+        return null;
+    }
+
+    private static boolean hasClass(String name) throws IOException {
+        return Launch.classLoader.getClassBytes(name) != null;
     }
 
     private static class RelaunchRequest extends RuntimeException {}
