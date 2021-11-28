@@ -4,14 +4,22 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 
 public class Relaunch {
     private static final Logger LOGGER = LogManager.getLogger(Relaunch.class);
@@ -54,6 +62,22 @@ public class Relaunch {
             // So we need to make sure Essential is on the classpath before any other mod
             urls.remove(essentialUrl);
             urls.add(0, essentialUrl);
+
+            // And because LaunchClassLoader.getSources is buggy and returns a List rather than a Set, we need to try
+            // to remove the tweaker jars from the classpath, so we do not end up with duplicate entries in that List.
+            // We cannot just remove everything after the first mod jar, cause there are mods like "performant" which
+            // reflect into the URLClassPath and move themselves to the beginning..
+            // So instead, we remove anything which declares a TweakClass which has in been loaded by the
+            // CoreModManager.
+            Set<String> tweakClasses = getTweakClasses();
+            Iterator<URL> iterator = urls.iterator();
+            iterator.next(); // skip Essential
+            while (iterator.hasNext()) {
+                URL url = iterator.next();
+                if (isTweaker(url, tweakClasses)) {
+                    iterator.remove();
+                }
+            }
 
             LOGGER.debug("Re-launching with classpath:");
             for (URL url : urls) {
@@ -101,5 +125,45 @@ public class Relaunch {
         }
 
         return result.toArray(new String[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Set<String> getTweakClasses() {
+        try {
+            // We derive these from the tweakSorting field as it is common practice for Tweakers to remove themselves
+            // from the more direct ignoredModFiles, whereas there is no reason to remove oneself the tweakSorting.
+            Field field = Class.forName("net.minecraftforge.fml.relauncher.CoreModManager")
+                .getDeclaredField("tweakSorting");
+            field.setAccessible(true);
+            Map<String, Integer> tweakSorting = (Map<String, Integer>) field.get(null);
+            return tweakSorting.keySet();
+        } catch (Exception e) {
+            LOGGER.error("Failed to determine dynamically loaded tweaker classes.");
+            e.printStackTrace();
+            return Collections.emptySet();
+        }
+    }
+
+    private static boolean isTweaker(URL url, Set<String> tweakClasses) {
+        try {
+            URI uri = url.toURI();
+            if (!"file".equals(uri.getScheme())) {
+                return false;
+            }
+            File file = new File(uri);
+            if (!file.exists() || !file.isFile()) {
+                return false;
+            }
+            try (JarFile jar = new JarFile(file)) {
+                Manifest manifest = jar.getManifest();
+                if (manifest == null) {
+                    return false;
+                }
+                return tweakClasses.contains(manifest.getMainAttributes().getValue("TweakClass"));
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to read manifest from " + url + ":", e);
+            return false;
+        }
     }
 }
