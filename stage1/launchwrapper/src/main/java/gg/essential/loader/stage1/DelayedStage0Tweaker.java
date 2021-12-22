@@ -85,7 +85,8 @@ public class DelayedStage0Tweaker implements ITweaker {
         }
         realStage0 = stage0;
 
-        commandLineCoremods = System.getProperty(COMMAND_LINE_COREMODS_PROP, "").split(",");
+        String commandLineCoremodsStr = System.getProperty(COMMAND_LINE_COREMODS_PROP, "");
+        commandLineCoremods = commandLineCoremodsStr.isEmpty() ? new String[0] : commandLineCoremodsStr.split(",");
         System.clearProperty(COMMAND_LINE_COREMODS_PROP);
     }
 
