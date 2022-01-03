@@ -1,10 +1,12 @@
 package gg.essential.loader.stage2;
 
 import cpw.mods.jarhandling.SecureJar;
+import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IEnvironment;
 import cpw.mods.modlauncher.api.IModuleLayerManager;
 import cpw.mods.modlauncher.api.ITransformationService;
 import cpw.mods.modlauncher.api.ITransformer;
+import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileLocator;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
@@ -69,6 +71,36 @@ public class EssentialTransformationService implements ITransformationService {
     }
 
     /**
+     * By default, if there are multiple jars declaring the same module in a layer, ModLauncher will simply pick
+     * whichever was registered first (see JarModuleFinder). Registration order is effectively random (HashMap iteration
+     * order), so it effectively picks a random version, which is no good.
+     * To workaround this behavior, we replace the list which holds all jars in a layer with one that automatically
+     * sorts by version.
+     * This may fail if ModLauncher internals change but there isn't much we can do about it. In such case, we will
+     * simply fall back to the old, unstable behavior.
+     */
+    private void configureLayerToBeSortedByVersion(IModuleLayerManager.Layer layer) {
+        try {
+            IModuleLayerManager layerManager = Launcher.INSTANCE.findLayerManager().orElseThrow();
+            Field layersField = layerManager.getClass().getDeclaredField("layers");
+            layersField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<IModuleLayerManager.Layer, List<Object>> layers =
+                (Map<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager);
+
+            layers.compute(layer, (__, list) -> {
+                SortedJarOrPathList sortedList = new SortedJarOrPathList();
+                if (list != null) {
+                    sortedList.addAll(list);
+                }
+                return sortedList;
+            });
+        } catch (Throwable t) {
+            LOGGER.error("Failed to replace mod list of " + layer + " with sorted list:", t);
+        }
+    }
+
+    /**
      * We inject our mod into the ModValidator's candidate list before it starts scanning all jars in parallel (or put
      * another way, between the calls to its stage 1 validation and its stage 2 validation methods).
      * The window of opportunity is somewhere between FMLLoader's beginScanning (where the modValidator is created)
@@ -112,6 +144,7 @@ public class EssentialTransformationService implements ITransformationService {
         if (injectMods()) {
             modsInjected = true;
         }
+        configureLayerToBeSortedByVersion(IModuleLayerManager.Layer.PLUGIN);
         return List.of(new Resource(IModuleLayerManager.Layer.PLUGIN, this.pluginJars));
     }
 
@@ -123,6 +156,7 @@ public class EssentialTransformationService implements ITransformationService {
         if (!modsInjected) {
             LOGGER.error("Failed to inject Essential into Forge mod list, falling back to Mixin-only operation. " +
                 "Mod will not be listed in Forge's mod list.");
+            configureLayerToBeSortedByVersion(IModuleLayerManager.Layer.GAME);
             return Collections.singletonList(new Resource(IModuleLayerManager.Layer.GAME, this.gameJars));
         }
         return List.of();
