@@ -14,7 +14,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,13 +31,21 @@ public class EssentialTransformationService implements ITransformationService {
     private final List<SecureJar> gameJars = new ArrayList<>();
     private boolean modsInjected;
 
-    public void addToClasspath(final File file) {
-        final SecureJar jar = SecureJar.from(file.toPath());
-        final String modType = jar.getManifest().getMainAttributes().getValue("FMLModType");
-        if (IModFile.Type.LANGPROVIDER.name().equals(modType) || IModFile.Type.LIBRARY.name().equals(modType)) {
+    public void addToClasspath(final Path path) {
+        final SecureJar jar = SecureJar.from(j -> new SelfRenamingJarMetadata(j, path, determineLayer(j)), path);
+        if (determineLayer(jar) == IModuleLayerManager.Layer.PLUGIN) {
             this.pluginJars.add(jar);
         } else {
             this.gameJars.add(jar);
+        }
+    }
+
+    private static IModuleLayerManager.Layer determineLayer(SecureJar jar) {
+        final String modType = jar.getManifest().getMainAttributes().getValue("FMLModType");
+        if (IModFile.Type.LANGPROVIDER.name().equals(modType) || IModFile.Type.LIBRARY.name().equals(modType)) {
+            return IModuleLayerManager.Layer.PLUGIN;
+        } else {
+            return IModuleLayerManager.Layer.GAME;
         }
     }
 

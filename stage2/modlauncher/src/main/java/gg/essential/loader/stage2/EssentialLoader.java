@@ -41,6 +41,6 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     @Override
     protected void addToClasspath(final File file) {
-        this.transformationService.addToClasspath(file);
+        this.transformationService.addToClasspath(file.toPath());
     }
 }
