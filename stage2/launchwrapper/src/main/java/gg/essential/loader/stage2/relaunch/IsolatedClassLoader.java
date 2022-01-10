@@ -74,7 +74,7 @@ class IsolatedClassLoader extends URLClassLoader {
 
             // If the have not yet defined the class, let's do that
             if (cls == null) {
-                cls = findClass(name);
+                cls = findClassImpl(name);
             }
 
             // Class loaded successfully, store it in our map so we can take the fast path in the future
@@ -82,6 +82,26 @@ class IsolatedClassLoader extends URLClassLoader {
 
             return cls;
         }
+    }
+
+    // We redirect this method to our loadClass (which checks the parent for exclusions) because our loadClass is not
+    // getting called on OpenJ9 [1] when resolving references [2] from dynamically generated reflection accessor
+    // classes [3].
+    // Subclasses should override findClassImpl instead.
+    //
+    // [1]: https://github.com/ibmruntimes/openj9-openjdk-jdk8/blob/a1a7ea06e2244735697b8b9ae379de0d85ef4d47/jdk/src/share/classes/sun/reflect/package.html#L116-L132
+    // [2]: https://github.com/eclipse-openj9/openj9/blob/b430644c83c2a19a2ecf60fa2eebb03e6976ce42/jcl/src/java.base/share/classes/java/lang/ClassLoader.java#L1347
+    // [3]: https://github.com/ibmruntimes/openj9-openjdk-jdk8/blob/c74851c6f9218e365e3e74c5a01ebf794c3721d1/jdk/src/share/classes/sun/reflect/ClassDefiner.java#L70
+    @Override
+    protected final Class<?> findClass(String name) throws ClassNotFoundException {
+        return loadClass(name);
+    }
+
+    /**
+     * Like {@link #findClass(String)} but we need to override that one to re-check for exclusions.
+     */
+    protected Class<?> findClassImpl(String name) throws ClassNotFoundException {
+        return super.findClass(name);
     }
 
     @Override

@@ -23,7 +23,7 @@ class RelaunchClassLoader extends IsolatedClassLoader {
     }
 
     @Override
-    protected Class<?> findClass(String name) throws ClassNotFoundException {
+    protected Class<?> findClassImpl(String name) throws ClassNotFoundException {
         URL jarUrl;
         Manifest jarManifest;
         byte[] bytes;
