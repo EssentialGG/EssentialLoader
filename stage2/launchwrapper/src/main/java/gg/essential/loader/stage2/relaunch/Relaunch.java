@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,6 +26,7 @@ public class Relaunch {
     private static final Logger LOGGER = LogManager.getLogger(Relaunch.class);
 
     static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
+    private static final String LITE_LOADER_TWEAKER = "com.mumfrey.liteloader.launch.LiteLoaderTweaker";
 
     private static final String HAPPENED_PROPERTY = "essential.loader.relaunched";
     private static final String ENABLED_PROPERTY = "essential.loader.relaunch";
@@ -116,6 +118,10 @@ public class Relaunch {
 
         // Tweaker arguments are consumed by Launch.launch, I see no way to get them so we'll just assume it's always
         // FML, that should be the case for production in any ordinary setup.
+        if (hasLiteLoader()) { // LiteLoader is not ordinary
+            result.add("--tweakClass");
+            result.add(LITE_LOADER_TWEAKER);
+        }
         result.add("--tweakClass");
         result.add(FML_TWEAKER);
 
@@ -163,6 +169,15 @@ public class Relaunch {
             }
         } catch (Exception e) {
             LOGGER.error("Failed to read manifest from " + url + ":", e);
+            return false;
+        }
+    }
+
+    private static boolean hasLiteLoader() {
+        try {
+            return Launch.classLoader.getClassBytes(LITE_LOADER_TWEAKER) != null;
+        } catch (IOException e) {
+            e.printStackTrace();
             return false;
         }
     }
