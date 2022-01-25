@@ -42,7 +42,10 @@ public class Relaunch {
         LOGGER.warn("");
         LOGGER.warn("==================================================================================");
         LOGGER.warn("Attempting re-launch to load the newer version instead.");
-        LOGGER.warn("Add \"-D" + ENABLED_PROPERTY + "=false\" to JVM args to disable re-launching.");
+        LOGGER.warn("");
+        LOGGER.warn("If AND ONLY IF you know what you are doing, have fixed the issue manually and need");
+        LOGGER.warn("to suppress this behavior (did you really fix it then?), you can set the");
+        LOGGER.warn("\"" + ENABLED_PROPERTY + "\" system property to false.");
         LOGGER.warn("==================================================================================");
         LOGGER.warn("");
         LOGGER.warn("");
