@@ -65,6 +65,14 @@ public abstract class EssentialLoaderBase {
         this.gameVersion = gameVersion;
         this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
+        String stage2Branch = System.getProperty(
+            "essential.stage2.branch",
+            System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
+        );
+        if (!stage2Branch.equals("stable")) {
+            LOGGER.info("Essential Loader (stage2) branch set to \"{}\".", stage2Branch);
+        }
+
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         LoaderUI gui;
         if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
