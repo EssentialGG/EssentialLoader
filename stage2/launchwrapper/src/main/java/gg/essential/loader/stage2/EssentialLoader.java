@@ -82,7 +82,7 @@ public class EssentialLoader extends EssentialLoaderBase {
         String outdatedAsm = isAsmOutdated(url);
         if (outdatedAsm != null) {
             LOGGER.warn("Found an old version of ASM ({}). This may cause issues.", outdatedAsm);
-            if (Relaunch.ENABLED) {
+            if (Relaunch.checkEnabled()) {
                 Relaunch.relaunch(url);
             }
         }
@@ -115,7 +115,7 @@ public class EssentialLoader extends EssentialLoaderBase {
                 for (String transformerException : transformerExceptions) {
                     LOGGER.debug("  - {}", transformerException);
                 }
-                if (Relaunch.ENABLED) {
+                if (Relaunch.checkEnabled()) {
                     throw new RelaunchRequest();
                 }
             }
@@ -131,9 +131,11 @@ public class EssentialLoader extends EssentialLoaderBase {
                     "a different Mixin version (even a more recent one) is loaded.", signedMixinMod);
                 if (Relaunch.ENABLED) {
                     LOGGER.warn("Trying to work around the issue by re-launching which will ignore signatures.");
-                    throw new RelaunchRequest();
                 } else {
                     LOGGER.warn("Cannot apply workaround because re-launching is disabled.");
+                }
+                if (Relaunch.checkEnabled()) {
+                    throw new RelaunchRequest();
                 }
             }
 
@@ -224,7 +226,7 @@ public class EssentialLoader extends EssentialLoaderBase {
                         } catch (Throwable t) {
                             LOGGER.warn("Unable to determine likely source:", t);
                         }
-                        if (Relaunch.ENABLED) {
+                        if (Relaunch.checkEnabled()) {
                             throw new RelaunchRequest();
                         }
                     }
@@ -272,7 +274,7 @@ public class EssentialLoader extends EssentialLoaderBase {
         String outdatedMixin = isMixinOutdated();
         if (outdatedMixin != null) {
             LOGGER.warn("Found an old version of Mixin ({}). This may cause issues.", outdatedMixin);
-            if (Relaunch.ENABLED) {
+            if (Relaunch.checkEnabled()) {
                 Relaunch.relaunch(ourMixinUrl);
             }
         }

@@ -36,6 +36,27 @@ public class Relaunch {
     /** Whether we should try to re-launch in case of classpath complications. */
     public static final boolean ENABLED = !HAPPENED && Boolean.parseBoolean(System.getProperty(ENABLED_PROPERTY, "true"));
 
+    public static boolean checkEnabled() {
+        if (ENABLED) {
+            return true;
+        }
+        LOGGER.warn("");
+        LOGGER.warn("");
+        LOGGER.warn("");
+        LOGGER.warn("==================================================================================");
+        LOGGER.warn("Essential can automatically attempt to fix this but this feature has been disabled");
+        LOGGER.warn("because \"" + ENABLED_PROPERTY + "\" is set to false.");
+        LOGGER.warn("");
+        LOGGER.warn("THIS WILL CAUSE ISSUES, PROCEED AT YOUR OWN RISK!");
+        LOGGER.warn("");
+        LOGGER.warn("Remove \"-D" + ENABLED_PROPERTY + "=false\" from JVM args to enable re-launching.");
+        LOGGER.warn("==================================================================================");
+        LOGGER.warn("");
+        LOGGER.warn("");
+        LOGGER.warn("");
+        return false;
+    }
+
     public static void relaunch(URL essentialUrl) {
         LOGGER.warn("");
         LOGGER.warn("");
