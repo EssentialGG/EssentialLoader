@@ -35,6 +35,7 @@ public class ExampleModTweaker extends EssentialSetupTweaker {
             }
         }
 
+        LoadState.checkForRelaunch();
         LoadState.tweaker = true;
     }
 }

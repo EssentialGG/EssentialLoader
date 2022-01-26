@@ -25,6 +25,7 @@ public class ExampleCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public String[] getASMTransformerClass() {
+        LoadState.checkForRelaunch();
         LoadState.coreMod = true;
         return new String[0];
     }

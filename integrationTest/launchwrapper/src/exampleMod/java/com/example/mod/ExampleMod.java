@@ -11,6 +11,7 @@ public class ExampleMod {
         if (getClass().getClassLoader() != Launch.classLoader) {
             throw new IllegalStateException("Mod must be loaded via Launch class loader.");
         }
+        LoadState.checkForRelaunch();
         LoadState.mod = true;
     }
 }
