@@ -2,7 +2,9 @@ package sun.com.example.mod;
 
 // Being in the sun package excludes this class from the launch class loader, so it can be safely accessed from everywhere
 public class LoadState {
+    public static String[] args;
     public static boolean tweaker = false;
+    public static boolean secondTweaker;
     public static boolean coreMod = false;
     public static boolean mod = false;
     public static boolean mixin = false;
@@ -16,7 +18,9 @@ public class LoadState {
         if (!relaunched && Boolean.getBoolean("essential.loader.relaunched")) {
             relaunched = true;
 
+            args = null;
             tweaker = false;
+            secondTweaker = false;
             coreMod = false;
             mod = false;
             mixin = false;

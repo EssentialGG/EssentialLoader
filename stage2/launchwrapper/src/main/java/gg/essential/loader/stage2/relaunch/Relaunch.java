@@ -1,11 +1,11 @@
 package gg.essential.loader.stage2.relaunch;
 
+import gg.essential.loader.stage2.relaunch.args.LaunchArgs;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -26,7 +26,6 @@ public class Relaunch {
     private static final Logger LOGGER = LogManager.getLogger(Relaunch.class);
 
     static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
-    private static final String LITE_LOADER_TWEAKER = "com.mumfrey.liteloader.launch.LiteLoaderTweaker";
 
     private static final String HAPPENED_PROPERTY = "essential.loader.relaunched";
     private static final String ENABLED_PROPERTY = "essential.loader.relaunch";
@@ -112,9 +111,12 @@ public class Relaunch {
 
             RelaunchClassLoader relaunchClassLoader = new RelaunchClassLoader(urls.toArray(new URL[0]), systemClassLoader);
 
-            Class<?> innerLaunch = Class.forName(Launch.class.getName(), false, relaunchClassLoader);
+            List<String> args = new ArrayList<>(LaunchArgs.guessLaunchArgs());
+            String main = args.remove(0);
+
+            Class<?> innerLaunch = Class.forName(main, false, relaunchClassLoader);
             Method innerMainMethod = innerLaunch.getDeclaredMethod("main", String[].class);
-            innerMainMethod.invoke(null, (Object) getLaunchArgs());
+            innerMainMethod.invoke(null, (Object) args.toArray(new String[0]));
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException("Unexpected re-launch failure", e);
         } catch (InvocationTargetException e) {
@@ -130,31 +132,6 @@ public class Relaunch {
         System.clearProperty("nallar.ModPatcher.alreadyLoaded");
         // https://github.com/MinimallyCorrect/ModPatcher/blob/3a538a5b574546f68d927f3551bf9e61fda4a334/src/main/java/org/minimallycorrect/modpatcher/api/LaunchClassLoaderUtil.java#L31-L36
         System.clearProperty("nallar.LaunchClassLoaderUtil.alreadyLoaded");
-    }
-
-    private static String[] getLaunchArgs() {
-        // These are made available by FMLTweaker. This does unfortunately not include the keyword-less arguments but
-        // I could find no way to access them and Vanilla doesn't use those anyway, so it should be fine.
-        @SuppressWarnings("unchecked")
-        Map<String, String> launchArgs = (Map<String, String>) Launch.blackboard.get("launchArgs");
-
-        List<String> result = new ArrayList<>();
-
-        // Tweaker arguments are consumed by Launch.launch, I see no way to get them so we'll just assume it's always
-        // FML, that should be the case for production in any ordinary setup.
-        if (hasLiteLoader()) { // LiteLoader is not ordinary
-            result.add("--tweakClass");
-            result.add(LITE_LOADER_TWEAKER);
-        }
-        result.add("--tweakClass");
-        result.add(FML_TWEAKER);
-
-        for (Map.Entry<String, String> entry : launchArgs.entrySet()) {
-            result.add(entry.getKey());
-            result.add(entry.getValue());
-        }
-
-        return result.toArray(new String[0]);
     }
 
     @SuppressWarnings("unchecked")
@@ -193,15 +170,6 @@ public class Relaunch {
             }
         } catch (Exception e) {
             LOGGER.error("Failed to read manifest from " + url + ":", e);
-            return false;
-        }
-    }
-
-    private static boolean hasLiteLoader() {
-        try {
-            return Launch.classLoader.getClassBytes(LITE_LOADER_TWEAKER) != null;
-        } catch (IOException e) {
-            e.printStackTrace();
             return false;
         }
     }

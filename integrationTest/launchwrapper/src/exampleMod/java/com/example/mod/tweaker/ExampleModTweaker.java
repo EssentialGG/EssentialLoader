@@ -6,6 +6,9 @@ import sun.com.example.mod.LoadState;
 import gg.essential.loader.stage0.EssentialSetupTweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class ExampleModTweaker extends EssentialSetupTweaker {
@@ -13,6 +16,18 @@ public class ExampleModTweaker extends EssentialSetupTweaker {
         if (Boolean.parseBoolean(System.getProperty("examplemod.exclude_kotlin_from_transformers", "false"))) {
             Launch.classLoader.addTransformerExclusion("kotlin.something.");
         }
+    }
+
+    @Override
+    public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
+        super.acceptOptions(args, gameDir, assetsDir, profile);
+
+        LoadState.checkForRelaunch();
+        args = new ArrayList<>(args);
+        // Add gameDir argument last, just like FMLTweaker
+        args.add("--gameDir");
+        args.add(gameDir.toString());
+        LoadState.args = args.toArray(new String[0]);
     }
 
     @Override

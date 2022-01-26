@@ -14,12 +14,14 @@ import net.minecraftforge.fml.common.discovery.ModCandidate;
 import net.minecraftforge.fml.common.discovery.ModDiscoverer;
 import net.minecraftforge.fml.common.event.FMLConstructionEvent;
 import org.objectweb.asm.Type;
+import sun.minecraft.LoadState;
 
 import java.io.File;
 import java.util.Map;
 
 public class Main {
     public static void main(String[] args) {
+        LoadState.args = args;
         ModClassLoader modClassLoader = new ModClassLoader(Main.class.getClassLoader());
         ModDiscoverer modDiscoverer = new ModDiscoverer();
         modDiscoverer.findClasspathMods(modClassLoader);

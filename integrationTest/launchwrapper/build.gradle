@@ -45,6 +45,8 @@ dependencies {
     // Mixin 0.8
     runtimeOnly("org.ow2.asm:asm-commons:6.2")
     runtimeOnly("com.google.guava:guava:21.0")
+    // ArchLoom-based launching in dev
+    implementation("net.fabricmc:dev-launch-injector:0.2.1+build.8")
 
     exampleModImplementation(project(":stage0:launchwrapper"))
     exampleModCompileOnly(launchwrapper)

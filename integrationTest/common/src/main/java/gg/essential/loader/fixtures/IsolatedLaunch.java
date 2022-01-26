@@ -33,16 +33,22 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IsolatedLaunch {
     private static final String LAUNCH_CLASS_NAME = "net.minecraft.launchwrapper.Launch";
+    private final Path gameDir;
     private final Properties systemProperties = new Properties();
     private final List<URL> classpath = new ArrayList<>();
     private final List<String> args = new ArrayList<>();
     private IsolatedClassLoader loader;
 
     public IsolatedLaunch(Path gameDir, String primaryTweaker) {
+        this.gameDir = gameDir;
         this.systemProperties.putAll(System.getProperties());
         this.addToClasspath(((URLClassLoader) ClassLoader.getSystemClassLoader()).getURLs());
         this.addArg("--gameDir", gameDir.toString());
         this.addArg("--tweakClass", primaryTweaker);
+    }
+
+    public Path getGameDir() {
+        return this.gameDir;
     }
 
     public void setProperty(String key, String value) {
@@ -51,6 +57,10 @@ public class IsolatedLaunch {
 
     public void addToClasspath(URL... urls) {
         this.classpath.addAll(Arrays.asList(urls));
+    }
+
+    public void addArg(String value) {
+        this.args.add(value);
     }
 
     public void addArg(String key, String value) {
