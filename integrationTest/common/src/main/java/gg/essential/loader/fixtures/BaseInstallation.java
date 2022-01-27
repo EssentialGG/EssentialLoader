@@ -16,7 +16,7 @@ public abstract class BaseInstallation implements AutoCloseable {
     private final Path originalExample2ModFile = originalApiDir.resolve("v1/mods/example/mod2/updates/stable/" + getPlatformVersion() + ".jar");
     private final Path originalKotlinModFile = originalApiDir.resolve("v1/mods/example/kotlin/updates/stable/" + getPlatformVersion() + ".jar");
 
-    public final Path gameDir = Files.createTempDirectory("game");
+    public final Path gameDir = Files.createTempDirectory("test game dir"); // spaces to make sure it can handle those
     public final Path modsDir = gameDir.resolve("mods");
     public final Path apiDir = gameDir.resolve("downloadsApi");
     public final Path mixin07JarFile = apiDir.resolve("v1/mods/essential/mixin/updates/07/" + getPlatformVersion() + ".jar");
@@ -66,7 +66,7 @@ public abstract class BaseInstallation implements AutoCloseable {
 
     public IsolatedLaunch newLaunch(String tweaker) {
         IsolatedLaunch isolatedLaunch = new IsolatedLaunch(gameDir, tweaker);
-        isolatedLaunch.setProperty("essential.download.url", apiDir.toUri().toString());
+        isolatedLaunch.setProperty("essential.download.url", apiDir.toUri().toString().replace("%", "%%"));
         return isolatedLaunch;
     }
 
