@@ -198,10 +198,11 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         @SuppressWarnings("UnstableApiUsage")
         public void remapMod(ModMetadata metadata, Path inputPath, Path outputPath) throws Exception {
-            Class<?> LoaderModMetadata = findImplClass("metadata.LoaderModMetadata");
             Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
             Class<?> ModResolver = findImplClass("discovery.ModResolver");
             Class<?> RuntimeModRemapper = findImplClass("discovery.RuntimeModRemapper");
+
+            Object candidate = createCandidate(inputPath, inputPath.toUri().toURL(), metadata);
 
             try {
                 // fabric loader 0.11
@@ -209,8 +210,6 @@ public class EssentialLoader extends EssentialLoaderBase {
                 Method remap = RuntimeModRemapper.getDeclaredMethod("remap", Collection.class, FileSystem.class);
                 Method getOriginUrl = ModCandidate.getDeclaredMethod("getOriginUrl");
 
-                Object candidate = ModCandidate.getConstructor(LoaderModMetadata, URL.class, int.class, boolean.class)
-                    .newInstance(metadata, inputPath.toUri().toURL(), /* depth */ 0, /* needsRemap */ true);
                 FileSystem fileSystem = (FileSystem) getInMemoryFs.invoke(null);
 
                 Object result = remap.invoke(null, Collections.singleton(candidate), fileSystem);
@@ -223,22 +222,49 @@ public class EssentialLoader extends EssentialLoaderBase {
             } catch (NoSuchMethodException e) {
                 // fabric loader 0.12
                 Method remap = RuntimeModRemapper.getDeclaredMethod("remap", Collection.class, Path.class, Path.class);
-                Method getPath = ModCandidate.getDeclaredMethod("getPath");
-                Method createCandidate = ModCandidate.getDeclaredMethod("createPlain", Path.class, LoaderModMetadata, boolean.class, Collection.class);
-
-                createCandidate.setAccessible(true);
-
-                Object candidate = createCandidate.invoke(null, inputPath, metadata, /* needsRemap */ true, /* nestedMods */ Collections.emptyList());
 
                 Path tmpDir = Files.createTempDirectory("remap-tmp");
                 Path outDir = Files.createTempDirectory("remap-out");
                 try {
                     remap.invoke(null, Collections.singleton(candidate), tmpDir, outDir);
-                    Path resultPath = (Path) getPath.invoke(candidate);
+                    Path resultPath;
+                    try {
+                        // fabric loader 0.12
+                        Method getPath = ModCandidate.getDeclaredMethod("getPath");
+                        resultPath = (Path) getPath.invoke(candidate);
+                    } catch (NoSuchMethodException e1) {
+                        // fabric loader 0.13
+                        Method getPaths = ModCandidate.getDeclaredMethod("getPaths");
+                        @SuppressWarnings("unchecked")
+                        List<Path> paths = (List<Path>) getPaths.invoke(candidate);
+                        resultPath = paths.get(0);
+                    }
                     Files.move(resultPath, outputPath);
                 } finally {
                     MoreFiles.deleteRecursively(tmpDir, RecursiveDeleteOption.ALLOW_INSECURE);
                     MoreFiles.deleteRecursively(outDir, RecursiveDeleteOption.ALLOW_INSECURE);
+                }
+            }
+        }
+
+        private Object createCandidate(Path path, URL url, Object metadata) throws ClassNotFoundException, InvocationTargetException, InstantiationException, IllegalAccessException, NoSuchMethodException {
+            Class<?> LoaderModMetadata = findImplClass("metadata.LoaderModMetadata");
+            Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
+            try {
+                // fabric loader 0.11
+                return ModCandidate.getConstructor(LoaderModMetadata, URL.class, int.class, boolean.class)
+                    .newInstance(metadata, url, /* depth */ 0, /* needsRemap */ true);
+            } catch (NoSuchMethodException e) {
+                try {
+                    // fabric loader 0.12
+                    Method createCandidate = ModCandidate.getDeclaredMethod("createPlain", Path.class, LoaderModMetadata, boolean.class, Collection.class);
+                    createCandidate.setAccessible(true);
+                    return createCandidate.invoke(null, path, metadata, /* needsRemap */ true, /* nestedMods */ Collections.emptyList());
+                } catch (NoSuchMethodException e1) {
+                    // fabric loader 0.13
+                    Method createCandidate = ModCandidate.getDeclaredMethod("createPlain", List.class, LoaderModMetadata, boolean.class, Collection.class);
+                    createCandidate.setAccessible(true);
+                    return createCandidate.invoke(null, Collections.singletonList(path), metadata, /* needsRemap */ true, /* nestedMods */ Collections.emptyList());
                 }
             }
         }
@@ -282,13 +308,22 @@ public class EssentialLoader extends EssentialLoaderBase {
             // Add the mod container
             Object modContainer;
             try {
+                // fabric-loader 0.12.2
                 modContainer = ModContainerImpl
                     .getConstructor(LoaderModMetadata, URL.class)
                     .newInstance(metadata, url);
             } catch (NoSuchMethodException e) {
-                modContainer = ModContainerImpl
-                    .getConstructor(LoaderModMetadata, Path.class)
-                    .newInstance(metadata, path);
+                try {
+                    // fabric-loader 0.12.3
+                    modContainer = ModContainerImpl
+                        .getConstructor(LoaderModMetadata, Path.class)
+                        .newInstance(metadata, path);
+                } catch (NoSuchMethodException e1) {
+                    // fabric-loader 0.13
+                    modContainer = ModContainerImpl
+                        .getConstructor(findImplClass("discovery.ModCandidate"))
+                        .newInstance(createCandidate(path, url, metadata));
+                }
             }
             mods.add(modContainer);
             modMap.put(metadata.getId(), modContainer);
