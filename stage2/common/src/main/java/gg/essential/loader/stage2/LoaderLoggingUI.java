@@ -20,7 +20,7 @@ public class LoaderLoggingUI implements LoaderUI {
 
     @Override
     public void setDownloaded(int bytes) {
-        LOGGER.info("{}KB / {}KB ({}%)", bytes / 1024, size / 1024, bytes * 100 / size);
+        LOGGER.info("{}KB / {}KB ({}%)", bytes / 1024, size / 1024, bytes * 100L / size);
     }
 
     @Override
