@@ -27,6 +27,7 @@ class IsolatedClassLoader extends URLClassLoader {
         "java.", // JRE cannot be loaded twice
         "javax.", // JRE cannot be loaded twice
         "sun.", // JRE internals cannot be loaded twice
+        "jdk.", // JRE internals cannot be loaded twice
         "org.apache.logging.", // Continue to use the logging set up by any pre-launch code
         "org.lwjgl." // Natives cannot be loaded twice
     );
