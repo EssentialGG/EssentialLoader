@@ -41,7 +41,7 @@ public class IntegrationTests {
 
         installation.launchFML();
 
-        Delete.recursively(installation.apiDir);
+        Delete.recursively(installation.apiDir.resolve("v1/mods/essential"));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
@@ -86,6 +86,17 @@ public class IntegrationTests {
         }
         thread.join();
         assertEquals(0, accessCount.get(), "Server connections");
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
+    @Test
+    public void test11202Launch(Installation installation) throws Exception {
+        installation.addExampleMod();
+
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML11202();
+        isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");

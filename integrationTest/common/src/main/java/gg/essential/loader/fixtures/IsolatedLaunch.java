@@ -73,6 +73,10 @@ public class IsolatedLaunch {
 
         this.loader = new IsolatedClassLoader(this.classpath.toArray(new URL[0]));
 
+        Thread thread = Thread.currentThread();
+        ClassLoader orgContextClassLoader = thread.getContextClassLoader();
+        thread.setContextClassLoader(this.loader);
+
         Properties originalProperties = System.getProperties();
         System.setProperties(this.systemProperties);
 
@@ -107,6 +111,8 @@ public class IsolatedLaunch {
             System.setErr(orgSysErr);
 
             System.setProperties(originalProperties);
+
+            thread.setContextClassLoader(orgContextClassLoader);
         }
     }
 
@@ -142,7 +148,8 @@ public class IsolatedLaunch {
             "javax.",
             "sun.",
             "com.google.common.jimfs.",
-            "org.apache.logging."
+            "org.xml.sax.",
+            "org.w3c.dom."
         );
 
         private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
@@ -193,7 +200,7 @@ public class IsolatedLaunch {
                         if (isFMLTweaker || isLaunch) {
                             ClassNode classNode = new ClassNode(Opcodes.ASM5);
                             new ClassReader(bytes).accept(classNode, 0);
-                            for (MethodNode method : classNode.methods) {
+                            for (MethodNode method : (List<MethodNode>) classNode.methods) {
                                 InsnList instructions = method.instructions;
                                 for (int i = 0; i < instructions.size(); i++) {
                                     AbstractInsnNode insn = instructions.get(i);

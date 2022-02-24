@@ -11,9 +11,16 @@ sourceSets {
     dummyStage1
     dummyStage2
     dummyStage3
+    minecraft10808
+    minecraft11202
 }
 
 configurations {
+    forge10808Runtime
+    forge11202Runtime
+    minecraft10808CompileOnly.extendsFrom(forge10808Runtime)
+    minecraft11202CompileOnly.extendsFrom(forge11202Runtime)
+
     example2ModImplementation.extendsFrom(exampleModImplementation)
     example2ModCompileOnly.extendsFrom(exampleModCompileOnly)
 
@@ -31,17 +38,35 @@ dependencies {
 
     // Versions based on the one which MC include by default in 1.8.9 (minimal supported version)
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
-    implementation(launchwrapper)
-    runtimeOnly("org.apache.commons:commons-lang3:3.3.2")
-    runtimeOnly("commons-io:commons-io:2.4")
-    runtimeOnly("commons-codec:commons-codec:1.9")
-    runtimeOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
-    implementation("com.google.code.gson:gson:2.2.4")
-    implementation("com.google.guava:guava:17.0")
-    runtimeOnly("com.mojang:authlib:1.5.21")
+    forge10808Runtime(launchwrapper)
+    forge10808Runtime("org.apache.commons:commons-lang3:3.3.2")
+    forge10808Runtime("commons-io:commons-io:2.4")
+    forge10808Runtime("commons-codec:commons-codec:1.9")
+    forge10808Runtime("org.apache.logging.log4j:log4j-api:2.0-beta9")
+    forge10808Runtime("org.apache.logging.log4j:log4j-core:2.0-beta9")
+    forge10808Runtime("com.google.code.gson:gson:2.2.4")
+    forge10808Runtime("com.google.guava:guava:17.0")
+    forge10808Runtime("com.mojang:authlib:1.5.21")
     // Forge
-    implementation(forge)
-    runtimeOnly("lzma:lzma:0.0.1")
+    forge10808Runtime(forge)
+    forge10808Runtime("lzma:lzma:0.0.1")
+
+    // Versions based on the one which MC (on MultiMC) includes by default in 1.12.2
+    // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.12.2.json
+    forge11202Runtime(launchwrapper)
+    forge11202Runtime("org.apache.commons:commons-lang3:3.5")
+    forge11202Runtime("commons-io:commons-io:2.5")
+    forge11202Runtime("commons-codec:commons-codec:1.10")
+    forge11202Runtime("org.apache.logging.log4j:log4j-api:2.8.1")
+    forge11202Runtime("org.apache.logging.log4j:log4j-core:2.8.1")
+    forge11202Runtime(implementation("com.google.code.gson:gson:2.8.0"))
+    forge11202Runtime("com.google.guava:guava:21.0")
+    forge11202Runtime("com.mojang:authlib:1.5.25")
+    // Forge
+    forge11202Runtime("net.minecraftforge:forge:1.12.2-14.23.5.2860:universal")
+    forge11202Runtime("lzma:lzma:0.0.1")
+    forge11202Runtime("org.apache.maven:maven-artifact:3.5.3")
+
     // Mixin 0.8
     runtimeOnly("org.ow2.asm:asm-commons:6.2")
     runtimeOnly("com.google.guava:guava:21.0")
@@ -199,11 +224,35 @@ tasks.register("dummyStage3Jar", Jar) {
     includeMixin(it, configurations.mixin07)
 }
 
+tasks.register("forge10808Jar", Jar) {
+    archiveBaseName.set("forge-10808")
+
+    from(sourceSets.minecraft10808.output)
+    dependsOn(configurations.forge10808Runtime)
+    from({ configurations.forge10808Runtime.collect { zipTree(it) } }) {
+        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
+    }
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.register("forge11202Jar", Jar) {
+    archiveBaseName.set("forge-11202")
+
+    from(sourceSets.minecraft11202.output)
+    dependsOn(configurations.forge11202Runtime)
+    from({ configurations.forge11202Runtime.collect { zipTree(it) } }) {
+        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
+    }
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
 tasks.register("setupDownloadsApi", Sync) {
     def downloadsApi = new File(project.buildDir, "downloadsApi")
     into(downloadsApi)
 
-    def mod = { Provider<RegularFile> source, String dst ->
+    def platformMod = { Provider<RegularFile> source, String dst ->
         def dstJar = "${dst}.jar"
         preserve.include(dst)
         preserve.include(dstJar)
@@ -216,6 +265,10 @@ tasks.register("setupDownloadsApi", Sync) {
         }
     }
     def platformForge = "forge_1-8-8"
+    def mod = { Provider<RegularFile> source, String dst ->
+        platformMod(source, dst)
+        platformMod(source, dst - platformForge + "forge_1-12-2")
+    }
 
     mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformForge")
     mod(tasks.example2ModJar.archiveFile, "v1/mods/example/mod2/updates/stable/$platformForge")
@@ -247,4 +300,7 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")
     mod(tasks.dummyStage2Jar.archiveFile, "v1/mods/essential/loader-stage2/updates/dummy/$platformForge")
     mod(tasks.dummyStage3Jar.archiveFile, "v1/mods/essential/essential/updates/dummy/$platformForge")
+
+    platformMod(tasks.forge10808Jar.archiveFile, "v1/mods/forge/runtime/updates/stable/forge_1-8-8")
+    platformMod(tasks.forge11202Jar.archiveFile, "v1/mods/forge/runtime/updates/stable/forge_1-12-2")
 }
