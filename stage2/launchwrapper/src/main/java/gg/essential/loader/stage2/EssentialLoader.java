@@ -79,6 +79,12 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         ourMixinUrl = url;
 
+        if (System.getProperty(Relaunch.FORCE_PROPERTY, "").equals("early")) {
+            if (Relaunch.checkEnabled()) {
+                Relaunch.relaunch(ourMixinUrl);
+            }
+        }
+
         String outdatedAsm = isAsmOutdated(url);
         if (outdatedAsm != null) {
             LOGGER.warn("Found an old version of ASM ({}). This may cause issues.", outdatedAsm);
@@ -274,6 +280,12 @@ public class EssentialLoader extends EssentialLoaderBase {
         String outdatedMixin = isMixinOutdated();
         if (outdatedMixin != null) {
             LOGGER.warn("Found an old version of Mixin ({}). This may cause issues.", outdatedMixin);
+            if (Relaunch.checkEnabled()) {
+                Relaunch.relaunch(ourMixinUrl);
+            }
+        }
+
+        if (System.getProperty(Relaunch.FORCE_PROPERTY, "").equals("late")) {
             if (Relaunch.checkEnabled()) {
                 Relaunch.relaunch(ourMixinUrl);
             }
