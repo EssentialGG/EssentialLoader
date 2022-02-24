@@ -89,6 +89,35 @@ public class RelaunchTests {
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
+    @Test
+    public void testRelaunchOfInitPhaseMixinWithMixin07(Installation installation) throws Exception {
+        testRelaunchOfInitPhaseMixin(installation, "07");
+    }
+
+    @Test
+    public void testRelaunchOfInitPhaseMixinWithMixin08(Installation installation) throws Exception {
+        testRelaunchOfInitPhaseMixin(installation, "08");
+    }
+
+    public void testRelaunchOfInitPhaseMixin(Installation installation, String outerMixinVersion) throws Exception {
+        installation.addExampleMod("stable-with-mixin-" + outerMixinVersion);
+        installation.addExample2Mod("mixin-tweaker-with-mixin-" + outerMixinVersion);
+
+        // The issue we test here only happens on 1.12.2 because older Log4J versions simply overwrite existing
+        // appenders, so the inner Mixin's appender get registered as expected. Newer versions however do not modify
+        // the appenders if one with the same name already exists, thereby breaking the inner mixin if we do not fix it.
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML11202();
+        isolatedLaunch.setProperty("essential.branch", "mixin-08");
+        isolatedLaunch.setProperty("essential.loader.relaunch.force", "late");
+        isolatedLaunch.launch();
+
+        assertTrue(isolatedLaunch.getModLoadState("mixinInitPhase"), "Example INIT-phase mixin applied");
+        assertTrue(isolatedLaunch.getModLoadState("mixin"), "Example mixin plugin ran");
+        assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
+        assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
     private IsolatedLaunch newDevLaunch(Installation installation, String...javaArgs) throws IOException {
         IsolatedLaunch launch = installation.newLaunchFML();
         configureDevLaunch(launch, installation, javaArgs);

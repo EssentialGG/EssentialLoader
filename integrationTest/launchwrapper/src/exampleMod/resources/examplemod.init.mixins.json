@@ -1,0 +1,8 @@
+{
+  "package": "com.example.mod.mixin",
+  "target": "@env(INIT)",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "init.MixinLoader"
+  ]
+}

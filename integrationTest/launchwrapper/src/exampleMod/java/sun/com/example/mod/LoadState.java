@@ -8,6 +8,7 @@ public class LoadState {
     public static boolean coreMod = false;
     public static boolean mod = false;
     public static boolean mixin = false;
+    public static boolean mixinInitPhase = false;
 
     public static boolean relaunched;
 
@@ -24,6 +25,7 @@ public class LoadState {
             coreMod = false;
             mod = false;
             mixin = false;
+            mixinInitPhase = false;
         }
     }
 }

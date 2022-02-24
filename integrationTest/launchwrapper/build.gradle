@@ -132,7 +132,7 @@ def configureExampleModJar = { String tweaker, Configuration mixin = null -> ret
 
     if (mixin != null) {
         includeMixin(task, mixin)
-        manifest.attributes "MixinConfigs": "examplemod.mixins.json"
+        manifest.attributes "MixinConfigs": "examplemod.mixins.json,examplemod.init.mixins.json"
     }
 } }
 

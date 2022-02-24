@@ -4,6 +4,7 @@ import gg.essential.loader.stage2.relaunch.args.LaunchArgs;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Appender;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -136,6 +137,28 @@ public class Relaunch {
         System.clearProperty("nallar.ModPatcher.alreadyLoaded");
         // https://github.com/MinimallyCorrect/ModPatcher/blob/3a538a5b574546f68d927f3551bf9e61fda4a334/src/main/java/org/minimallycorrect/modpatcher/api/LaunchClassLoaderUtil.java#L31-L36
         System.clearProperty("nallar.LaunchClassLoaderUtil.alreadyLoaded");
+
+        try {
+            cleanupMixinAppender();
+        } catch (Throwable t) {
+            LOGGER.error("Failed to reset mixin appender. INIT-phase mixins may misfunction.", t);
+        }
+    }
+
+    // Mixin detects the start of the INIT phase by listening to log messages via its Appender. With non-beta log4j2
+    // if the inner mixin tries to do the same, its appender will be rejected, and it'll never be able to transition
+    // into the INIT phase, skipping all mixins registered for that phase.
+    // See MixinPlatformAgentFMLLegacy.MixinAppender
+    // To fix that, we remove the outer mixin's appender before relaunching.
+    private static void cleanupMixinAppender() {
+        org.apache.logging.log4j.Logger fmlLogger = LogManager.getLogger("FML");
+        if (fmlLogger instanceof org.apache.logging.log4j.core.Logger) {
+            org.apache.logging.log4j.core.Logger fmlLoggerImpl = (org.apache.logging.log4j.core.Logger) fmlLogger;
+            Appender mixinAppender = fmlLoggerImpl.getAppenders().get("MixinLogWatcherAppender");
+            if (mixinAppender != null) {
+                fmlLoggerImpl.removeAppender(mixinAppender);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -44,7 +44,7 @@ class IsolatedClassLoader extends URLClassLoader {
     private final ClassLoader delegateParent;
 
     public IsolatedClassLoader(URL[] urls, ClassLoader parent) {
-        super(urls, new EmptyClassLoader());
+        super(urls, new EmptyClassLoader(parent));
 
         this.delegateParent = parent;
     }
@@ -127,8 +127,15 @@ class IsolatedClassLoader extends URLClassLoader {
     /**
      * We use an empty class loader as the actual parent because using null will use the system class loader and there
      * is plenty of stuff in there.
+     * We still pass the actual parent cause Log4J uses it to determine which context you are in.
+     * For production this will be the system class loader, same as if we call the no-args constructor, but for tests
+     * it should be the per-test class loader cause that's where Log4J lives, not the true system class loader.
      */
     private static class EmptyClassLoader extends ClassLoader {
+        public EmptyClassLoader(ClassLoader parent) {
+            super(parent);
+        }
+
         @Override
         protected Package getPackage(String name) {
             return null;
