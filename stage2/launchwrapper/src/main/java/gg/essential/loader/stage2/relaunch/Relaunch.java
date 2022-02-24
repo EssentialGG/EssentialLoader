@@ -36,6 +36,9 @@ public class Relaunch {
     public static final boolean ENABLED = !HAPPENED && Boolean.parseBoolean(System.getProperty(ENABLED_PROPERTY, "true"));
 
     public static boolean checkEnabled() {
+        if (HAPPENED) {
+            return false;
+        }
         if (ENABLED) {
             return true;
         }
