@@ -88,7 +88,8 @@ tasks.register("setupDownloadsApi", Sync) {
     def downloadsApi = new File(project.buildDir, "downloadsApi")
     into(downloadsApi)
 
-    def mod = { Provider<RegularFile> source, String dst ->
+    def platformMod = { Provider<RegularFile> source, String mod, String branch, String platform ->
+        def dst = "v1/mods/${mod.replace(':', '/')}/updates/$branch/$platform"
         def dstJar = "${dst}.jar"
         preserve.include(dst)
         preserve.include(dstJar)
@@ -101,9 +102,12 @@ tasks.register("setupDownloadsApi", Sync) {
         }
     }
     def platformFabric = "fabric_1-14-4"
+    def mod = { Provider<RegularFile> source, String mod, String branch ->
+        platformMod(source, mod, branch, platformFabric)
+    }
 
-    mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformFabric")
+    mod(tasks.exampleModJar.archiveFile, "example:mod", "stable")
 
-    mod(evaluationDependsOn(':stage2:fabric').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformFabric")
-    mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformFabric")
+    mod(evaluationDependsOn(':stage2:fabric').tasks.jar.archiveFile, "essential:loader-stage2", "stable")
+    mod(tasks.essentialJar.archiveFile, "essential:essential", "stable")
 }

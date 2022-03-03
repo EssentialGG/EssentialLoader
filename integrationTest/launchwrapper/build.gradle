@@ -252,7 +252,8 @@ tasks.register("setupDownloadsApi", Sync) {
     def downloadsApi = new File(project.buildDir, "downloadsApi")
     into(downloadsApi)
 
-    def platformMod = { Provider<RegularFile> source, String dst ->
+    def platformMod = { Provider<RegularFile> source, String mod, String branch, String platform ->
+        def dst = "v1/mods/${mod.replace(':', '/')}/updates/$branch/$platform"
         def dstJar = "${dst}.jar"
         preserve.include(dst)
         preserve.include(dstJar)
@@ -264,43 +265,44 @@ tasks.register("setupDownloadsApi", Sync) {
             new File(downloadsApi, dst).write("""{ "url": "${file.toURI()}", "checksum": "${file.bytes.md5()}" }""")
         }
     }
-    def platformForge = "forge_1-8-8"
-    def mod = { Provider<RegularFile> source, String dst ->
-        platformMod(source, dst)
-        platformMod(source, dst - platformForge + "forge_1-12-2")
+    def platformForge10808 = "forge_1-8-8"
+    def platformForge11202 = "forge_1-12-2"
+    def mod = { Provider<RegularFile> source, String mod, String branch ->
+        platformMod(source, mod, branch, platformForge10808)
+        platformMod(source, mod, branch, platformForge11202)
     }
 
-    mod(tasks.exampleModJar.archiveFile, "v1/mods/example/mod/updates/stable/$platformForge")
-    mod(tasks.example2ModJar.archiveFile, "v1/mods/example/mod2/updates/stable/$platformForge")
-    mod(tasks.exampleModEssentialTweakerJar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker/$platformForge")
-    mod(tasks.example2ModEssentialTweakerJar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker/$platformForge")
+    mod(tasks.exampleModJar.archiveFile, "example:mod", "stable")
+    mod(tasks.example2ModJar.archiveFile, "example:mod2", "stable")
+    mod(tasks.exampleModEssentialTweakerJar.archiveFile, "example:mod", "essential-tweaker")
+    mod(tasks.example2ModEssentialTweakerJar.archiveFile, "example:mod2", "essential-tweaker")
 
-    mod(tasks.exampleModWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/stable-with-mixin-07/$platformForge")
-    mod(tasks.example2ModWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-07/$platformForge")
-    mod(tasks.exampleModEssentialTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-07/$platformForge")
-    mod(tasks.example2ModEssentialTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-07/$platformForge")
-    mod(tasks.exampleModMixinTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod/updates/mixin-tweaker-with-mixin-07/$platformForge")
-    mod(tasks.example2ModMixinTweakerWithMixin07Jar.archiveFile, "v1/mods/example/mod2/updates/mixin-tweaker-with-mixin-07/$platformForge")
+    mod(tasks.exampleModWithMixin07Jar.archiveFile, "example:mod", "stable-with-mixin-07")
+    mod(tasks.example2ModWithMixin07Jar.archiveFile, "example:mod2", "stable-with-mixin-07")
+    mod(tasks.exampleModEssentialTweakerWithMixin07Jar.archiveFile, "example:mod", "essential-tweaker-with-mixin-07")
+    mod(tasks.example2ModEssentialTweakerWithMixin07Jar.archiveFile, "example:mod2", "essential-tweaker-with-mixin-07")
+    mod(tasks.exampleModMixinTweakerWithMixin07Jar.archiveFile, "example:mod", "mixin-tweaker-with-mixin-07")
+    mod(tasks.example2ModMixinTweakerWithMixin07Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-07")
 
-    mod(tasks.exampleModWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/stable-with-mixin-08/$platformForge")
-    mod(tasks.example2ModWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/stable-with-mixin-08/$platformForge")
-    mod(tasks.exampleModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/essential-tweaker-with-mixin-08/$platformForge")
-    mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/essential-tweaker-with-mixin-08/$platformForge")
-    mod(tasks.exampleModMixinTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod/updates/mixin-tweaker-with-mixin-08/$platformForge")
-    mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "v1/mods/example/mod2/updates/mixin-tweaker-with-mixin-08/$platformForge")
+    mod(tasks.exampleModWithMixin08Jar.archiveFile, "example:mod", "stable-with-mixin-08")
+    mod(tasks.example2ModWithMixin08Jar.archiveFile, "example:mod2", "stable-with-mixin-08")
+    mod(tasks.exampleModEssentialTweakerWithMixin08Jar.archiveFile, "example:mod", "essential-tweaker-with-mixin-08")
+    mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "example:mod2", "essential-tweaker-with-mixin-08")
+    mod(tasks.exampleModMixinTweakerWithMixin08Jar.archiveFile, "example:mod", "mixin-tweaker-with-mixin-08")
+    mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
 
-    mod(tasks.oldKotlinModJar.archiveFile, "v1/mods/example/kotlin/updates/old/$platformForge")
+    mod(tasks.oldKotlinModJar.archiveFile, "example:kotlin", "old")
 
-    mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage2/updates/stable/$platformForge")
-    mod(tasks.essentialJar.archiveFile, "v1/mods/essential/essential/updates/stable/$platformForge")
-    mod(tasks.essentialWithMixin08Jar.archiveFile, "v1/mods/essential/essential/updates/mixin-08/$platformForge")
-    mod(tasks.essentialWithAsm52Jar.archiveFile, "v1/mods/essential/essential/updates/asm-52/$platformForge")
-    mod(provider { configurations.mixin07.singleFile }, "v1/mods/essential/mixin/updates/07/$platformForge")
-    mod(evaluationDependsOn(':stage0:launchwrapper').tasks.jar.archiveFile, "v1/mods/essential/loader-stage0/updates/stable/$platformForge")
-    mod(tasks.dummyStage1Jar.archiveFile, "v1/mods/essential/loader-stage1/updates/dummy/$platformForge")
-    mod(tasks.dummyStage2Jar.archiveFile, "v1/mods/essential/loader-stage2/updates/dummy/$platformForge")
-    mod(tasks.dummyStage3Jar.archiveFile, "v1/mods/essential/essential/updates/dummy/$platformForge")
+    mod(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile, "essential:loader-stage2", "stable")
+    mod(tasks.essentialJar.archiveFile, "essential:essential", "stable")
+    mod(tasks.essentialWithMixin08Jar.archiveFile, "essential:essential", "mixin-08")
+    mod(tasks.essentialWithAsm52Jar.archiveFile, "essential:essential", "asm-52")
+    mod(provider { configurations.mixin07.singleFile }, "essential:mixin", "07")
+    mod(evaluationDependsOn(':stage0:launchwrapper').tasks.jar.archiveFile, "essential:loader-stage0", "stable")
+    mod(tasks.dummyStage1Jar.archiveFile, "essential:loader-stage1", "dummy")
+    mod(tasks.dummyStage2Jar.archiveFile, "essential:loader-stage2", "dummy")
+    mod(tasks.dummyStage3Jar.archiveFile, "essential:essential", "dummy")
 
-    platformMod(tasks.forge10808Jar.archiveFile, "v1/mods/forge/runtime/updates/stable/forge_1-8-8")
-    platformMod(tasks.forge11202Jar.archiveFile, "v1/mods/forge/runtime/updates/stable/forge_1-12-2")
+    platformMod(tasks.forge10808Jar.archiveFile, "forge:runtime", "stable", platformForge10808)
+    platformMod(tasks.forge11202Jar.archiveFile, "forge:runtime", "stable", platformForge11202)
 }
