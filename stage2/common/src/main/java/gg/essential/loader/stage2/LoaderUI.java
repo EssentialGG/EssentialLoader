@@ -58,7 +58,9 @@ public interface LoaderUI {
 
             @Override
             public void complete() {
-                super.setDownloaded(this.lastSize);
+                if (this.lastSize > 0) {
+                    super.setDownloaded(this.lastSize);
+                }
                 super.complete();
             }
         };
