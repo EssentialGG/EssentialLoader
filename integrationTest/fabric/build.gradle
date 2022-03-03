@@ -1,3 +1,5 @@
+import java.util.function.Supplier
+
 repositories {
     maven { url "https://maven.fabricmc.net/" }
 }
@@ -91,15 +93,23 @@ tasks.register("setupDownloadsApi", Sync) {
     def platformMod = { Provider<RegularFile> source, String mod, String branch, String platform ->
         def dst = "v1/mods/${mod.replace(':', '/')}/updates/$branch/$platform"
         def dstJar = "${dst}.jar"
-        preserve.include(dst)
+
+        def jarFile = new File(downloadsApi, dstJar).absoluteFile
         preserve.include(dstJar)
         from(source) {
             rename { dstJar }
         }
-        doLast {
-            def file = new File(downloadsApi, dstJar).absoluteFile
-            new File(downloadsApi, dst).write("""{ "url": "${file.toURI()}", "checksum": "${file.bytes.md5()}" }""")
+
+        def json = { String endpoint, Supplier<String> content ->
+            def endpointFile = endpoint + ".json"
+            preserve.include(endpointFile)
+            doLast {
+                def file = new File(downloadsApi, endpointFile)
+                file.getParentFile().mkdirs()
+                file.write(content.get())
+            }
         }
+        json(dst, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
     }
     def platformFabric = "fabric_1-14-4"
     def mod = { Provider<RegularFile> source, String mod, String branch ->

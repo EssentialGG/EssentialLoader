@@ -25,10 +25,10 @@ public abstract class BaseInstallation implements AutoCloseable {
     public final Path apiDir = gameDir.resolve("downloadsApi");
     public final Path mixin07JarFile = apiDir.resolve("v1/mods/essential/mixin/updates/07/" + getPlatformVersion() + ".jar");
     public final Path stage0JarFile = apiDir.resolve("v1/mods/essential/loader-stage0/updates/stable/" + getPlatformVersion() + ".jar");
-    public final Path stage1Dummy = apiDir.resolve("v1/mods/essential/loader-stage1/updates/dummy/" + getPlatformVersion());
-    public final Path stage2Meta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/stable/" + getPlatformVersion());
+    public final Path stage1Dummy = apiDir.resolve("v1/mods/essential/loader-stage1/updates/dummy/" + getPlatformVersion() + ".json");
+    public final Path stage2Meta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/stable/" + getPlatformVersion() + ".json");
     public final Path stage2DummyMeta = withBranch(stage2Meta, "dummy");
-    public final Path stage3Meta = apiDir.resolve("v1/mods/essential/essential/updates/stable/" + getPlatformVersion());
+    public final Path stage3Meta = apiDir.resolve("v1/mods/essential/essential/updates/stable/" + getPlatformVersion() + ".json");
     public final Path stage3DummyMeta = withBranch(stage3Meta, "dummy");
 
     private final HttpServer server;
@@ -42,6 +42,9 @@ public abstract class BaseInstallation implements AutoCloseable {
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", httpExchange -> {
             Path path = apiDir.resolve(httpExchange.getRequestURI().getPath().substring(1));
+            if (!Files.isRegularFile(path)) {
+                path = path.resolveSibling(path.getFileName().toString() + ".json");
+            }
             if (Files.exists(path)) {
                 byte[] bytes = Files.readAllBytes(path);
                 httpExchange.sendResponseHeaders(200, bytes.length);
