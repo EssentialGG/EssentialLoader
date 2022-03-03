@@ -1,4 +1,4 @@
-package gg.essential.loader;
+package gg.essential.loader.stage1;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;

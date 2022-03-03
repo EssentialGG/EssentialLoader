@@ -1,4 +1,4 @@
-package gg.essential.loader;
+package gg.essential.loader.stage0;
 
 import gg.essential.loader.fixtures.Installation;
 import gg.essential.loader.fixtures.IsolatedLaunch;
