@@ -1,9 +1,13 @@
 package gg.essential.loader.fixtures;
 
+import com.sun.net.httpserver.HttpServer;
 import gg.essential.loader.util.Copy;
 import gg.essential.loader.util.Delete;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,10 +31,32 @@ public abstract class BaseInstallation implements AutoCloseable {
     public final Path stage3Meta = apiDir.resolve("v1/mods/essential/essential/updates/stable/" + getPlatformVersion());
     public final Path stage3DummyMeta = withBranch(stage3Meta, "dummy");
 
+    private final HttpServer server;
+    private final String downloadApiUrl;
+
     public BaseInstallation() throws IOException {
         System.out.println("Installation: " + gameDir);
 
         Files.createDirectories(modsDir);
+
+        server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/", httpExchange -> {
+            Path path = apiDir.resolve(httpExchange.getRequestURI().getPath().substring(1));
+            if (Files.exists(path)) {
+                byte[] bytes = Files.readAllBytes(path);
+                httpExchange.sendResponseHeaders(200, bytes.length);
+                try (OutputStream out = httpExchange.getResponseBody()) {
+                    out.write(bytes);
+                }
+            } else {
+                httpExchange.sendResponseHeaders(404, 0);
+                httpExchange.getResponseBody().close();
+            }
+        });
+        server.setExecutor(null);
+        server.start();
+        InetSocketAddress address = server.getAddress();
+        downloadApiUrl = "http://" + address.getHostString() + ":" + address.getPort();
     }
 
     protected abstract String getPlatformVersion();
@@ -66,7 +92,7 @@ public abstract class BaseInstallation implements AutoCloseable {
 
     public IsolatedLaunch newLaunch(String tweaker) {
         IsolatedLaunch isolatedLaunch = new IsolatedLaunch(gameDir, tweaker);
-        isolatedLaunch.setProperty("essential.download.url", apiDir.toUri().toString().replace("%", "%%"));
+        isolatedLaunch.setProperty("essential.download.url", downloadApiUrl);
         return isolatedLaunch;
     }
 
@@ -93,6 +119,7 @@ public abstract class BaseInstallation implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
+        server.stop(0);
         Delete.recursively(gameDir);
     }
 
