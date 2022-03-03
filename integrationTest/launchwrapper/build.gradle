@@ -258,7 +258,7 @@ tasks.register("setupDownloadsApi", Sync) {
     def platformMod = { Provider<RegularFile> source, String mod, String branch, String platform ->
         def id = nextId++
         def v0Json = "v1/mods/${mod.replace(':', '/')}/updates/$branch/$platform"
-        def v1Json = "mods/v1/$mod/versions/$branch/platforms/$platform"
+        def v1Json = "v1/$mod/versions/$branch/platforms/$platform"
         def v1Download = "$v1Json/download"
         def dstJar = "${v0Json}.jar"
 
