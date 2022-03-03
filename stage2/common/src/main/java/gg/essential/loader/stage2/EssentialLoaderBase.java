@@ -4,8 +4,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import gg.essential.loader.stage2.data.ModId;
+import gg.essential.loader.stage2.data.ModJarMetadata;
+import gg.essential.loader.stage2.data.ModVersion;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -39,6 +41,7 @@ import java.util.stream.Stream;
 
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
+import static gg.essential.loader.stage2.util.Checksum.getChecksum;
 
 public abstract class EssentialLoaderBase {
 
@@ -56,12 +59,14 @@ public abstract class EssentialLoaderBase {
 
     private final Path gameDir;
     private final String gameVersion;
+    private final String apiGameVersion;
     private final String fileBaseName;
     private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion, final boolean lwjgl3) {
         this.gameDir = gameDir;
         this.gameVersion = gameVersion;
+        this.apiGameVersion = gameVersion.replace(".", "-");
         this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
         String stage2Branch = System.getProperty(
@@ -90,7 +95,18 @@ public abstract class EssentialLoaderBase {
 
         Path essentialFile = findMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION).getKey();
 
-        boolean needUpdate = Files.notExists(essentialFile);
+        boolean needUpdate = false;
+
+        // Load current metadata from existing jar (if one exists)
+        ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
+        if (Files.exists(essentialFile)) {
+            currentMeta = ModJarMetadata.read(essentialFile);
+        }
+        String currentChecksum = currentMeta.getChecksum();
+
+        if (currentChecksum == null) {
+            needUpdate = true;
+        }
 
         String branch = determineBranch();
 
@@ -104,7 +120,7 @@ public abstract class EssentialLoaderBase {
         }
 
         // Check if our local version matches the latest
-        if (!needUpdate && meta != null && !meta.checksum.equals(this.getChecksum(essentialFile))) {
+        if (!needUpdate && meta != null && !meta.checksum.equals(currentChecksum)) {
             needUpdate = true;
         }
 
@@ -114,6 +130,9 @@ public abstract class EssentialLoaderBase {
 
             Path downloadedFile = Files.createTempFile("essential-download-", "");
             if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
+                ModJarMetadata updatedMeta = new ModJarMetadata(ModId.ESSENTIAL, ModVersion.UNKNOWN, apiGameVersion, meta.checksum);
+                updatedMeta.write(downloadedFile);
+
                 try {
                     Files.deleteIfExists(essentialFile);
                 } catch (IOException e) {
@@ -251,16 +270,6 @@ public abstract class EssentialLoaderBase {
         return new FileMeta(url, checksum);
     }
 
-    private String getChecksum(final Path input) {
-        try (final InputStream inputStream = Files.newInputStream(input)) {
-            return DigestUtils.md5Hex(inputStream);
-        } catch (final Exception e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
     private URLConnection prepareConnection(final String url) throws IOException {
         final URLConnection urlConnection = new URL(url).openConnection();
 
@@ -368,7 +377,7 @@ public abstract class EssentialLoaderBase {
             return false;
         }
 
-        final String downloadedChecksum = this.getChecksum(target);
+        final String downloadedChecksum = getChecksum(target);
 
         if (downloadedChecksum.equals(expectedHash)) {
             return true;
