@@ -14,10 +14,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -55,13 +54,13 @@ public abstract class EssentialLoaderBase {
     private static final String FILE_EXTENSION = "jar";
     private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
 
-    private final File gameDir;
+    private final Path gameDir;
     private final String gameVersion;
     private final String fileBaseName;
     private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion, final boolean lwjgl3) {
-        this.gameDir = gameDir.toFile();
+        this.gameDir = gameDir;
         this.gameVersion = gameVersion;
         this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
@@ -84,14 +83,14 @@ public abstract class EssentialLoaderBase {
     }
 
     public void load() throws IOException {
-        final File dataDir = new File(this.gameDir, "essential");
-        if (!dataDir.exists() && !dataDir.mkdirs()) {
-            throw new IllegalStateException("Unable to create essential directory, no permissions?");
+        final Path dataDir = this.gameDir.resolve("essential").toRealPath();
+        if (Files.notExists(dataDir)) { // check first, symlinks may exist but Java does not consider them directories
+            Files.createDirectories(dataDir);
         }
 
-        File essentialFile = findMostRecentFile(dataDir.toPath(), this.fileBaseName, FILE_EXTENSION).getKey().toFile();
+        Path essentialFile = findMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION).getKey();
 
-        boolean needUpdate = !essentialFile.exists();
+        boolean needUpdate = Files.notExists(essentialFile);
 
         String branch = determineBranch();
 
@@ -113,37 +112,37 @@ public abstract class EssentialLoaderBase {
         if (needUpdate) {
             this.ui.start();
 
-            File downloadedFile = File.createTempFile("essential-download-", "");
+            Path downloadedFile = Files.createTempFile("essential-download-", "");
             if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
                 try {
-                    Files.deleteIfExists(essentialFile.toPath());
+                    Files.deleteIfExists(essentialFile);
                 } catch (IOException e) {
                     LOGGER.warn("Failed to delete old Essential file, will try again later.", e);
                 }
 
                 // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
                 // and if not, we need to write to the next higher one.
-                essentialFile = findNextMostRecentFile(dataDir.toPath(), this.fileBaseName, FILE_EXTENSION).toFile();
+                essentialFile = findNextMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION);
 
-                Files.move(downloadedFile.toPath(), essentialFile.toPath());
+                Files.move(downloadedFile, essentialFile);
             } else {
                 LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
-                Files.deleteIfExists(downloadedFile.toPath());
+                Files.deleteIfExists(downloadedFile);
             }
         }
 
         // Check if we can continue, otherwise do not even try
-        if (!essentialFile.exists()) {
+        if (!Files.exists(essentialFile)) {
             return;
         }
 
         final List<Path> jars = new ArrayList<>();
-        jars.add(essentialFile.toPath());
-        jars.addAll(this.extractJarsInJar(essentialFile.toPath()));
+        jars.add(essentialFile);
+        jars.addAll(this.extractJarsInJar(essentialFile));
         this.addToClasspath(jars);
 
         if (this.classpathUpdatesImmediately() && !this.isInClassPath()) {
-            throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + essentialFile.exists() + ").");
+            throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + Files.exists(essentialFile) + ").");
         }
 
         loadPlatform();
@@ -252,8 +251,8 @@ public abstract class EssentialLoaderBase {
         return new FileMeta(url, checksum);
     }
 
-    private String getChecksum(final File input) {
-        try (final InputStream inputStream = new FileInputStream(input)) {
+    private String getChecksum(final Path input) {
+        try (final InputStream inputStream = Files.newInputStream(input)) {
             return DigestUtils.md5Hex(inputStream);
         } catch (final Exception e) {
             e.printStackTrace();
@@ -281,7 +280,7 @@ public abstract class EssentialLoaderBase {
     }
 
     private List<Path> extractJarsInJar(Path outerJar) throws IOException {
-        final Path extractedJarsRoot = gameDir.toPath()
+        final Path extractedJarsRoot = gameDir
             .resolve("essential")
             .resolve("libraries")
             .resolve(gameVersion);
@@ -325,14 +324,14 @@ public abstract class EssentialLoaderBase {
 
     protected void addToClasspath(final List<Path> jars) {
         for (final Path jar : jars) {
-            this.addToClasspath(jar.toFile());
+            this.addToClasspath(jar);
         }
     }
 
-    protected abstract void addToClasspath(final File file);
+    protected abstract void addToClasspath(final Path path);
 
     /**
-     * Whether {@link #addToClasspath(File)} takes effect immediately or only at a later stage of loading.
+     * Whether {@link #addToClasspath(Path)} takes effect immediately or only at a later stage of loading.
      */
     protected boolean classpathUpdatesImmediately() {
         return true;
@@ -353,7 +352,7 @@ public abstract class EssentialLoaderBase {
         try {
             Class.forName(CLASS_NAME, false, getModClassLoader())
                 .getDeclaredMethod("initialize", File.class)
-                .invoke(null, gameDir);
+                .invoke(null, gameDir.toFile());
         } catch (Throwable e) {
             throw new RuntimeException("Unexpected error", e);
         }
@@ -363,7 +362,7 @@ public abstract class EssentialLoaderBase {
         return new URI("jar:" + uri.getScheme(), uri.getHost(), uri.getPath(), uri.getFragment());
     }
 
-    private boolean downloadFile(final String url, final File target, String expectedHash) {
+    private boolean downloadFile(final String url, final Path target, String expectedHash) throws IOException {
         if (!this.attemptDownload(url, target)) {
             LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
             return false;
@@ -381,14 +380,12 @@ public abstract class EssentialLoaderBase {
         );
 
         // Do not keep the file they downloaded if validation failed.
-        if (target.exists()) {
-            target.delete();
-        }
+        Files.deleteIfExists(target);
 
         return false;
     }
 
-    private boolean attemptDownload(final String url, final File target) {
+    private boolean attemptDownload(final String url, final Path target) {
         URLConnection connection = null;
         try {
             connection = this.prepareConnection(url);
@@ -398,7 +395,7 @@ public abstract class EssentialLoaderBase {
             int totalRead = 0;
             try (
                 final InputStream inputStream = connection.getInputStream();
-                final FileOutputStream fileOutputStream = new FileOutputStream(target, true)
+                final OutputStream fileOutputStream = Files.newOutputStream(target)
             ) {
                 final byte[] buffer = new byte[1024];
 

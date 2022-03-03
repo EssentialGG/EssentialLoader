@@ -8,7 +8,6 @@ import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -60,12 +59,11 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     @Override
-    protected void addToClasspath(final File file) {
-        Path path = file.toPath();
+    protected void addToClasspath(Path path) {
         URL url;
         try {
             // Add to launch class loader
-            url = file.toURI().toURL();
+            url = path.toUri().toURL();
             Launch.classLoader.addURL(url);
 
             // And its parent (for those classes that are excluded from the launch class loader)

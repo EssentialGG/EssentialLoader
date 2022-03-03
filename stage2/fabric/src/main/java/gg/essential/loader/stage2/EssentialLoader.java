@@ -87,9 +87,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     @Override
-    protected void addToClasspath(final File file) {
-        Path path = file.toPath();
-
+    protected void addToClasspath(Path path) {
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             try {
                 RuntimeModRemapper runtimeModRemapper = new RuntimeModRemapper(loaderInternals);
