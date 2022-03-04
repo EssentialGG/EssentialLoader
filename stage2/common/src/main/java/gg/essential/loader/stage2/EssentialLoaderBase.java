@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import gg.essential.loader.stage2.data.ModId;
 import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.data.ModVersion;
+import gg.essential.loader.stage2.diff.DiffPatcher;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -42,6 +43,7 @@ import java.util.stream.Stream;
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
 import static gg.essential.loader.stage2.util.Checksum.getChecksum;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public abstract class EssentialLoaderBase {
 
@@ -54,6 +56,7 @@ public abstract class EssentialLoaderBase {
     private static final String VERSION_BASE_URL = BASE_URL + "/v1/essential:essential/versions/%s";
     private static final String VERSION_URL = VERSION_BASE_URL + "/platforms/%s";
     private static final String DOWNLOAD_URL = VERSION_URL + "/download";
+    private static final String DIFF_URL = VERSION_BASE_URL + "/diff/%s/platforms/%s";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_BASE_NAME = "Essential (%s)";
     private static final String FILE_EXTENSION = "jar";
@@ -128,16 +131,16 @@ public abstract class EssentialLoaderBase {
 
 
         if (needUpdate) {
-            this.ui.start();
+            Path downloadedFile;
 
-            FileMeta meta = fetchDownloadUrl(latestMeta.getMod(), latestMeta.getVersion());
-            if (meta == null) {
+            this.ui.start();
+            try {
+                downloadedFile = update(essentialFile, currentMeta, latestMeta);
+            } finally {
                 this.ui.complete();
-                return;
             }
 
-            Path downloadedFile = Files.createTempFile("essential-download-", "");
-            if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
+            if (downloadedFile != null) {
                 latestMeta.write(downloadedFile);
 
                 try {
@@ -153,7 +156,6 @@ public abstract class EssentialLoaderBase {
                 Files.move(downloadedFile, essentialFile);
             } else {
                 LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
-                Files.deleteIfExists(downloadedFile);
             }
         }
 
@@ -236,6 +238,59 @@ public abstract class EssentialLoaderBase {
         }
     }
 
+    private Path update(Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+        // If we can, try fetching a diff first
+        if (!currentMeta.getVersion().isUnknown()) {
+            Path updatedFile = updateViaDiff(essentialFile, currentMeta, latestMeta);
+            if (updatedFile != null) {
+                return updatedFile;
+            }
+        }
+
+        // Otherwise fall back to downloading the full file
+        return updateViaDownload(latestMeta);
+    }
+
+    private Path updateViaDiff(Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+        FileMeta meta = fetchDiffUrl(latestMeta.getMod(), currentMeta.getVersion(), latestMeta.getVersion());
+        if (meta == null) {
+            return null; // no diff available
+        }
+
+        Path downloadedFile = Files.createTempFile("essential-download-", "");
+        if (!downloadFile(meta.url, downloadedFile, meta.checksum)) {
+            return null; // failed to download diff
+        }
+
+        Path patchedFile = Files.createTempFile("essential-patched-", "");
+        Files.copy(essentialFile, patchedFile, REPLACE_EXISTING);
+        try {
+            DiffPatcher.apply(patchedFile, downloadedFile);
+            Files.delete(downloadedFile);
+        } catch (Exception e) {
+            LOGGER.error("Error while applying diff:", e);
+            Files.deleteIfExists(patchedFile);
+            Files.deleteIfExists(downloadedFile);
+            return null; // failed to apply diff
+        }
+
+        return patchedFile; // success
+    }
+
+    private Path updateViaDownload(ModJarMetadata latestMeta) throws IOException {
+        FileMeta meta = fetchDownloadUrl(latestMeta.getMod(), latestMeta.getVersion());
+        if (meta == null) {
+            return null; // no download available, this is bad
+        }
+
+        Path downloadedFile = Files.createTempFile("essential-download-", "");
+        if (!downloadFile(meta.url, downloadedFile, meta.checksum)) {
+            return null; // failed to download file
+        }
+
+        return downloadedFile; // success
+    }
+
     private JsonObject fetchJsonObject(String endpoint, boolean allowEmpty) {
         URLConnection connection = null;
         try {
@@ -287,6 +342,10 @@ public abstract class EssentialLoaderBase {
 
     private FileMeta fetchDownloadUrl(ModId modId, ModVersion modVersion) {
         return fetchFileMeta(String.format(DOWNLOAD_URL, modVersion.getVersion(), this.apiGameVersion));
+    }
+
+    private FileMeta fetchDiffUrl(ModId modId, ModVersion oldVersion, ModVersion modVersion) {
+        return fetchFileMeta(String.format(DIFF_URL, oldVersion.getVersion(), modVersion.getVersion(), this.apiGameVersion));
     }
 
     private FileMeta fetchFileMeta(String endpoint) {
@@ -356,7 +415,7 @@ public abstract class EssentialLoaderBase {
                     LOGGER.debug("Extracting {} to {}", innerJar, extractedJar);
                     // Copy to tmp jar first, so we do not leave behind incomplete jars
                     final Path tmpJar = Files.createTempFile(extractedJarsRoot, "tmp", ".jar");
-                    Files.copy(innerJar, tmpJar, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(innerJar, tmpJar, REPLACE_EXISTING);
                     // Then (if successful) perform an atomic rename
                     Files.move(tmpJar, extractedJar, StandardCopyOption.ATOMIC_MOVE);
                 }
@@ -415,6 +474,10 @@ public abstract class EssentialLoaderBase {
     private boolean downloadFile(final String url, final Path target, String expectedHash) throws IOException {
         if (!this.attemptDownload(url, target)) {
             LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
+
+            // Do not keep the file they downloaded if the download failed half way through
+            Files.deleteIfExists(target);
+
             return false;
         }
 
@@ -462,8 +525,6 @@ public abstract class EssentialLoaderBase {
             LOGGER.error("Error occurred when downloading file '{}'.", url, e);
             logConnectionInfoOnError(connection);
             return false;
-        } finally {
-            this.ui.complete();
         }
     }
 

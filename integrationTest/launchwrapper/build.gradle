@@ -226,6 +226,16 @@ tasks.register("dummyStage3Jar", Jar) {
     includeMixin(it, configurations.mixin07)
 }
 
+tasks.register("dummyStage3DiffJar", Jar) {
+    archiveBaseName.set("dummyStage3Diff")
+    from(essentialJar.archiveFile.map { zipTree(it) }) {
+        into("-")
+    }
+    from(dummyStage3Jar.archiveFile.map { zipTree(it) }) {
+        into("~")
+    }
+}
+
 tasks.register("forge10808Jar", Jar) {
     archiveBaseName.set("forge-10808")
 
@@ -281,6 +291,27 @@ tasks.register("setupDownloadsApi", Sync) {
         json(v1Json, { """{ "version": "$branch", "checksum": "${jarFile.bytes.md5()}", "id": "$id" }""" })
         json(v1Download, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
     }
+    def diff = { Provider<RegularFile> source, String mod, String branch, String toBranch, String platform ->
+        def v1Json = "v1/$mod/versions/$branch/diff/$toBranch/platforms/$platform"
+        def dstJar = "${v1Json}.jar"
+
+        def jarFile = new File(downloadsApi, dstJar).absoluteFile
+        preserve.include(dstJar)
+        from(source) {
+            rename { dstJar }
+        }
+
+        def json = { String endpoint, Supplier<String> content ->
+            def endpointFile = endpoint + ".json"
+            preserve.include(endpointFile)
+            doLast {
+                def file = new File(downloadsApi, endpointFile)
+                file.getParentFile().mkdirs()
+                file.write(content.get())
+            }
+        }
+        json(v1Json, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
+    }
     def platformForge10808 = "forge_1-8-8"
     def platformForge11202 = "forge_1-12-2"
     def mod = { Provider<RegularFile> source, String mod, String branch ->
@@ -318,6 +349,7 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.dummyStage1Jar.archiveFile, "essential:loader-stage1", "dummy")
     mod(tasks.dummyStage2Jar.archiveFile, "essential:loader-stage2", "dummy")
     mod(tasks.dummyStage3Jar.archiveFile, "essential:essential", "dummy")
+    diff(tasks.dummyStage3DiffJar.archiveFile, "essential:essential", "stable", "dummy", platformForge10808)
 
     platformMod(tasks.forge10808Jar.archiveFile, "forge:runtime", "stable", platformForge10808)
     platformMod(tasks.forge11202Jar.archiveFile, "forge:runtime", "stable", platformForge11202)
