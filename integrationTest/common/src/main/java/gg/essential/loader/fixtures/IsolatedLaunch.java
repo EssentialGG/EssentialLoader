@@ -86,6 +86,12 @@ public class IsolatedLaunch {
         ExitCatchingSecurityManager exitCatchingSecurityManager = new ExitCatchingSecurityManager();
         System.setSecurityManager(exitCatchingSecurityManager);
         try {
+            // Suppress the error log4j prints because we suppress its shutdown hook
+            System.setErr(new PrintStream(ByteStreams.nullOutputStream()));
+            Class.forName("org.apache.logging.log4j.LogManager", true, loader);
+            System.setErr(orgSysErr);
+
+            // Being the launch procedure
             Class<?> cls = getClass(LAUNCH_CLASS_NAME);
 
             Constructor<?> constructor = cls.getDeclaredConstructor();
