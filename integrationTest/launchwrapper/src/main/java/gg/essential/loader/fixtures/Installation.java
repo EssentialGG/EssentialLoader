@@ -33,7 +33,7 @@ public class Installation extends BaseInstallation {
 
     public IsolatedLaunch newLaunchFML11202() throws MalformedURLException {
         IsolatedLaunch launch = newLaunchFML("forge_1-12-2");
-        launch.setProperty("log4j.configurationFile", "log4j2.xml");
+        launch.setProperty("log4j.configurationFile", "log4j2-test.xml");
         return launch;
     }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" packages="net.minecraft,com.mojang">
+    <Appenders>
+        <Console name="SysOut" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%d{HH:mm:ss}] [%t/%level] (%logger{1}): %msg%n" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="gg.essential.loader" level="debug" />
+        <Root level="info">
+            <AppenderRef ref="SysOut"/>
+        </Root>
+    </Loggers>
+</Configuration>
