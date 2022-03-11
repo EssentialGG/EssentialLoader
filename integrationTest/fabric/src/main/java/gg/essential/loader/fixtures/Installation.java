@@ -1,6 +1,9 @@
 package gg.essential.loader.fixtures;
 
+import com.google.common.io.ByteStreams;
+
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
@@ -22,10 +25,14 @@ public class Installation extends BaseInstallation {
     public Installation() throws IOException {
         // Current fabric-loader breaks on LegacyLauncher if there is a JiJ mod and MC needs to be decompiled, so we
         // launch once without any mods to get the decompiled MC and can the proceed as usual.
+        PrintStream orgOut = System.out;
+        System.setOut(new PrintStream(ByteStreams.nullOutputStream()));
         try {
             launchFabric();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            System.setOut(orgOut);
         }
     }
 
