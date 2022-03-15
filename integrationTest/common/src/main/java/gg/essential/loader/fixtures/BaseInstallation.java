@@ -29,6 +29,7 @@ public abstract class BaseInstallation implements AutoCloseable {
     public final Path stage2Meta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/stable/" + getPlatformVersion() + ".json");
     public final Path stage2DummyMeta = withBranch(stage2Meta, "dummy");
     public final Path stage3Meta = apiDir.resolve("v1/mods/essential/essential/updates/stable/" + getPlatformVersion() + ".json");
+    public final Path stage3JarFile = apiDir.resolve("v1/mods/essential/essential/updates/stable/" + getPlatformVersion() + ".jar");
     public final Path stage3DummyMeta = withBranch(stage3Meta, "dummy");
 
     private final HttpServer server;

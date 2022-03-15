@@ -88,6 +88,15 @@ public abstract class EssentialLoaderBase {
             Files.createDirectories(dataDir);
         }
 
+        // Check if Essential is already loaded as a regular mod. If so, there's not much for us to do here.
+        if (isInClassPath()) {
+            if (!Boolean.getBoolean("essential.loader.relaunched")) {
+                LOGGER.warn("Essential loaded as a regular mod. No automatic updates will be applied.");
+            }
+            loadPlatform();
+            return;
+        }
+
         Path essentialFile = findMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION).getKey();
 
         boolean needUpdate = Files.notExists(essentialFile);

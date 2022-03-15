@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
@@ -18,6 +19,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
@@ -31,6 +33,8 @@ public class EssentialLoader extends EssentialLoaderBase {
     public static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private static final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
 
+    private Path ourEssentialPath;
+    private URL ourEssentialUrl;
     private URL ourMixinUrl;
 
     public EssentialLoader(Path gameDir, String gameVersion) {
@@ -39,6 +43,29 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     @Override
     protected void loadPlatform() {
+        if (ourEssentialPath == null || ourEssentialUrl == null || ourMixinUrl == null) {
+            URL url = Launch.classLoader.findResource(CLASS_NAME.replace('.', '/') + ".class");
+            if (url == null) {
+                throw new RuntimeException("Failed to find Essential jar on classpath.");
+            }
+            if (!"jar".equals(url.getProtocol())) {
+                throw new RuntimeException("Failed to find Essential jar on classpath, found URL with unexpected protocol: " + url);
+            }
+            try {
+                ourEssentialUrl = new URL(url.getFile().substring(0, url.getFile().lastIndexOf('!')));
+            } catch (MalformedURLException e) {
+                throw new RuntimeException("Failed to find Essential jar on classpath, found URL with unexpected file: " + url, e);
+            }
+            try {
+                ourEssentialPath = Paths.get(ourEssentialUrl.toURI());
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to convert Essential jar URL to Path: " + url, e);
+            }
+            ourMixinUrl = ourEssentialUrl;
+        }
+
+        preloadEssential(ourEssentialPath, ourEssentialUrl);
+
         try {
             injectMixinTweaker();
         } catch (ClassNotFoundException | IllegalAccessException | InstantiationException | IOException e) {
@@ -75,8 +102,12 @@ public class EssentialLoader extends EssentialLoaderBase {
             throw new RuntimeException("Unexpected error", e);
         }
 
+        ourEssentialPath = path;
+        ourEssentialUrl = url;
         ourMixinUrl = url;
+    }
 
+    private void preloadEssential(Path path, URL url) {
         if (System.getProperty(Relaunch.FORCE_PROPERTY, "").equals("early")) {
             if (Relaunch.checkEnabled()) {
                 Relaunch.relaunch(ourMixinUrl);

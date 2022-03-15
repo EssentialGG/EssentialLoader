@@ -26,6 +26,17 @@ public class Stage2Tests {
     }
 
     @Test
+    public void testRawEssentialInModsFolder(Installation installation) throws Exception {
+        installation.addExampleMod();
+        Files.copy(installation.stage3JarFile, installation.modsDir.resolve("essential.jar"));
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
+    @Test
     public void testUnsupportedVersionOnFirstLaunch(Installation installation) throws Exception {
         testUnsupportedVersion(installation, false);
     }
