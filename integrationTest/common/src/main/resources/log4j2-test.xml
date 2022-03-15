@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN" packages="net.minecraft,com.mojang">
+    <Filters>
+        <RegexFilter regex=".*There was a problem reading the entry module-info.class in the jar.*" onMatch="DENY" onMismatch="NEUTRAL" />
+        <RegexFilter regex=".*Zip file .* failed to read properly, it will be ignored.*" onMatch="DENY" onMismatch="NEUTRAL" />
+        <RegexFilter regex=".*Unable to read a class file correctly.*" onMatch="DENY" onMismatch="NEUTRAL" />
+    </Filters>
     <Appenders>
         <Console name="SysOut" target="SYSTEM_OUT">
             <PatternLayout pattern="[%d{HH:mm:ss}] [%t/%level] (%logger{1}): %msg%n" />
