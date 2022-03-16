@@ -4,8 +4,8 @@ import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IModuleLayerManager;
 import cpw.mods.modlauncher.api.ITransformationService;
 
-import java.io.File;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class EssentialLoader extends EssentialLoaderBase {
     private final EssentialTransformationService transformationService = new EssentialTransformationService();
@@ -31,12 +31,10 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected ClassLoader getModClassLoader() {
         return Launcher.INSTANCE.findLayerManager()
-            .orElseThrow()
-            .getLayer(IModuleLayerManager.Layer.GAME)
-            .orElseThrow()
-            .findModule("essential")
-            .orElseThrow()
-            .getClassLoader();
+            .flatMap(it -> it.getLayer(IModuleLayerManager.Layer.GAME))
+            .flatMap(it -> it.findModule("essential"))
+            .flatMap(it -> Optional.ofNullable(it.getClassLoader()))
+            .orElse(null);
     }
 
     @Override

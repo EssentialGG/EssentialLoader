@@ -172,6 +172,9 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         private void addToClassLoaderViaReflection(final URL url) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
             final ClassLoader classLoader = EssentialLoader.this.getModClassLoader();
+            if (classLoader == null) {
+                throw new IllegalStateException("Failed to traverse class loader hierarchy to find mod class loader.");
+            }
             final Method method = classLoader.getClass().getDeclaredMethod("addURL", URL.class);
             method.setAccessible(true);
             method.invoke(classLoader, url);

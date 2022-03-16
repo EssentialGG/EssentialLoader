@@ -12,6 +12,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -329,6 +330,7 @@ public abstract class EssentialLoaderBase {
 
     protected abstract void loadPlatform();
 
+    @Nullable
     protected abstract ClassLoader getModClassLoader();
 
     protected void addToClasspath(final List<Path> jars) {
@@ -347,7 +349,11 @@ public abstract class EssentialLoaderBase {
     }
 
     protected boolean isInClassPath() {
-        return this.getModClassLoader().getResource(CLASS_NAME.replace('.', '/') + ".class") != null;
+        ClassLoader loader = this.getModClassLoader();
+        if (loader == null) {
+            return false;
+        }
+        return loader.getResource(CLASS_NAME.replace('.', '/') + ".class") != null;
     }
 
     public final void initialize() {
@@ -359,7 +365,11 @@ public abstract class EssentialLoaderBase {
 
     protected void doInitialize() {
         try {
-            Class.forName(CLASS_NAME, false, getModClassLoader())
+            ClassLoader loader = getModClassLoader();
+            if (loader == null) {
+                throw new IllegalStateException("Essential is about to be initialized but no associated class loader was found.");
+            }
+            Class.forName(CLASS_NAME, false, loader)
                 .getDeclaredMethod("initialize", File.class)
                 .invoke(null, gameDir.toFile());
         } catch (Throwable e) {
