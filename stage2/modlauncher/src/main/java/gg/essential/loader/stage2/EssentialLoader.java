@@ -31,7 +31,15 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected ClassLoader getModClassLoader() {
         return Launcher.INSTANCE.findLayerManager()
-            .flatMap(it -> it.getLayer(IModuleLayerManager.Layer.GAME))
+            .flatMap(it -> {
+                try {
+                    return it.getLayer(IModuleLayerManager.Layer.GAME);
+                } catch (NullPointerException e) {
+                    // Workaround ModLoader being stupid and throwing a NPE instead of just returning Optional.empty()
+                    // as its return type would suggest.
+                    return Optional.empty();
+                }
+            })
             .flatMap(it -> it.findModule("essential"))
             .flatMap(it -> Optional.ofNullable(it.getClassLoader()))
             .orElse(null);
