@@ -11,11 +11,6 @@ public class EssentialProgressBarUI extends BasicProgressBarUI {
     private static final int STROKE_WIDTH = 3;
 
     @Override
-    protected Dimension getPreferredInnerHorizontal() {
-        return new Dimension(380, 20);
-    }
-
-    @Override
     protected void paintDeterminate(Graphics g, JComponent c) {
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

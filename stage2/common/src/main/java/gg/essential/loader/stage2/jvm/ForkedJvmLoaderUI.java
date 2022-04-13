@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public abstract class ForkedJvmLoaderUI implements LoaderUI {
     private final Logger LOGGER = LogManager.getLogger(getClass());
@@ -32,7 +33,16 @@ public abstract class ForkedJvmLoaderUI implements LoaderUI {
         } catch (IOException e) {
             LOGGER.warn("Failed to run `complete()` for forked JVM UI:", e);
         }
-        this.jvm.close();
+
+        ForkedJvm jvm = this.jvm;
+        new Thread(() -> {
+            try {
+                jvm.process.waitFor(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {}
+
+            jvm.close();
+        }, "forked-jvm-cleanup").start();
+
         this.jvm = null;
     }
 
