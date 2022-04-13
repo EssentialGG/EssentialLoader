@@ -4,8 +4,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import gg.essential.loader.stage2.data.ModId;
+import gg.essential.loader.stage2.data.ModJarMetadata;
+import gg.essential.loader.stage2.data.ModVersion;
+import gg.essential.loader.stage2.diff.DiffPatcher;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -40,16 +43,21 @@ import java.util.stream.Stream;
 
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
+import static gg.essential.loader.stage2.util.Checksum.getChecksum;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public abstract class EssentialLoaderBase {
 
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoaderBase.class);
     private static final String BASE_URL = System.getProperty(
         "essential.download.url",
-        System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
+        System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://api.essential.gg/mods")
     );
     private static final String DEFAULT_BRANCH = "stable";
-    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/essential/updates/%s/%s/";
+    private static final String VERSION_BASE_URL = BASE_URL + "/v1/essential:essential/versions/%s";
+    private static final String VERSION_URL = VERSION_BASE_URL + "/platforms/%s";
+    private static final String DOWNLOAD_URL = VERSION_URL + "/download";
+    private static final String DIFF_URL = VERSION_BASE_URL + "/diff/%s/platforms/%s";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_BASE_NAME = "Essential (%s)";
     private static final String FILE_EXTENSION = "jar";
@@ -57,12 +65,14 @@ public abstract class EssentialLoaderBase {
 
     private final Path gameDir;
     private final String gameVersion;
+    private final String apiGameVersion;
     private final String fileBaseName;
     private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion, final boolean lwjgl3) {
         this.gameDir = gameDir;
         this.gameVersion = gameVersion;
+        this.apiGameVersion = gameVersion.replace(".", "-");
         this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
         String stage2Branch = System.getProperty(
@@ -100,30 +110,49 @@ public abstract class EssentialLoaderBase {
 
         Path essentialFile = findMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION).getKey();
 
-        boolean needUpdate = Files.notExists(essentialFile);
+        boolean needUpdate = false;
+
+        // Load current metadata from existing jar (if one exists)
+        ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
+        if (Files.exists(essentialFile)) {
+            currentMeta = ModJarMetadata.read(essentialFile);
+        }
+        String currentChecksum = currentMeta.getChecksum();
+
+        if (currentChecksum == null) {
+            needUpdate = true;
+        }
 
         String branch = determineBranch();
 
         // Fetch latest version metadata (if required)
-        FileMeta meta = null;
+        ModJarMetadata latestMeta = null;
         if (needUpdate || AUTO_UPDATE) {
-            meta = fetchLatestMetadata(branch);
-            if (meta == null && needUpdate) {
+            latestMeta = fetchLatestVersion(ModId.ESSENTIAL, branch);
+            if (latestMeta == null && needUpdate) {
                 return;
             }
         }
 
         // Check if our local version matches the latest
-        if (!needUpdate && meta != null && !meta.checksum.equals(this.getChecksum(essentialFile))) {
+        if (!needUpdate && latestMeta != null && !latestMeta.getChecksum().equals(currentChecksum)) {
             needUpdate = true;
         }
 
 
         if (needUpdate) {
-            this.ui.start();
+            Path downloadedFile;
 
-            Path downloadedFile = Files.createTempFile("essential-download-", "");
-            if (downloadFile(meta.url, downloadedFile, meta.checksum)) {
+            this.ui.start();
+            try {
+                downloadedFile = update(essentialFile, currentMeta, latestMeta);
+            } finally {
+                this.ui.complete();
+            }
+
+            if (downloadedFile != null) {
+                latestMeta.write(downloadedFile);
+
                 try {
                     Files.deleteIfExists(essentialFile);
                 } catch (IOException e) {
@@ -137,7 +166,6 @@ public abstract class EssentialLoaderBase {
                 Files.move(downloadedFile, essentialFile);
             } else {
                 LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
-                Files.deleteIfExists(downloadedFile);
             }
         }
 
@@ -217,13 +245,63 @@ public abstract class EssentialLoaderBase {
         }
     }
 
-    private FileMeta fetchLatestMetadata(String branch) {
-        URLConnection connection = null;
-        JsonObject responseObject;
+    private Path update(Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+        // If we can, try fetching a diff first
+        if (!currentMeta.getVersion().isUnknown()) {
+            Path updatedFile = updateViaDiff(essentialFile, currentMeta, latestMeta);
+            if (updatedFile != null) {
+                return updatedFile;
+            }
+        }
+
+        // Otherwise fall back to downloading the full file
+        return updateViaDownload(latestMeta);
+    }
+
+    private Path updateViaDiff(Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+        FileMeta meta = fetchDiffUrl(latestMeta.getMod(), currentMeta.getVersion(), latestMeta.getVersion());
+        if (meta == null) {
+            return null; // no diff available
+        }
+
+        Path downloadedFile = Files.createTempFile("essential-download-", "");
+        if (!downloadFile(meta.url, downloadedFile, meta.checksum)) {
+            return null; // failed to download diff
+        }
+
+        Path patchedFile = Files.createTempFile("essential-patched-", "");
+        Files.copy(essentialFile, patchedFile, REPLACE_EXISTING);
         try {
-            connection = this.prepareConnection(
-                String.format(VERSION_URL, branch, this.gameVersion.replace(".", "-"))
-            );
+            DiffPatcher.apply(patchedFile, downloadedFile);
+            Files.delete(downloadedFile);
+        } catch (Exception e) {
+            LOGGER.error("Error while applying diff:", e);
+            Files.deleteIfExists(patchedFile);
+            Files.deleteIfExists(downloadedFile);
+            return null; // failed to apply diff
+        }
+
+        return patchedFile; // success
+    }
+
+    private Path updateViaDownload(ModJarMetadata latestMeta) throws IOException {
+        FileMeta meta = fetchDownloadUrl(latestMeta.getMod(), latestMeta.getVersion());
+        if (meta == null) {
+            return null; // no download available, this is bad
+        }
+
+        Path downloadedFile = Files.createTempFile("essential-download-", "");
+        if (!downloadFile(meta.url, downloadedFile, meta.checksum)) {
+            return null; // failed to download file
+        }
+
+        return downloadedFile; // success
+    }
+
+    private JsonObject fetchJsonObject(String endpoint, boolean allowEmpty) {
+        URLConnection connection = null;
+        try {
+            connection = this.prepareConnection(endpoint);
 
             String response;
             try (final InputStream inputStream = connection.getInputStream()) {
@@ -231,15 +309,56 @@ public abstract class EssentialLoaderBase {
             }
 
             JsonElement jsonElement = new JsonParser().parse(response);
-            responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
+            if (!jsonElement.isJsonObject()) {
+                if (allowEmpty && jsonElement.isJsonNull()) {
+                    return new JsonObject();
+                } else {
+                    throw new IOException("Excepted json object, got " + response);
+                }
+            }
+            return jsonElement.getAsJsonObject();
         } catch (final IOException | JsonParseException e) {
-            LOGGER.error("Error occurred checking for updates for game version {}.", this.gameVersion, e);
+            LOGGER.error("Error occurred fetching " + endpoint + ": ", e);
             logConnectionInfoOnError(connection);
             return null;
         }
+    }
+
+    private ModJarMetadata fetchLatestVersion(ModId modId, String branch) {
+        JsonObject responseObject = fetchJsonObject(String.format(VERSION_URL, branch, this.apiGameVersion), true);
 
         if (responseObject == null) {
             LOGGER.warn("Essential does not support the following game version: {}", this.gameVersion);
+            return null;
+        }
+
+        JsonElement jsonId = responseObject.get("id");
+        JsonElement jsonVersion = responseObject.get("version");
+        JsonElement jsonChecksum = responseObject.get("checksum");
+        String id = jsonId != null && jsonId.isJsonPrimitive() ? jsonId.getAsString() : null;
+        String version = jsonVersion != null && jsonVersion.isJsonPrimitive() ? jsonVersion.getAsString() : null;
+        String checksum = jsonChecksum != null && jsonChecksum.isJsonPrimitive() ? jsonChecksum.getAsString() : null;
+
+        if (StringUtils.isEmpty(id) || StringUtils.isEmpty(version)) {
+            LOGGER.warn("Unexpected response object data (id={}, version={}, checksum={})", jsonId, jsonVersion, jsonChecksum);
+            return null;
+        }
+
+        return new ModJarMetadata(modId, new ModVersion(id, version), this.apiGameVersion, checksum);
+    }
+
+    private FileMeta fetchDownloadUrl(ModId modId, ModVersion modVersion) {
+        return fetchFileMeta(String.format(DOWNLOAD_URL, modVersion.getVersion(), this.apiGameVersion));
+    }
+
+    private FileMeta fetchDiffUrl(ModId modId, ModVersion oldVersion, ModVersion modVersion) {
+        return fetchFileMeta(String.format(DIFF_URL, oldVersion.getVersion(), modVersion.getVersion(), this.apiGameVersion));
+    }
+
+    private FileMeta fetchFileMeta(String endpoint) {
+        JsonObject responseObject = fetchJsonObject(endpoint, false);
+
+        if (responseObject == null) {
             return null;
         }
 
@@ -256,16 +375,6 @@ public abstract class EssentialLoaderBase {
         }
 
         return new FileMeta(url, checksum);
-    }
-
-    private String getChecksum(final Path input) {
-        try (final InputStream inputStream = Files.newInputStream(input)) {
-            return DigestUtils.md5Hex(inputStream);
-        } catch (final Exception e) {
-            e.printStackTrace();
-        }
-
-        return null;
     }
 
     private URLConnection prepareConnection(final String url) throws IOException {
@@ -317,7 +426,7 @@ public abstract class EssentialLoaderBase {
                     LOGGER.debug("Extracting {} to {}", innerJar, extractedJar);
                     // Copy to tmp jar first, so we do not leave behind incomplete jars
                     final Path tmpJar = Files.createTempFile(extractedJarsRoot, "tmp", ".jar");
-                    Files.copy(innerJar, tmpJar, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(innerJar, tmpJar, REPLACE_EXISTING);
                     // Then (if successful) perform an atomic rename
                     Files.move(tmpJar, extractedJar, StandardCopyOption.ATOMIC_MOVE);
                 }
@@ -386,10 +495,14 @@ public abstract class EssentialLoaderBase {
     private boolean downloadFile(final String url, final Path target, String expectedHash) throws IOException {
         if (!this.attemptDownload(url, target)) {
             LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
+
+            // Do not keep the file they downloaded if the download failed half way through
+            Files.deleteIfExists(target);
+
             return false;
         }
 
-        final String downloadedChecksum = this.getChecksum(target);
+        final String downloadedChecksum = getChecksum(target);
 
         if (downloadedChecksum.equals(expectedHash)) {
             return true;
@@ -433,8 +546,6 @@ public abstract class EssentialLoaderBase {
             LOGGER.error("Error occurred when downloading file '{}'.", url, e);
             logConnectionInfoOnError(connection);
             return false;
-        } finally {
-            this.ui.complete();
         }
     }
 

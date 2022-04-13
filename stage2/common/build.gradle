@@ -3,6 +3,8 @@ configurations {
 }
 
 dependencies {
+    compileOnly("org.jetbrains:annotations:23.0.0")
+
     // Versions based on the one which MC include by default in 1.8.9
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
     compileOnly("org.apache.commons:commons-lang3:3.3.2")

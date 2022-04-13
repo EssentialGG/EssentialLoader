@@ -11,13 +11,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Stage2Tests {
     @Test
-    public void testUpdate(Installation installation) throws Exception {
+    public void testUpdateViaFullDownload(Installation installation) throws Exception {
+        testUpdate(installation, false);
+    }
+
+    @Test
+    public void testUpdateViaDiff(Installation installation) throws Exception {
+        testUpdate(installation, true);
+    }
+
+    public void testUpdate(Installation installation, boolean viaDiff) throws Exception {
         installation.addExampleMod();
 
         installation.launchFML();
 
         Files.delete(installation.stage3Meta);
         Files.copy(installation.stage3DummyMeta, installation.stage3Meta);
+
+        if (viaDiff) {
+            // Prevent it from using the full download path
+            Files.delete(installation.stage3DummyMetaDownload);
+        } else {
+            // Prevent it from using the diff download path
+            Files.delete(installation.stage3DummyMetaDiff);
+        }
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
