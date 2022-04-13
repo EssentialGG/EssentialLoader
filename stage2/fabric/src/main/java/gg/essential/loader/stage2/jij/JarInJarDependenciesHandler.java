@@ -145,6 +145,12 @@ public class JarInJarDependenciesHandler {
             }
         }
 
+        // Some mods we cannot load in a development environment if they are already on the app classpath.
+        if (FabricLoader.getInstance().isDevelopmentEnvironment() && isAlreadyOnClasspath(modId)) {
+            LOGGER.debug("Detected Kotlin already on the classpath, cannot load bundled {}", modId);
+            return true; // kotlin is already on the classpath, we're good to go; we must not try to load or update it
+        }
+
         // Check if that mod is already loaded (by the user, by a third-party mod, or by our existing synthetic mod)
         ModContainer loadedMod = FabricLoader.getInstance().getModContainer(modId).orElse(null);
         if (loadedMod == null) {
@@ -177,6 +183,31 @@ public class JarInJarDependenciesHandler {
             updatedModNames.add(modName != null ? modName : modId);
         }
         return false;
+    }
+
+    /**
+     * Checks whether classes of a given mod id is already on the classpath.
+     *
+     * There's a special case for the Kotlin mod in a development environment.
+     * If Kotlin is already set up in the app class loader (e.g. because a Gradle dependency for it exists),
+     * then we must not load the Kotlin mod in the mod class loader because that will lead to two instances
+     * of Kotlin coexisting, which will blow up the moment they need to interact (e.g. when a Kotlin-using lib
+     * which is only present in the app class loader is accessed from the mod class loader).
+     */
+    private boolean isAlreadyOnClasspath(String modId) {
+        String cls = null;
+        switch (modId) {
+            case "org_jetbrains_kotlin_kotlin-stdlib": cls = "kotlin/Unit.class"; break;
+            case "org_jetbrains_kotlin_kotlin-stdlib-jdk7": cls = "kotlin/jdk7/AutoCloseableKt.class"; break;
+            case "org_jetbrains_kotlin_kotlin-stdlib-jdk8": cls = "kotlin/jvm/jdk8/JvmRepeatableKt.class"; break;
+            case "org_jetbrains_kotlin_kotlin-reflect": cls = "kotlin/reflect/jvm/KTypesJvm.class"; break;
+            case "org_jetbrains_kotlinx_kotlinx-coroutines-core-jvm": cls = "kotlinx/coroutines/Job.class"; break;
+            case "org_jetbrains_kotlinx_kotlinx-coroutines-jdk8": cls = "kotlinx/coroutines/future/FutureKt.class"; break;
+            case "org_jetbrains_kotlinx_kotlinx-serialization-core-jvm": cls = "kotlinx/serialization/Serializer.class"; break;
+            case "org_jetbrains_kotlinx_kotlinx-serialization-json-jvm": cls = "kotlinx/serialization/json/Json.class"; break;
+            case "org_jetbrains_kotlinx_kotlinx-serialization-cbor-jvm": cls = "kotlinx/serialization/cbor/Cbor.class"; break;
+        }
+        return cls != null && getClass().getClassLoader().getResource(cls) != null;
     }
 
     /**
