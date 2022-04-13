@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.stream.Stream;
 
 // How this does not exist in the standard library is beyond me.
 public class Delete extends SimpleFileVisitor<Path> {
@@ -23,5 +24,13 @@ public class Delete extends SimpleFileVisitor<Path> {
 
     public static void recursively(Path path) throws IOException {
         Files.walkFileTree(path, new Delete());
+    }
+
+    public static void contentsRecursively(Path path) throws IOException {
+        try (Stream<Path> stream = Files.list(path)) {
+            for (Path child : ((Iterable<Path>) stream::iterator)) {
+                Delete.recursively(child);
+            }
+        }
     }
 }

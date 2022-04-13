@@ -17,9 +17,13 @@ import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.JarURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.CodeSigner;
 import java.security.CodeSource;
@@ -30,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 public class IsolatedLaunch {
     private static final String LAUNCH_CLASS_NAME = "net.minecraft.launchwrapper.Launch";
@@ -119,6 +124,8 @@ public class IsolatedLaunch {
             System.setProperties(originalProperties);
 
             thread.setContextClassLoader(orgContextClassLoader);
+
+            cleanupJarFileSystems(this.gameDir);
         }
     }
 
@@ -146,6 +153,25 @@ public class IsolatedLaunch {
 
     public Class<?> getClass(String name) throws ClassNotFoundException {
         return Class.forName(name, false, loader);
+    }
+
+    private static void cleanupJarFileSystems(Path gameDir) {
+        // Fabric loader opens a bunch of jar file systems which we need to clean up so they do not interfere with
+        // other launches (cause even if the file is updated, the jar file system will still have the old content).
+        try (Stream<Path> stream = Files.walk(gameDir)) {
+            for (Path path : (Iterable<Path>) stream::iterator) {
+                if (!Files.isRegularFile(path)) {
+                    continue;
+                }
+                URI uri = path.toAbsolutePath().normalize().toUri();
+                URI jarUri = new URI("jar:" + uri.getScheme(), uri.getHost(), uri.getPath(), uri.getFragment());
+                try {
+                    FileSystems.getFileSystem(jarUri).close();
+                } catch (FileSystemNotFoundException ignored) {}
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static class IsolatedClassLoader extends URLClassLoader {
@@ -250,13 +276,17 @@ public class IsolatedLaunch {
         }
     }
 
-    private static class ExitCatchingSecurityManager extends SecurityManager {
+    private class ExitCatchingSecurityManager extends SecurityManager {
         private boolean didRegularExit;
 
         @Override
         public void checkPermission(Permission perm) {
             String name = perm.getName();
             if (name != null && name.startsWith("exitVM.")) {
+
+                // Doing this here as well, so we get jars which are remove/renamed on shutdown
+                cleanupJarFileSystems(IsolatedLaunch.this.gameDir);
+
                 if (name.equals("exitVM.0")) {
                     didRegularExit = true;
                     throw new RegularSystemExit();
