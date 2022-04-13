@@ -2,6 +2,8 @@ package gg.essential.loader.stage2;
 
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
+import gg.essential.loader.stage2.jij.JarInJarDependenciesHandler;
+import gg.essential.loader.stage2.restart.ForkedNeedsRestartUI;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.LanguageAdapter;
@@ -12,7 +14,6 @@ import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.Mixins;
 
-import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -23,16 +24,17 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class EssentialLoader extends EssentialLoaderBase {
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private final LoaderInternals loaderInternals = new LoaderInternals();
+    private final JarInJarDependenciesHandler jijHandler = new JarInJarDependenciesHandler(getExtractedJarsRoot());
 
     public EssentialLoader(Path gameDir, String gameVersion) {
         super(gameDir, gameVersion, true);
@@ -84,6 +86,23 @@ public class EssentialLoader extends EssentialLoaderBase {
     private void addFakeMod(final Path path, final URL url) throws Exception {
         ModMetadata metadata = parseMetadata(path);
         this.loaderInternals.injectFakeMod(path, url, metadata);
+    }
+
+    @Override
+    protected void addToClasspath(Path mainJar, List<Path> innerJars) {
+        innerJars = innerJars.stream()
+            .flatMap(path -> jijHandler.loadMod(path).stream())
+            .collect(Collectors.toCollection(ArrayList::new));
+
+        if (!jijHandler.complete()) {
+            ForkedNeedsRestartUI ui = new ForkedNeedsRestartUI(jijHandler.getUpdatedModNames(), jijHandler.getModsToDisable());
+            ui.show();
+            ui.waitForClose();
+            ui.exit();
+            return;
+        }
+
+        super.addToClasspath(mainJar, innerJars);
     }
 
     @Override

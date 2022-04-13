@@ -146,10 +146,7 @@ public abstract class EssentialLoaderBase {
             return;
         }
 
-        final List<Path> jars = new ArrayList<>();
-        jars.add(essentialFile);
-        jars.addAll(this.extractJarsInJar(essentialFile));
-        this.addToClasspath(jars);
+        this.addToClasspath(essentialFile, this.extractJarsInJar(essentialFile));
 
         if (this.classpathUpdatesImmediately() && !this.isInClassPath()) {
             throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + Files.exists(essentialFile) + ").");
@@ -289,11 +286,15 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
-    private List<Path> extractJarsInJar(Path outerJar) throws IOException {
-        final Path extractedJarsRoot = gameDir
+    protected Path getExtractedJarsRoot() {
+        return gameDir
             .resolve("essential")
             .resolve("libraries")
             .resolve(gameVersion);
+    }
+
+    private List<Path> extractJarsInJar(Path outerJar) throws IOException {
+        final Path extractedJarsRoot = getExtractedJarsRoot();
         Files.createDirectories(extractedJarsRoot);
 
         final List<Path> extractedJars = new ArrayList<>();
@@ -333,8 +334,9 @@ public abstract class EssentialLoaderBase {
     @Nullable
     protected abstract ClassLoader getModClassLoader();
 
-    protected void addToClasspath(final List<Path> jars) {
-        for (final Path jar : jars) {
+    protected void addToClasspath(Path mainJar, final List<Path> innerJars) {
+        this.addToClasspath(mainJar);
+        for (final Path jar : innerJars) {
             this.addToClasspath(jar);
         }
     }

@@ -8,6 +8,11 @@ sourceSets {
     exampleMod
     essential
     minecraft
+
+    jijV1
+    jijV2
+    jijV3
+    jijij
 }
 
 def minecraftJar = tasks.register("minecraftJar", Jar) {
@@ -50,6 +55,8 @@ dependencies {
         builtBy minecraftJar
     })
 
+    minecraftCompileOnly("net.fabricmc:fabric-loader:0.11.6")
+
     exampleModImplementation(project(":stage0:fabric"))
     exampleModCompileOnly("net.fabricmc:fabric-loader:0.11.6")
     exampleModCompileOnly("net.fabricmc:sponge-mixin:0.9.4+mixin.0.8.2")
@@ -86,6 +93,53 @@ tasks.register("essentialJar", Jar) {
     from(sourceSets.essential.output)
 }
 
+tasks.register("jijV1Jar", Jar) {
+    archiveBaseName.set("jij-1")
+    from(sourceSets.jijV1.output)
+}
+
+tasks.register("jijV2Jar", Jar) {
+    archiveBaseName.set("jij-2")
+    from(sourceSets.jijV2.output)
+}
+
+tasks.register("jijV3Jar", Jar) {
+    archiveBaseName.set("jij-3")
+    from(sourceSets.jijV3.output)
+}
+
+tasks.register("jijijJar", Jar) {
+    archiveBaseName.set("jijij")
+    from(sourceSets.jijij.output)
+    from(tasks.jijV1Jar.archiveFile) {
+        into("META-INF/jars")
+    }
+}
+
+tasks.register("essentialJijV2Jar", Jar) {
+    archiveBaseName.set("essential-jij-2")
+    from(sourceSets.essential.output)
+    from(tasks.jijV2Jar.archiveFile) {
+        into("META-INF/jars")
+    }
+}
+
+tasks.register("essentialJijV3Jar", Jar) {
+    archiveBaseName.set("essential-jij-3")
+    from(sourceSets.essential.output)
+    from(tasks.jijV3Jar.archiveFile) {
+        into("META-INF/jars")
+    }
+}
+
+tasks.register("essentialJijijJar", Jar) {
+    archiveBaseName.set("essential-jijij")
+    from(sourceSets.essential.output)
+    from(tasks.jijijJar.archiveFile) {
+        into("META-INF/jars")
+    }
+}
+
 tasks.register("setupDownloadsApi", Sync) {
     def downloadsApi = new File(project.buildDir, "downloadsApi")
     into(downloadsApi)
@@ -117,7 +171,13 @@ tasks.register("setupDownloadsApi", Sync) {
     }
 
     mod(tasks.exampleModJar.archiveFile, "example:mod", "stable")
+    mod(tasks.jijV1Jar.archiveFile, "example:jij", "1")
+    mod(tasks.jijV2Jar.archiveFile, "example:jij", "2")
+    mod(tasks.jijV3Jar.archiveFile, "example:jij", "3")
 
     mod(evaluationDependsOn(':stage2:fabric').tasks.jar.archiveFile, "essential:loader-stage2", "stable")
     mod(tasks.essentialJar.archiveFile, "essential:essential", "stable")
+    mod(tasks.essentialJijV2Jar.archiveFile, "essential:essential", "jij2")
+    mod(tasks.essentialJijV3Jar.archiveFile, "essential:essential", "jij3")
+    mod(tasks.essentialJijijJar.archiveFile, "essential:essential", "jijij")
 }

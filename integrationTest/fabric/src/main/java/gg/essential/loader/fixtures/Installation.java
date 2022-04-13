@@ -7,6 +7,8 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.ProviderNotFoundException;
 import java.nio.file.spi.FileSystemProvider;
 
@@ -53,5 +55,10 @@ public class Installation extends BaseInstallation {
 
     public IsolatedLaunch launchFabric() throws Exception {
         return launch(newLaunchFabric());
+    }
+
+    public void addJijMod(String branch) throws IOException {
+        Path source = apiDir.resolve("v1/mods/example/jij/updates/" + branch + "/" + getPlatformVersion() + ".jar");
+        Files.copy(source, modsDir.resolve("jij-" + branch + ".jar"));
     }
 }

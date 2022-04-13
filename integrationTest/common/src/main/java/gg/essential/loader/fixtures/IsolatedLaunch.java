@@ -47,6 +47,7 @@ public class IsolatedLaunch {
     public IsolatedLaunch(Path gameDir, String primaryTweaker) {
         this.gameDir = gameDir;
         this.systemProperties.putAll(System.getProperties());
+        this.setProperty("essential.integration_testing", "true");
         this.addToClasspath(((URLClassLoader) ClassLoader.getSystemClassLoader()).getURLs());
         this.addArg("--gameDir", gameDir.toString());
         this.addArg("--tweakClass", primaryTweaker);
@@ -149,6 +150,12 @@ public class IsolatedLaunch {
         } catch (ClassNotFoundException ignored) {
             return false;
         }
+    }
+
+    public String getModVersion(String modId) throws Exception {
+        return (String) getClass("net.minecraft.client.Util")
+            .getDeclaredMethod("getModVersion", String.class)
+            .invoke(null, modId);
     }
 
     public Class<?> getClass(String name) throws ClassNotFoundException {

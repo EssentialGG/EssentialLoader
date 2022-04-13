@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "jijij",
+  "version": "1",
+  "jars": [
+    {
+      "file": "/META-INF/jars/jij-1.jar"
+    }
+  ]
+}
