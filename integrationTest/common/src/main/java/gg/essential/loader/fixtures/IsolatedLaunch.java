@@ -198,7 +198,7 @@ public class IsolatedLaunch {
             }
 
             for (String exclusion : exclusions) {
-                if (name.startsWith(exclusion)) {
+                if (name.startsWith(exclusion) && !name.endsWith(".LoadState")) {
                     return super.loadClass(name);
                 }
             }
