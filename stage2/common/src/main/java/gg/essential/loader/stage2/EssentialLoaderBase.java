@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -526,6 +527,8 @@ public abstract class EssentialLoaderBase {
             final int contentLength = connection.getContentLength();
             this.ui.setDownloadSize(contentLength);
 
+            final long startTime = System.nanoTime();
+
             int totalRead = 0;
             try (
                 final InputStream inputStream = connection.getInputStream();
@@ -539,6 +542,11 @@ public abstract class EssentialLoaderBase {
                     totalRead += read;
                     this.ui.setDownloaded(totalRead);
                 }
+
+                long endTime = System.nanoTime();
+                long millis = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+                System.setProperty("essential.stage2.downloaded.bytes", String.valueOf(contentLength));
+                System.setProperty("essential.stage2.downloaded.millis", String.valueOf(millis));
 
                 return true;
             }
