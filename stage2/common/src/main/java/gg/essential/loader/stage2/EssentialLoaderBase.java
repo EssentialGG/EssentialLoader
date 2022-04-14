@@ -165,6 +165,7 @@ public abstract class EssentialLoaderBase {
                 essentialFile = findNextMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION);
 
                 Files.move(downloadedFile, essentialFile);
+                currentMeta = latestMeta;
             } else {
                 LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
             }
@@ -173,6 +174,12 @@ public abstract class EssentialLoaderBase {
         // Check if we can continue, otherwise do not even try
         if (!Files.exists(essentialFile)) {
             return;
+        }
+
+        // Put the mod version into the system properties, so the mod can read it to know its own version
+        ModVersion version = currentMeta.getVersion();
+        if (version.getVersion() != null) {
+            System.setProperty("essential.version", version.getVersion());
         }
 
         this.addToClasspath(essentialFile, this.extractJarsInJar(essentialFile));
@@ -220,6 +227,11 @@ public abstract class EssentialLoaderBase {
             resultBranch = branch;
             resultSource = source;
         }
+        assert resultBranch != null;
+
+        // Write the result back to the system property, so the mod can read it to know the branch too
+        System.setProperty("essential.branch", resultBranch);
+
         return resultBranch;
     }
 
