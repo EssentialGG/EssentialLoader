@@ -14,7 +14,7 @@ public final class EssentialLoader extends EssentialLoaderBase {
     }
 
     private EssentialLoader(final String gameVersion) {
-        super("modlauncher", gameVersion);
+        super("modlauncher9", gameVersion);
     }
 
     @Override
