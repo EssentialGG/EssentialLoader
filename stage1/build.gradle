@@ -1,10 +1,13 @@
-configure(subprojects.findAll { it.name != "common" }) {
+configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
     configurations {
         bundle
     }
 
     dependencies {
         bundle(implementation(parent.project("common")))
+        if (project.name.startsWith("modlauncher")) {
+            bundle(compileOnly(parent.project("modlauncher")))
+        }
     }
 
     jar {

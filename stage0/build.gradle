@@ -1,4 +1,4 @@
-configure(subprojects.findAll { it.name != "common" }) {
+configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
     apply plugin: 'maven-publish'
 
     def variant = project.name
@@ -9,6 +9,9 @@ configure(subprojects.findAll { it.name != "common" }) {
 
     dependencies {
         bundle(compileOnly(parent.project("common")))
+        if (variant.startsWith("modlauncher")) {
+            bundle(compileOnly(parent.project("modlauncher")))
+        }
     }
 
     jar {

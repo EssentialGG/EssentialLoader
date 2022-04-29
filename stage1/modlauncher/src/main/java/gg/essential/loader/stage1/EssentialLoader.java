@@ -6,15 +6,15 @@ import java.net.URLClassLoader;
 public final class EssentialLoader extends EssentialLoaderBase {
 
     private static EssentialLoader instance;
-    public static synchronized EssentialLoader getInstance(String gameVersion) {
+    public static synchronized EssentialLoader getInstance(String variant, String gameVersion) {
         if (instance == null) {
-            instance = new EssentialLoader(gameVersion);
+            instance = new EssentialLoader(variant, gameVersion);
         }
         return instance;
     }
 
-    private EssentialLoader(final String gameVersion) {
-        super("modlauncher9", gameVersion);
+    private EssentialLoader(final String variant, final String gameVersion) {
+        super(variant, gameVersion);
     }
 
     @Override

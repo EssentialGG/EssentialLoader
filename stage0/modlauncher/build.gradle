@@ -1,0 +1,12 @@
+repositories {
+    maven { url "https://maven.minecraftforge.net/" }
+}
+
+dependencies {
+    compileOnly(parent.project("common"))
+
+    compileOnly("cpw.mods:modlauncher:8.1.3")
+    // modlauncher uses these in its api but does not declare them as such
+    compileOnly("net.sf.jopt-simple:jopt-simple:5.0.4")
+    compileOnly("org.jetbrains:annotations:21.0.1")
+}
