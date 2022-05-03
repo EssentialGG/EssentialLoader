@@ -24,6 +24,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -208,10 +209,21 @@ public class EssentialLoader extends EssentialLoaderBase {
                     .invoke(null, LOGGER, fabricJson);
             } catch (NoSuchMethodException e) {
                 try (InputStream in = Files.newInputStream(fabricJson)) {
-                    // fabric loader 0.12
-                    return (ModMetadata) ModMetadataParser
-                        .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class)
-                        .invoke(null, in, modPath.toString(), Collections.emptyList());
+                    try {
+                        // fabric loader 0.12
+                        return (ModMetadata) ModMetadataParser
+                            .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class)
+                            .invoke(null, in, modPath.toString(), Collections.emptyList());
+                    } catch (NoSuchMethodException e1) {
+                        // fabric loader 0.14
+                        Class<?> VersionOverrides = findImplClass("metadata.VersionOverrides");
+                        Class<?> DependencyOverrides = findImplClass("metadata.DependencyOverrides");
+                        Object versionOverrides = VersionOverrides.getConstructor().newInstance();
+                        Object dependencyOverrides = DependencyOverrides.getConstructor(Path.class).newInstance(Paths.get("_invalid_"));
+                        return (ModMetadata) ModMetadataParser
+                            .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class, VersionOverrides, DependencyOverrides)
+                            .invoke(null, in, modPath.toString(), Collections.emptyList(), versionOverrides, dependencyOverrides);
+                    }
                 }
             }
         }
