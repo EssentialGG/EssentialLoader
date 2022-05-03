@@ -133,7 +133,7 @@ public class EssentialTransformationService implements ITransformationService {
             }
 
             return true;
-        } catch (ReflectiveOperationException e) {
+        } catch (Throwable e) {
             LOGGER.error("Error injecting into mod list:", e);
             return false;
         }
