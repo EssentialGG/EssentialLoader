@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,10 +29,15 @@ import java.util.stream.Stream;
 public class EssentialTransformationService implements ITransformationService {
     private static final Logger LOGGER = LogManager.getLogger(EssentialTransformationService.class);
 
+    private final Path gameDir;
     private final ModLocator modLocator = new ModLocator();
     private final List<SecureJar> pluginJars = new ArrayList<>();
     private final List<SecureJar> gameJars = new ArrayList<>();
     private boolean modsInjected;
+
+    public EssentialTransformationService(Path gameDir) {
+        this.gameDir = gameDir;
+    }
 
     public void addToClasspath(final Path path) {
         final SecureJar jar = SecureJar.from(j -> new SelfRenamingJarMetadata(j, path, determineLayer(j)), path);
@@ -141,6 +147,17 @@ public class EssentialTransformationService implements ITransformationService {
 
     @Override
     public List<Resource> beginScanning(IEnvironment environment) {
+        // Forge makes available the MC version in its `initialize` method, the first of our methods which we can be
+        // sure is called after Forge's method is this one, so this is the earliest point at which we can load essential
+        // proper.
+        String mcVersion = "forge_" + FMLLoader.versionInfo().mcVersion();
+        ActualEssentialLoader essentialLoader = new ActualEssentialLoader(gameDir, mcVersion, this);
+        try {
+            essentialLoader.load();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         if (injectMods()) {
             modsInjected = true;
         }

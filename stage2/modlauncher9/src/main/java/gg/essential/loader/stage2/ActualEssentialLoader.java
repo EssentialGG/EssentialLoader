@@ -2,21 +2,16 @@ package gg.essential.loader.stage2;
 
 import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IModuleLayerManager;
-import cpw.mods.modlauncher.api.ITransformationService;
 
 import java.nio.file.Path;
 import java.util.Optional;
 
-public class EssentialLoader extends EssentialLoaderBase {
-    private final EssentialTransformationService transformationService = new EssentialTransformationService();
+public class ActualEssentialLoader extends EssentialLoaderBase {
+    private final EssentialTransformationService transformationService;
 
-    public EssentialLoader(Path gameDir, String gameVersion) {
+    public ActualEssentialLoader(Path gameDir, String gameVersion, EssentialTransformationService transformationService) {
         super(gameDir, gameVersion, true);
-    }
-
-    @SuppressWarnings("unused") // called via reflection from stage1
-    public ITransformationService getTransformationService() {
-        return this.transformationService;
+        this.transformationService = transformationService;
     }
 
     @Override
