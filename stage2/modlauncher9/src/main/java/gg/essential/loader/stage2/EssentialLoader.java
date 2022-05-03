@@ -9,11 +9,11 @@ import java.nio.file.Path;
  * dummy class, not the actual loader, which gets initialized later by the transformationService once the MC version is
  * available.
  */
-public class ShimEssentialLoader {
+public class EssentialLoader {
     private final EssentialTransformationService transformationService;
 
     @SuppressWarnings("unused") // called via reflection from stage1
-    public ShimEssentialLoader(Path gameDir, String fakeGameVersion) {
+    public EssentialLoader(Path gameDir, String fakeGameVersion) {
         this.transformationService = new EssentialTransformationService(gameDir);
     }
 
