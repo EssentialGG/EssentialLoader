@@ -132,8 +132,7 @@ public class EssentialTransformationService implements ITransformationService {
             @SuppressWarnings("unchecked")
             List<ModFile> modFiles = (List<ModFile>) candidateModsField.get(modValidator);
 
-            for (SecureJar jar : this.gameJars) {
-                ModFile modFile = ModFile.newFMLInstance(this.modLocator, jar.getPrimaryPath());
+            for (ModFile modFile : this.modLocator.scanMods(this.gameJars.stream().map(SecureJar::getPrimaryPath))) {
                 modFile.identifyMods();
                 modFiles.add(modFile);
             }
@@ -180,9 +179,17 @@ public class EssentialTransformationService implements ITransformationService {
     }
 
     private static class ModLocator extends AbstractJarFileLocator {
+
+        private Stream<Path> paths;
+
+        public Iterable<ModFile> scanMods(Stream<Path> paths) {
+            this.paths = paths;
+            return scanMods().stream().map(it -> (ModFile) it)::iterator;
+        }
+
         @Override
         public Stream<Path> scanCandidates() {
-            return Stream.of();
+            return this.paths;
         }
 
         @Override
