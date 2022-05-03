@@ -36,7 +36,9 @@ public class SortedJarOrPathList extends ArrayList<Object> {
         if (jar == null) return FALLBACK_VERSION;
         JarMetadata metadata = getMetadata(jar);
         if (metadata == null) return FALLBACK_VERSION;
-        return new DefaultArtifactVersion(metadata.version());
+        String version = metadata.version();
+        if (version == null) return FALLBACK_VERSION;
+        return new DefaultArtifactVersion(version);
     }
 
     private SecureJar getJar(Object pathOrJar) {
