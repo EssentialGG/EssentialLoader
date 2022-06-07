@@ -32,6 +32,11 @@ class IsolatedClassLoader extends URLClassLoader {
         "org.lwjgl." // Natives cannot be loaded twice
     );
 
+    // Packages which would ordinarily be excluded, but need to be loaded by us anyway.
+    private final List<String> explicitInclusions = Arrays.asList(
+            "org.apache.logging.slf4j." // Needs to be loaded by us because it references code from `org.slf4j`, which is not excluded, leading to duplicate class definitions.
+    );
+
     private final Map<String, Class<?>> classes = new ConcurrentHashMap<>();
 
     /**
@@ -58,12 +63,10 @@ class IsolatedClassLoader extends URLClassLoader {
         }
 
         // For excluded classes, use the parent class loader
-        for (String exclusion : exclusions) {
-            if (name.startsWith(exclusion)) {
-                cls = delegateParent.loadClass(name);
-                classes.put(name, cls);
-                return cls;
-            }
+        if (isClassExcluded(name)) {
+            cls = delegateParent.loadClass(name);
+            classes.put(name, cls);
+            return cls;
         }
 
         // Class is not excluded, so we define it in this loader regardless of whether it's already loaded in
@@ -83,6 +86,20 @@ class IsolatedClassLoader extends URLClassLoader {
 
             return cls;
         }
+    }
+
+    private boolean isClassExcluded(String name) {
+        for (String inclusion : explicitInclusions) {
+            if (name.startsWith(inclusion)) {
+                return false;
+            }
+        }
+        for (String exclusion : exclusions) {
+            if (name.startsWith(exclusion)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // We redirect this method to our loadClass (which checks the parent for exclusions) because our loadClass is not
