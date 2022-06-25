@@ -23,6 +23,8 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +34,9 @@ import java.util.stream.Stream;
 public class EssentialLoader extends EssentialLoaderBase {
     public static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private static final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
+    private static final String STAGE1_TWEAKER = "gg.essential.loader.stage1.EssentialSetupTweaker";
+    private static final String STAGE0_TWEAKERS_KEY = "essential.loader.stage2.stage0tweakers";
+    private static final Set<String> STAGE0_TWEAKERS = new HashSet<>();
 
     private Path ourEssentialPath;
     private URL ourEssentialUrl;
@@ -306,6 +311,8 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     @Override
     protected void doInitialize() {
+        detectStage0Tweaker();
+
         String outdatedMixin = isMixinOutdated();
         if (outdatedMixin != null) {
             LOGGER.warn("Found an old version of Mixin ({}). This may cause issues.", outdatedMixin);
@@ -321,6 +328,19 @@ public class EssentialLoader extends EssentialLoaderBase {
         }
 
         super.doInitialize();
+    }
+
+    private void detectStage0Tweaker() {
+        Launch.blackboard.computeIfAbsent(STAGE0_TWEAKERS_KEY, k -> Collections.unmodifiableSet(STAGE0_TWEAKERS));
+
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        for (int i = 0; i < stackTrace.length - 1; i++) {
+            StackTraceElement element = stackTrace[i];
+            if (element.getClassName().equals(STAGE1_TWEAKER) && element.getMethodName().equals("injectIntoClassLoader")) {
+                STAGE0_TWEAKERS.add(stackTrace[i + 1].getClassName());
+                break;
+            }
+        }
     }
 
     private String isMixinOutdated() {
