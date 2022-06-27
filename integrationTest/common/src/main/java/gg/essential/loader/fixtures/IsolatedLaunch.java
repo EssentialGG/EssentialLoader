@@ -158,6 +158,13 @@ public class IsolatedLaunch {
             .invoke(null, modId);
     }
 
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getBlackboard() throws Exception {
+        return (Map<String, Object>) getClass(LAUNCH_CLASS_NAME)
+            .getDeclaredField("blackboard")
+            .get(null);
+    }
+
     public Class<?> getClass(String name) throws ClassNotFoundException {
         return Class.forName(name, false, loader);
     }

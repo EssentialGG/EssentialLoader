@@ -1,5 +1,9 @@
 import java.util.function.Supplier
 
+plugins {
+    id "com.github.johnrengelman.shadow" version "7.1.2" apply false
+}
+
 repositories {
     maven { url "https://maven.minecraftforge.net/" }
     maven { url "https://repo.spongepowered.org/maven" }
@@ -177,6 +181,13 @@ tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExampl
 tasks.register("exampleModMixinTweakerWithMixin08Jar", Jar, configureExampleModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 tasks.register("example2ModMixinTweakerWithMixin08Jar", Jar, configureExample2ModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 
+tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+    configure.delegate = delegate
+    configure()
+    relocate("gg.essential.loader.stage0", "com.example.mod.essential.stage0")
+}
+
 tasks.register("oldKotlinModJar", Jar) {
     archiveBaseName.set("oldKotlinMod")
     from(sourceSets.oldKotlinMod.output)
@@ -337,6 +348,8 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "example:mod2", "essential-tweaker-with-mixin-08")
     mod(tasks.exampleModMixinTweakerWithMixin08Jar.archiveFile, "example:mod", "mixin-tweaker-with-mixin-08")
     mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
+
+    mod(tasks.exampleRelocatedModJar.archiveFile, "example:mod", "relocated")
 
     mod(tasks.oldKotlinModJar.archiveFile, "example:kotlin", "old")
 
