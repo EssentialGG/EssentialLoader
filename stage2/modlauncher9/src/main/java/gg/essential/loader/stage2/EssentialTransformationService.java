@@ -2,13 +2,11 @@ package gg.essential.loader.stage2;
 
 import cpw.mods.jarhandling.SecureJar;
 import cpw.mods.modlauncher.Launcher;
-import cpw.mods.modlauncher.api.IEnvironment;
-import cpw.mods.modlauncher.api.IModuleLayerManager;
-import cpw.mods.modlauncher.api.ITransformationService;
-import cpw.mods.modlauncher.api.ITransformer;
+import cpw.mods.modlauncher.api.*;
+import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
+import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileLocator;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 import net.minecraftforge.fml.loading.moddiscovery.ModValidator;
 import net.minecraftforge.forgespi.locating.IModFile;
@@ -24,15 +22,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 public class EssentialTransformationService implements ITransformationService {
     private static final Logger LOGGER = LogManager.getLogger(EssentialTransformationService.class);
+    private static final Map<String, String> COMPATIBILITY_IMPLEMENTATIONS = Map.of(
+            "9.", "ML9CompatibilityLayer",
+            "10.", "ML10CompatibilityLayer"
+    );
+    private static CompatibilityLayer compatibilityLayer;
 
     private final Path gameDir;
-    private final ModLocator modLocator = new ModLocator();
     private final List<SecureJar> pluginJars = new ArrayList<>();
     private final List<SecureJar> gameJars = new ArrayList<>();
+    private EssentialModLocator modLocator;
     private boolean modsInjected;
 
     public EssentialTransformationService(Path gameDir) {
@@ -49,7 +51,7 @@ public class EssentialTransformationService implements ITransformationService {
     }
 
     private static IModuleLayerManager.Layer determineLayer(SecureJar jar) {
-        final String modType = jar.getManifest().getMainAttributes().getValue("FMLModType");
+        final String modType = compatibilityLayer.getManifest(jar).getMainAttributes().getValue("FMLModType");
         if (IModFile.Type.LANGPROVIDER.name().equals(modType) || IModFile.Type.LIBRARY.name().equals(modType)) {
             return IModuleLayerManager.Layer.PLUGIN;
         } else {
@@ -64,6 +66,29 @@ public class EssentialTransformationService implements ITransformationService {
 
     @Override
     public void initialize(IEnvironment environment) {
+        String modLauncherVersion = environment.getProperty(IEnvironment.Keys.MLIMPL_VERSION.get()).orElseThrow();
+        compatibilityLayer = findCompatibilityLayerImpl(modLauncherVersion);
+        modLocator = compatibilityLayer.makeModLocator();
+    }
+
+    @SuppressWarnings("unchecked")
+    private CompatibilityLayer findCompatibilityLayerImpl(String mlVersion) {
+        String implementation = null;
+        for (Map.Entry<String, String> entry : COMPATIBILITY_IMPLEMENTATIONS.entrySet()) {
+            if (mlVersion.startsWith(entry.getKey())) {
+                implementation = entry.getValue();
+                break;
+            }
+        }
+        if (implementation == null) {
+            throw new UnsupportedOperationException("Unable to find a matching compatibility layer for ModLauncher version " + mlVersion);
+        }
+        try {
+            Class<? extends CompatibilityLayer> clazz = (Class<? extends CompatibilityLayer>) Class.forName("gg.essential.loader.stage2.modlauncher." + implementation);
+            return clazz.getConstructor().newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -176,29 +201,5 @@ public class EssentialTransformationService implements ITransformationService {
             return Collections.singletonList(new Resource(IModuleLayerManager.Layer.GAME, this.gameJars));
         }
         return List.of();
-    }
-
-    private static class ModLocator extends AbstractJarFileLocator {
-
-        private Stream<Path> paths;
-
-        public Iterable<ModFile> scanMods(Stream<Path> paths) {
-            this.paths = paths;
-            return scanMods().stream().map(it -> (ModFile) it)::iterator;
-        }
-
-        @Override
-        public Stream<Path> scanCandidates() {
-            return this.paths;
-        }
-
-        @Override
-        public String name() {
-            return "essential-loader";
-        }
-
-        @Override
-        public void initArguments(Map<String, ?> arguments) {
-        }
     }
 }

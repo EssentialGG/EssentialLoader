@@ -3,6 +3,9 @@ repositories {
 }
 
 dependencies {
+    bundle(implementation(project("compatibility")))
+    bundle(project("modlauncher10"))
+
     compileOnly("cpw.mods:modlauncher:9.0.7")
     // modlauncher uses these in its api but does not declare them as such
     compileOnly("cpw.mods:securejarhandler:0.9.50")
