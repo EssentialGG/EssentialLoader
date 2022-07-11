@@ -4,7 +4,7 @@ configure(subprojects) {
     version = parent.version
 }
 
-configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
+configure(subprojects.findAll { it.name !in ["common", "modlauncher", "modlauncher10", "compatibility"] }) {
     configurations {
         bundle
     }

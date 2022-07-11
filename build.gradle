@@ -4,7 +4,12 @@ subprojects {
     group = "gg.essential"
     archivesBaseName = "essential-loader" + path.replace(':', '-')
 
-    java.toolchain.languageVersion.set(JavaLanguageVersion.of(project.name == "modlauncher9" ? 16 : 8))
+    def javaVersions = [
+            "compatibility": 16,
+            "modlauncher9": 16,
+            "modlauncher10": 17,
+    ]
+    java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersions.getOrDefault(project.name, 8)))
 
     repositories {
         mavenCentral()
