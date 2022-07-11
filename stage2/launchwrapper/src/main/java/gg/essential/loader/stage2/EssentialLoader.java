@@ -1,6 +1,7 @@
 package gg.essential.loader.stage2;
 
 import gg.essential.loader.stage2.relaunch.Relaunch;
+import gg.essential.loader.stage2.util.Delete;
 import gg.essential.loader.stage2.utils.Versions;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
@@ -44,6 +45,24 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     public EssentialLoader(Path gameDir, String gameVersion) {
         super(gameDir, gameVersion, false);
+    }
+
+    @Override
+    protected Path postProcessDownload(Path downloadedFile) {
+
+        // We need to strip the stage0 loader bundled with Essential (to allow it to be dropping directly in the mods
+        // folder) because it might be more recent than the version currently on the classpath and as such may prompt
+        // an update of stage1 inside a relaunch (failing hard on Windows because the stage1 jar is currently loaded).
+        try (FileSystem fileSystem = FileSystems.newFileSystem(downloadedFile, (ClassLoader) null)) {
+            Path stage0Path = fileSystem.getPath("gg", "essential", "loader", "stage0");
+            if (Files.exists(stage0Path)) {
+                Delete.recursively(stage0Path);
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Failed to remove embedded stage0 from downloaded Essential jar:", e);
+        }
+
+        return super.postProcessDownload(downloadedFile);
     }
 
     @Override

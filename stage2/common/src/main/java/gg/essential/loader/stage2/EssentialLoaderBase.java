@@ -147,6 +147,7 @@ public abstract class EssentialLoaderBase {
             this.ui.start();
             try {
                 downloadedFile = update(essentialFile, currentMeta, latestMeta);
+                downloadedFile = postProcessDownload(downloadedFile);
             } finally {
                 this.ui.complete();
             }
@@ -406,6 +407,10 @@ public abstract class EssentialLoaderBase {
         }
 
         return urlConnection;
+    }
+
+    protected Path postProcessDownload(Path downloadedFile) {
+        return downloadedFile;
     }
 
     protected Path getExtractedJarsRoot() {
