@@ -12,6 +12,6 @@ public class ML10CompatibilityLayer implements CompatibilityLayer {
 
     @Override
     public EssentialModLocator makeModLocator() {
-        return new ML10ModLocator();
+        return new Forge_41_0_34_ModLocator();
     }
 }

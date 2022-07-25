@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Stream;
 
-class ML9ModLocator extends AbstractJarFileLocator implements EssentialModLocator {
+class Forge_37_0_0_ModLocator extends AbstractJarFileLocator implements EssentialModLocator {
     private Stream<Path> paths;
 
     public Iterable<ModFile> scanMods(Stream<Path> paths) {
