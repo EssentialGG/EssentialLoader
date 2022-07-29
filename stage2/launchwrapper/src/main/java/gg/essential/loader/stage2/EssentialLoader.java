@@ -50,7 +50,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected Path postProcessDownload(Path downloadedFile) {
 
-        // We need to strip the stage0 loader bundled with Essential (to allow it to be dropping directly in the mods
+        // We need to strip the stage0 loader bundled with Essential (to allow it to be dropped directly in the mods
         // folder) because it might be more recent than the version currently on the classpath and as such may prompt
         // an update of stage1 inside a relaunch (failing hard on Windows because the stage1 jar is currently loaded).
         try (FileSystem fileSystem = FileSystems.newFileSystem(downloadedFile, (ClassLoader) null)) {
