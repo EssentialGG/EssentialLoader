@@ -1,10 +1,12 @@
 package gg.essential.loader.stage2;
 
+import cpw.mods.modlauncher.LaunchPluginHandler;
 import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IEnvironment;
 import cpw.mods.modlauncher.api.ITransformationService;
 import cpw.mods.modlauncher.api.ITransformer;
 import cpw.mods.modlauncher.api.TypesafeMap;
+import cpw.mods.modlauncher.serviceapi.ILaunchPluginService;
 import gg.essential.loader.stage2.util.UnsafeHacks;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.LanguageLoadingProvider;
@@ -20,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +49,14 @@ public class EssentialTransformationService implements ITransformationService {
         ModDirTransformerDiscoverer.getExtraLocators().add(getStage2JarPath());
         // Mod locators get loaded in a dedicated class loader, so we need some way to communicate our jars to it
         environment.computePropertyIfAbsent(JARS_KEY.get(), __ -> jars);
+
+        // Register ourselves as a launch plugin, so we get a chance to mess with the TransformingClassLoader before it
+        // starts loading classes
+        try {
+            registerLaunchPlugin(new EssentialLaunchPluginService());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -68,6 +79,22 @@ public class EssentialTransformationService implements ITransformationService {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e); // shouldn't happen because our stage1 is in charge of loading stage2
         }
+    }
+
+    private static void registerLaunchPlugin(ILaunchPluginService plugin) {
+        UnsafeHacks.Accessor<Launcher, LaunchPluginHandler> launchPluginsField =
+            UnsafeHacks.makeAccessor(Launcher.class, "launchPlugins");
+        UnsafeHacks.Accessor<LaunchPluginHandler, Map<String, ILaunchPluginService>> pluginsField =
+            UnsafeHacks.makeAccessor(LaunchPluginHandler.class, "plugins");
+
+        pluginsField.update(launchPluginsField.get(Launcher.INSTANCE), pluginsMap -> {
+            // We want our plugin to run first (in case other plugins like Mixin start looking at classes), so we need to
+            // copy the map into a linked hash map to get predictable iteration order.
+            Map<String, ILaunchPluginService> pluginsLinkedMap = new LinkedHashMap<>();
+            pluginsLinkedMap.put(plugin.name(), plugin);
+            pluginsLinkedMap.putAll(pluginsMap);
+            return pluginsLinkedMap;
+        });
     }
 
     public static class ModLocator extends AbstractJarFileLocator {
