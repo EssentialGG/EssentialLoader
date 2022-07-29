@@ -10,6 +10,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -30,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 public class EssentialLoader extends EssentialLoaderBase {
@@ -53,10 +57,25 @@ public class EssentialLoader extends EssentialLoaderBase {
         // We need to strip the stage0 loader bundled with Essential (to allow it to be dropped directly in the mods
         // folder) because it might be more recent than the version currently on the classpath and as such may prompt
         // an update of stage1 inside a relaunch (failing hard on Windows because the stage1 jar is currently loaded).
+        // We also need to strip the corresponding manifest entry because otherwise stage1 might try to load us as a
+        // regular Essential-using mod, which won't actually work (Essential will function but it won't appear as a
+        // mod in the Mods menu, etc.).
         try (FileSystem fileSystem = FileSystems.newFileSystem(downloadedFile, (ClassLoader) null)) {
             Path stage0Path = fileSystem.getPath("gg", "essential", "loader", "stage0");
             if (Files.exists(stage0Path)) {
                 Delete.recursively(stage0Path);
+            }
+
+            Path manifestPath = fileSystem.getPath("META-INF", "MANIFEST.MF");
+            if (Files.exists(manifestPath)) {
+                Manifest manifest = new Manifest();
+                try (InputStream in = Files.newInputStream(manifestPath)) {
+                    manifest.read(in);
+                }
+                manifest.getMainAttributes().remove(new Attributes.Name("TweakClass"));
+                try (OutputStream out = Files.newOutputStream(manifestPath)) {
+                    manifest.write(out);
+                }
             }
         } catch (IOException e) {
             LOGGER.warn("Failed to remove embedded stage0 from downloaded Essential jar:", e);
