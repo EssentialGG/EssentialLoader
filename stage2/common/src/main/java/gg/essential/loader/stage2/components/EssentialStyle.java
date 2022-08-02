@@ -16,7 +16,7 @@ public interface EssentialStyle {
     Color COLOR_BACKGROUND = new Color(9, 16, 11);
     Color COLOR_FOREGROUND = new Color(172, 172, 172);
     Color COLOR_OUTLINE = new Color(64, 64, 64);
-    Color COLOR_PROGRESS_FILL = new Color(43, 197, 83);
+    Color COLOR_PROGRESS_FILL = new Color(0x1D6AFF);
     Color COLOR_BUTTON = new Color(102, 102, 102);
     Color COLOR_BUTTON_HOVER = COLOR_PROGRESS_FILL;
 
