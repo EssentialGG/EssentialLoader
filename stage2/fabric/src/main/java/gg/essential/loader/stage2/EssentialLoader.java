@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.LanguageAdapter;
 import net.fabricmc.loader.api.metadata.ModMetadata;
 import net.fabricmc.loader.launch.common.FabricLauncherBase;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,20 @@ public class EssentialLoader extends EssentialLoaderBase {
 
     public EssentialLoader(Path gameDir, String gameVersion) {
         super(gameDir, gameVersion, true);
+
+        String debugLog = System.getProperty("essential.debuglog");
+        if (debugLog != null) {
+            Level level;
+            if (debugLog.equals("true")) {
+                level = Level.DEBUG;
+            } else {
+                level = Level.getLevel(debugLog.toUpperCase(Locale.ROOT));
+                if (level == null) {
+                    throw new IllegalArgumentException("Unknown log level \"" + debugLog + "\"");
+                }
+            }
+            Log4j2Hacks.addDebugLogFile(level);
+        }
     }
 
     @Override
