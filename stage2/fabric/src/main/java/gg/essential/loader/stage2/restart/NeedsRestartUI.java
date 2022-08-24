@@ -126,6 +126,7 @@ public class NeedsRestartUI implements EssentialStyle {
         htmlLabels.forEach(this::fixJLabelHeight);
         frame.pack();
 
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 

@@ -87,6 +87,7 @@ public class LoaderSwingUI implements LoaderUI, EssentialStyle {
         contentPane.add(progressBarPanel);
 
         frame.pack();
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
         this.frame = frame;

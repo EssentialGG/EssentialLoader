@@ -41,7 +41,6 @@ public interface EssentialStyle {
         }
         frame.setUndecorated(true);
         frame.setResizable(false);
-        frame.setLocationRelativeTo(null);
 
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
