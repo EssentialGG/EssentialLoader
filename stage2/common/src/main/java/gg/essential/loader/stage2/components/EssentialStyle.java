@@ -9,14 +9,16 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 public interface EssentialStyle {
-    Color COLOR_BACKGROUND = new Color(9, 16, 11);
-    Color COLOR_FOREGROUND = new Color(172, 172, 172);
+    Color COLOR_BACKGROUND = new Color(24, 24, 24);
+    Color COLOR_FOREGROUND = new Color(152, 166, 174);
+    Color COLOR_HIGHLIGHT = new Color(227, 245, 255);
     Color COLOR_OUTLINE = new Color(64, 64, 64);
-    Color COLOR_PROGRESS_FILL = new Color(0x1D6AFF);
+    Color COLOR_PROGRESS_FILL = new Color(10, 130, 253);
     Color COLOR_BUTTON = new Color(102, 102, 102);
     Color COLOR_BUTTON_HOVER = COLOR_PROGRESS_FILL;
 
@@ -31,7 +33,9 @@ public interface EssentialStyle {
         final JFrame frame = new JFrame();
         frame.setTitle("Updating Essential...");
         try {
-            frame.setIconImage(ImageIO.read(Objects.requireNonNull(getClass().getResource("/assets/essential-loader-stage2/icon.png"))));
+            boolean isMacOS = System.getProperty("os.name", "unknown").toLowerCase(Locale.ROOT).startsWith("mac");
+            String path = "/assets/essential-loader-stage2/icon" + (isMacOS ? ".macos" : "") + ".png";
+            frame.setIconImage(ImageIO.read(Objects.requireNonNull(getClass().getResource(path))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -69,7 +73,7 @@ public interface EssentialStyle {
         try {
             final Image icon = ImageIO.read(Objects.requireNonNull(getClass().getResource("/assets/essential-loader-stage2/essential.png")));
             final JLabel label = new JLabel(new ImageIcon(icon));
-            label.setBorder(new EmptyBorder(28, 0, 28, 0));
+            label.setBorder(new EmptyBorder(26, 0, 26, 0));
             label.setAlignmentX(Container.CENTER_ALIGNMENT);
             contentPane.add(label);
         } catch (IOException e) {
@@ -77,6 +81,13 @@ public interface EssentialStyle {
         }
 
         return contentPane;
+    }
+
+    default String withColor(Color color, String str) {
+        String red = Integer.toHexString(color.getRed());
+        String green = Integer.toHexString(color.getGreen());
+        String blue = Integer.toHexString(color.getBlue());
+        return "<font color=\"#" + red + green + blue + "\">" + str + "</font>";
     }
 
     class Fonts {

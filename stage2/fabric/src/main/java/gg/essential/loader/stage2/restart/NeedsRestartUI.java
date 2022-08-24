@@ -34,7 +34,7 @@ public class NeedsRestartUI implements EssentialStyle {
         content.setMaximumSize(new Dimension(FRAME_WIDTH, Integer.MAX_VALUE));
         content.setBorder(new EmptyBorder(0, 26, 0, 26));
 
-        final JLabel explanation = new JLabel("<html>You have to <font color=white>restart the game to continue</font>. Updates from the following mods require a manual restart:</html>", SwingConstants.LEFT);
+        final JLabel explanation = new JLabel("<html>You have to " + withColor(COLOR_HIGHLIGHT, "restart the game to continue") + ". Updates from the following mods require a manual restart:</html>", SwingConstants.LEFT);
         explanation.setMaximumSize(new Dimension(FRAME_WIDTH, Integer.MAX_VALUE));
         explanation.setForeground(COLOR_FOREGROUND);
         explanation.setAlignmentX(Container.CENTER_ALIGNMENT);
@@ -82,14 +82,14 @@ public class NeedsRestartUI implements EssentialStyle {
             bullet.setMinimumSize(new Dimension(4, 15));
             bullet.setPreferredSize(new Dimension(4, 15));
             bullet.setMaximumSize(new Dimension(4, 15));
-            bullet.setForeground(Color.WHITE);
+            bullet.setForeground(COLOR_HIGHLIGHT);
             bullet.setAlignmentY(Component.TOP_ALIGNMENT);
             bulletContainer.add(Box.createHorizontalStrut(8));
             bulletContainer.add(bullet);
             bulletContainer.add(Box.createHorizontalStrut(8));
 
             final JLabel text = new JLabel("<html>" + modName + "</html>", SwingConstants.LEFT);
-            text.setForeground(Color.WHITE);
+            text.setForeground(COLOR_HIGHLIGHT);
             text.setAlignmentX(Container.LEFT_ALIGNMENT);
             if (Fonts.medium != null) {
                 text.setFont(Fonts.medium.deriveFont(15F));
@@ -104,7 +104,7 @@ public class NeedsRestartUI implements EssentialStyle {
         close.setBorder(BorderFactory.createEmptyBorder(8, 13, 8, 13));
         close.setFocusPainted(false);
         close.setContentAreaFilled(false);
-        close.setForeground(Color.WHITE);
+        close.setForeground(COLOR_HIGHLIGHT);
         if (Fonts.semiBold != null) {
             close.setFont(Fonts.semiBold.deriveFont(15F));
         }
