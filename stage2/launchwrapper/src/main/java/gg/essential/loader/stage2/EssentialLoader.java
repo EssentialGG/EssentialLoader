@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,7 +74,10 @@ public class EssentialLoader extends EssentialLoaderBase {
                     manifest.read(in);
                 }
                 manifest.getMainAttributes().remove(new Attributes.Name("TweakClass"));
-                try (OutputStream out = Files.newOutputStream(manifestPath)) {
+                // Specify OpenOptions here to bypass a bug in older openjdk versions (like the one the vanilla launcher uses
+                // by default... *grumbles*).
+                // See: https://github.com/openjdk/jdk8u/commit/bc2f17678c9607becb67f453c8b692c96d0e8bba#diff-2635ee58b104a22280e52e4140e2086f1a145bd9766c02a329a4ed25b01a972e
+                try (OutputStream out = Files.newOutputStream(manifestPath, StandardOpenOption.TRUNCATE_EXISTING)) {
                     manifest.write(out);
                 }
             }
