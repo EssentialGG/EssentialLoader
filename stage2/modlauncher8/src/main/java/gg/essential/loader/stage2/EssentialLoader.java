@@ -9,7 +9,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     private final EssentialTransformationService transformationService = new EssentialTransformationService();
 
     public EssentialLoader(Path gameDir, String gameVersion) {
-        super(gameDir, gameVersion, true);
+        super(gameDir, gameVersion);
     }
 
     @SuppressWarnings("unused") // called via reflection from stage1

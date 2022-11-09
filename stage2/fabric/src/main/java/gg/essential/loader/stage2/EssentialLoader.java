@@ -40,7 +40,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     private final JarInJarDependenciesHandler jijHandler = new JarInJarDependenciesHandler(getExtractedJarsRoot());
 
     public EssentialLoader(Path gameDir, String gameVersion) {
-        super(gameDir, gameVersion, true);
+        super(gameDir, gameVersion);
 
         String debugLog = System.getProperty("essential.debuglog");
         if (debugLog != null) {

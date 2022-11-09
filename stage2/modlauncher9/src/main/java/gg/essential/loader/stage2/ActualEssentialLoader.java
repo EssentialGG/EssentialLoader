@@ -10,7 +10,7 @@ public class ActualEssentialLoader extends EssentialLoaderBase {
     private final EssentialTransformationService transformationService;
 
     public ActualEssentialLoader(Path gameDir, String gameVersion, EssentialTransformationService transformationService) {
-        super(gameDir, gameVersion, true);
+        super(gameDir, gameVersion);
         this.transformationService = transformationService;
     }
 

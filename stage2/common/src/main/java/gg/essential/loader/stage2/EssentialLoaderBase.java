@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -70,7 +69,7 @@ public abstract class EssentialLoaderBase {
     private final String fileBaseName;
     private final LoaderUI ui;
 
-    public EssentialLoaderBase(final Path gameDir, final String gameVersion, final boolean lwjgl3) {
+    public EssentialLoaderBase(final Path gameDir, final String gameVersion) {
         this.gameDir = gameDir;
         this.gameVersion = gameVersion;
         this.apiGameVersion = gameVersion.replace(".", "-");
@@ -84,14 +83,10 @@ public abstract class EssentialLoaderBase {
             LOGGER.info("Essential Loader (stage2) branch set to \"{}\".", stage2Branch);
         }
 
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        LoaderUI gui;
-        if (lwjgl3 && (os.contains("mac") || os.contains("darwin"))) {
-            gui = new ForkedJvmLoaderSwingUI();
-        } else {
-            gui = new LoaderSwingUI();
-        }
-        this.ui = LoaderUI.all(new LoaderLoggingUI().updatesEveryMillis(1000), gui.updatesEveryMillis(1000 / 60));
+        this.ui = LoaderUI.all(
+            new LoaderLoggingUI().updatesEveryMillis(1000),
+            new ForkedJvmLoaderSwingUI().updatesEveryMillis(1000 / 60)
+        );
     }
 
     public void load() throws IOException {
