@@ -231,14 +231,25 @@ public class EssentialLoader extends EssentialLoaderBase {
                             .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class)
                             .invoke(null, in, modPath.toString(), Collections.emptyList());
                     } catch (NoSuchMethodException e1) {
-                        // fabric loader 0.14
-                        Class<?> VersionOverrides = findImplClass("metadata.VersionOverrides");
-                        Class<?> DependencyOverrides = findImplClass("metadata.DependencyOverrides");
-                        Object versionOverrides = VersionOverrides.getConstructor().newInstance();
-                        Object dependencyOverrides = DependencyOverrides.getConstructor(Path.class).newInstance(Paths.get("_invalid_"));
-                        return (ModMetadata) ModMetadataParser
-                            .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class, VersionOverrides, DependencyOverrides)
-                            .invoke(null, in, modPath.toString(), Collections.emptyList(), versionOverrides, dependencyOverrides);
+                        try {
+                            // fabric loader 0.14
+                            Class<?> VersionOverrides = findImplClass("metadata.VersionOverrides");
+                            Class<?> DependencyOverrides = findImplClass("metadata.DependencyOverrides");
+                            Object versionOverrides = VersionOverrides.getConstructor().newInstance();
+                            Object dependencyOverrides = DependencyOverrides.getConstructor(Path.class).newInstance(Paths.get("_invalid_"));
+                            return (ModMetadata) ModMetadataParser
+                                .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class, VersionOverrides, DependencyOverrides)
+                                .invoke(null, in, modPath.toString(), Collections.emptyList(), versionOverrides, dependencyOverrides);
+                        } catch (NoSuchMethodException e2) {
+                            // fabric loader 0.14.11
+                            Class<?> VersionOverrides = findImplClass("metadata.VersionOverrides");
+                            Class<?> DependencyOverrides = findImplClass("metadata.DependencyOverrides");
+                            Object versionOverrides = VersionOverrides.getConstructor().newInstance();
+                            Object dependencyOverrides = DependencyOverrides.getConstructor(Path.class).newInstance(Paths.get("_invalid_"));
+                            return (ModMetadata) ModMetadataParser
+                                .getDeclaredMethod("parseMetadata", InputStream.class, String.class, List.class, VersionOverrides, DependencyOverrides, Boolean.TYPE)
+                                .invoke(null, in, modPath.toString(), Collections.emptyList(), versionOverrides, dependencyOverrides, FabricLoader.getInstance().isDevelopmentEnvironment());
+                        }
                     }
                 }
             }
