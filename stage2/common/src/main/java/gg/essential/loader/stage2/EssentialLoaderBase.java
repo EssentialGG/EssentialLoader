@@ -111,7 +111,11 @@ public abstract class EssentialLoaderBase {
         // Load current metadata from existing jar (if one exists)
         ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
         if (Files.exists(essentialFile)) {
-            currentMeta = ModJarMetadata.read(essentialFile);
+            try {
+                currentMeta = ModJarMetadata.read(essentialFile);
+            } catch (IOException e) {
+                LOGGER.warn("Failed to read existing Essential jar metadata", e);
+            }
         }
         String currentChecksum = currentMeta.getChecksum();
 
