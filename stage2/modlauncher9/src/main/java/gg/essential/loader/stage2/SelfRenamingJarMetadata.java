@@ -4,10 +4,10 @@ import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
 import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IModuleLayerManager;
+import gg.essential.loader.stage2.util.DelegatingJarMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -25,17 +25,16 @@ import java.util.Set;
  * packages (this may result in false positives, but such cases would have crashed the game due to non-unique exports
  * anyway).
  */
-public class SelfRenamingJarMetadata implements JarMetadata {
+public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
     private static final Logger LOGGER = LogManager.getLogger(SelfRenamingJarMetadata.class);
     private static final ThreadLocal<Boolean> RE_ENTRANCE_LOCK = ThreadLocal.withInitial(() -> false);
 
     private final SecureJar secureJar;
-    private final JarMetadata delegate;
     private final IModuleLayerManager.Layer layer;
 
     public SelfRenamingJarMetadata(SecureJar secureJar, Path path, IModuleLayerManager.Layer layer) {
+        super(JarMetadata.from(secureJar, path));
         this.secureJar = secureJar;
-        this.delegate = JarMetadata.from(secureJar, path);
         this.layer = layer;
     }
 
@@ -93,16 +92,6 @@ public class SelfRenamingJarMetadata implements JarMetadata {
             }
         }
         return jars;
-    }
-
-    @Override
-    public String version() {
-        return delegate.version();
-    }
-
-    @Override
-    public ModuleDescriptor descriptor() {
-        return delegate.descriptor();
     }
 
     private static class SelfRenamingReEntranceException extends RuntimeException {
