@@ -5,6 +5,7 @@ import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.*;
 import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
+import gg.essential.loader.stage2.util.KFFMerger;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
@@ -34,6 +35,7 @@ public class EssentialTransformationService implements ITransformationService {
     private final Path gameDir;
     private final List<SecureJar> pluginJars = new ArrayList<>();
     private final List<SecureJar> gameJars = new ArrayList<>();
+    private final KFFMerger kffMerger = new KFFMerger();
     private EssentialModLocator modLocator;
     private boolean modsInjected;
 
@@ -43,6 +45,9 @@ public class EssentialTransformationService implements ITransformationService {
 
     public void addToClasspath(final Path path) {
         final SecureJar jar = SecureJar.from(j -> new SelfRenamingJarMetadata(j, path, determineLayer(j)), path);
+        if (this.kffMerger.addKotlinJar(path, jar)) {
+            return;
+        }
         if (determineLayer(jar) == IModuleLayerManager.Layer.PLUGIN) {
             this.pluginJars.add(jar);
         } else {
@@ -120,7 +125,7 @@ public class EssentialTransformationService implements ITransformationService {
                 (Map<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager);
 
             layers.compute(layer, (__, list) -> {
-                SortedJarOrPathList sortedList = new SortedJarOrPathList();
+                SortedJarOrPathList sortedList = new SortedJarOrPathList(kffMerger::maybeMergeInto);
                 if (list != null) {
                     sortedList.addAll(list);
                 }
