@@ -123,7 +123,7 @@ def includeMixin(AbstractArchiveTask task, Configuration mixin) {
 }
 
 def configureExampleModJar = { String tweaker, Configuration mixin = null -> return { AbstractArchiveTask task ->
-    archiveBaseName.set(name)
+    archiveBaseName.set(task.name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
     from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } })
@@ -184,8 +184,25 @@ tasks.register("example2ModMixinTweakerWithMixin08Jar", Jar, configureExample2Mo
 tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
     configure.delegate = delegate
-    configure()
+    configure(it)
     relocate("gg.essential.loader.stage0", "com.example.mod.essential.stage0")
+}
+
+tasks.register("exampleBundledModJar", Jar) {
+    def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+    configure.delegate = delegate
+    configure(it)
+
+    from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile) {
+        into("gg/essential/loader/stage1/")
+        rename { "stage2.jar" }
+    }
+    from(tasks.essentialJar.archiveFile) {
+        rename { "bundled-essential.jar" }
+    }
+    from(file("essential-loader.properties")) {
+        expand(["pinnedFileMd5": { tasks.essentialJar.archiveFile.get().asFile.bytes.md5() }])
+    }
 }
 
 tasks.register("oldKotlinModJar", Jar) {
@@ -350,6 +367,7 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
 
     mod(tasks.exampleRelocatedModJar.archiveFile, "example:mod", "relocated")
+    mod(tasks.exampleBundledModJar.archiveFile, "example:mod", "bundled")
 
     mod(tasks.oldKotlinModJar.archiveFile, "example:kotlin", "old")
 

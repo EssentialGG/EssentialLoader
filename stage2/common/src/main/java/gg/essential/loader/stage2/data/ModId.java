@@ -34,6 +34,10 @@ public class ModId {
         return modId;
     }
 
+    public String getFullSlug() {
+        return publisherSlug + ":" + modSlug;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -13,12 +13,14 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Properties;
 
 public abstract class EssentialLoaderBase {
 
@@ -29,12 +31,9 @@ public abstract class EssentialLoaderBase {
         "essential.download.url",
         System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
     );
-    private static final String BRANCH = System.getProperty(
-        "essential.stage2.branch",
-        System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
-    );
-    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/loader-stage2/updates/" + BRANCH + "/%s/";
-    private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
+    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/loader-stage2/updates/%s/%s/";
+    private static final String BRANCH_KEY = "branch";
+    private static final String AUTO_UPDATE_KEY = "autoUpdate";
 
     private final String variant;
     private final String gameVersion;
@@ -64,12 +63,34 @@ public abstract class EssentialLoaderBase {
             Files.createDirectories(dataDir);
         }
 
+        Properties defaultProps = new Properties(System.getProperties());
+        copyEnvToProp(defaultProps, "ESSENTIAL_STAGE2_BRANCH", BRANCH_KEY);
+        copyPropToProp(defaultProps, "essential.stage2.branch", BRANCH_KEY);
+        copyPropToProp(defaultProps, "essential.autoUpdate", AUTO_UPDATE_KEY);
+
+        // Load config
+        Properties config = new Properties(defaultProps);
+        Path configFile = dataDir.resolve("config.properties");
+        if (Files.exists(configFile)) {
+            try (InputStream in = Files.newInputStream(configFile)) {
+                config.load(in);
+            } catch (Exception e) {
+                LOGGER.error("Failed to read config at " + configFile + ":", e);
+            }
+        }
+        Boolean autoUpdate = booleanOrNull(config.getProperty(AUTO_UPDATE_KEY));
+        String branch = config.getProperty(BRANCH_KEY, "stable");
+
         boolean needUpdate = !Files.exists(stage2File);
 
         // Fetch latest version metadata (if required)
         FileMeta meta = null;
-        if (needUpdate || AUTO_UPDATE) {
-            meta = fetchLatestMetadata();
+        URL bundledStage2Url = getClass().getResource("stage2.jar");
+        if (bundledStage2Url != null && autoUpdate == null) {
+            LOGGER.info("Skipping update check, found pinned stage2 jar: {}", bundledStage2Url);
+            meta = new FileMeta(bundledStage2Url, getChecksum(bundledStage2Url));
+        } else if (needUpdate || autoUpdate != Boolean.FALSE) {
+            meta = fetchLatestMetadata(branch);
             if (meta == null && needUpdate) {
                 return;
             }
@@ -138,8 +159,17 @@ public abstract class EssentialLoaderBase {
         }
     }
 
-    private URLConnection prepareConnection(final String url) throws IOException {
-        final URLConnection urlConnection = new URL(url).openConnection();
+    private String getChecksum(final URL input) {
+        try (final InputStream inputStream = input.openStream()) {
+            return DigestUtils.md5Hex(inputStream);
+        } catch (final Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private URLConnection prepareConnection(final URL url) throws IOException {
+        final URLConnection urlConnection = url.openConnection();
 
         if (urlConnection instanceof HttpURLConnection) {
             final HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
@@ -156,13 +186,12 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
-    private FileMeta fetchLatestMetadata() {
+    private FileMeta fetchLatestMetadata(String branch) {
         URLConnection connection = null;
         JsonObject responseObject;
         try {
-            connection = this.prepareConnection(
-                String.format(VERSION_URL, this.gameVersion.replace(".", "-"))
-            );
+            String url = String.format(VERSION_URL, branch, this.gameVersion.replace(".", "-"));
+            connection = this.prepareConnection(new URL(url));
 
             String response;
             try (final InputStream inputStream = connection.getInputStream()) {
@@ -194,7 +223,12 @@ public abstract class EssentialLoaderBase {
             return null;
         }
 
-        return new FileMeta(url, checksum);
+        try {
+            return new FileMeta(new URL(url), checksum);
+        } catch (MalformedURLException e) {
+            LOGGER.error("Received invalid url `" + url + "`:", e);
+            return null;
+        }
     }
 
     private boolean downloadFile(FileMeta meta, Path target) {
@@ -228,11 +262,29 @@ public abstract class EssentialLoaderBase {
         LOGGER.error("cf-ray: {}", connection.getHeaderField("cf-ray"));
     }
 
+    private Boolean booleanOrNull(String str) {
+        return str == null ? null : Boolean.parseBoolean(str);
+    }
+
+    private void copyEnvToProp(Properties properties, String envKey, String dstKey) {
+        String value = System.getenv(envKey);
+        if (value != null) {
+            properties.setProperty(dstKey, value);
+        }
+    }
+
+    private void copyPropToProp(Properties properties, String srcKey, String dstKey) {
+        String value = properties.getProperty(srcKey);
+        if (value != null) {
+            properties.setProperty(dstKey, value);
+        }
+    }
+
     private static class FileMeta {
-        String url;
+        URL url;
         String checksum;
 
-        public FileMeta(String url, String checksum) {
+        public FileMeta(URL url, String checksum) {
             this.url = url;
             this.checksum = checksum;
         }
