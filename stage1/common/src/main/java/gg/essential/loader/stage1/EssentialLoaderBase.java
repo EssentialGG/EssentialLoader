@@ -63,7 +63,7 @@ public abstract class EssentialLoaderBase {
             Files.createDirectories(dataDir);
         }
 
-        Properties defaultProps = new Properties(System.getProperties());
+        Properties defaultProps = new Properties();
         copyEnvToProp(defaultProps, "ESSENTIAL_STAGE2_BRANCH", BRANCH_KEY);
         copyPropToProp(defaultProps, "essential.stage2.branch", BRANCH_KEY);
         copyPropToProp(defaultProps, "essential.autoUpdate", AUTO_UPDATE_KEY);
@@ -274,7 +274,7 @@ public abstract class EssentialLoaderBase {
     }
 
     private void copyPropToProp(Properties properties, String srcKey, String dstKey) {
-        String value = properties.getProperty(srcKey);
+        String value = System.getProperty(srcKey);
         if (value != null) {
             properties.setProperty(dstKey, value);
         }
