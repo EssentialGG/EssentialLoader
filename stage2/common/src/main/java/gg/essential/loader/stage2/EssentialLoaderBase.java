@@ -9,6 +9,7 @@ import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.data.ModVersion;
 import gg.essential.loader.stage2.diff.DiffPatcher;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
+import gg.essential.loader.stage2.restart.ForkedNeedsRestartUI;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -46,6 +47,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -355,6 +358,37 @@ public abstract class EssentialLoaderBase {
             return null;
         }
 
+        // Check if the current stage2 meets the requirements of the mod
+        String requiredStage2Version = getRequiredStage2VersionIfOutdated(essentialFile);
+        if (requiredStage2Version != null) {
+            // Find the stage1 config file
+            Path jarFile;
+            try {
+                jarFile = Paths.get(getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+            String jarFileName = jarFile.getFileName().toString();
+            Path configFile = jarFile.resolveSibling(jarFileName.substring(0, jarFileName.length() - 4) + ".properties");
+
+            // Tell stage1 to upgrade stage2 on next boot
+            Properties config = readConfigFileAt(configFile);
+            config.remove(PENDING_UPDATE_VERSION_KEY); // upgrade to latest version
+            config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, "true");
+            if (AutoUpdate.from(config.getProperty(AutoUpdate.KEY)) == AutoUpdate.Off) {
+                // auto-update is turned off, we need to turn it on
+                config.setProperty(AutoUpdate.KEY, AutoUpdate.WITH_PROMPT);
+            }
+            writeConfigFileTo(configFile, config);
+
+            // Inform user and restart game
+            ForkedNeedsRestartUI ui = new ForkedNeedsRestartUI(singletonList("Essential Loader"), emptyList());
+            ui.show();
+            ui.waitForClose();
+            ui.exit();
+            throw new AssertionError("JVM should have exited by now");
+        }
+
         this.addToClasspath(mod, essentialFile, this.extractJarsInJar(mod, essentialFile));
 
         return currentMeta;
@@ -589,6 +623,37 @@ public abstract class EssentialLoaderBase {
 
     protected Path postProcessDownload(Path downloadedFile) {
         return downloadedFile;
+    }
+
+    private String getRequiredStage2VersionIfOutdated(Path modFile) {
+        // If we don't know our own version, then stage1 predates pinning, so it'll always auto-update and we're always
+        // up-to-date enough for all mods (assuming the stage2 update is released before mods that require it).
+        if (currentStage2Version == null) {
+            return null;
+        }
+
+        try (FileSystem fileSystem = FileSystems.newFileSystem(modFile, (ClassLoader) null)) {
+            Path manifestPath = fileSystem.getPath("META-INF", "MANIFEST.MF");
+            if (!Files.exists(manifestPath)) {
+                return null; // no requirement, good to go
+            }
+            Manifest manifest = new Manifest();
+            try (InputStream in = Files.newInputStream(manifestPath)) {
+                manifest.read(in);
+            }
+            String requiredVersion = manifest.getMainAttributes().getValue(new Attributes.Name("Requires-Essential-Stage2-Version"));
+            if (requiredVersion == null) {
+                return null; // no requirement, good to go
+            }
+            if (compareVersions(currentStage2Version, requiredVersion) >= 0) {
+                return null; // current version is recent enough
+            } else {
+                return requiredVersion; // need to update
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Failed to read mod metadata from jar file at " + modFile + ":", e);
+            return null; // assume it's good enough, nothing else we can really do
+        }
     }
 
     protected Path getExtractedJarsRoot(Mod mod) {

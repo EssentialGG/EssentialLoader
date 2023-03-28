@@ -203,6 +203,10 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
         manifest {
             // Dummy attribute so they all have different hashes
             attributes "Implementation-Version": "$i"
+            // For stage3 version 4+, we add an explicit requirement on stage2 version 4
+            if (i >= 4) {
+                attributes "Requires-Essential-Stage2-Version": "4"
+            }
         }
     }
     tasks.register("exampleBundledModJar$i", Jar) {

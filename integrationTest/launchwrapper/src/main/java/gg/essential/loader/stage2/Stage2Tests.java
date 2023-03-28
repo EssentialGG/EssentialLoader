@@ -8,7 +8,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static gg.essential.loader.fixtures.BaseInstallation.withBranch;
+import static gg.essential.loader.stage1.Stage1BundledTests.props;
+import static gg.essential.loader.stage1.Stage1BundledTests.writeProps;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Stage2Tests {
@@ -92,5 +98,32 @@ public class Stage2Tests {
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker").getDeclaredField("dummyInitialized").getBoolean(null));
+    }
+
+    @Test
+    public void testUpdateRequiringNewerStage2(Installation installation) throws Exception {
+        // First install at version 2
+        installation.addExampleMod("bundled-2");
+        Files.copy(withBranch(installation.stage3Meta, "2"), installation.stage3Meta, REPLACE_EXISTING);
+        IsolatedLaunch firstLaunch = installation.launchFML();
+        assertEquals("2", firstLaunch.getProperty("essential.stage2.version"));
+        assertEquals("2", firstLaunch.getProperty("essential.version"));
+
+        // Then try to upgrade Essential to version 4 which requires stage2 version 4
+        Files.copy(withBranch(installation.stage3Meta, "4"), installation.stage3Meta, REPLACE_EXISTING);
+        writeProps(installation.stage2ConfigFile, props("pendingUpdateVersion=4", "pendingUpdateResolution=true"));
+        IsolatedLaunch secondLaunch = installation.launchFML();
+        assertEquals("2", secondLaunch.getProperty("essential.stage2.version"));
+        assertNull(secondLaunch.getProperty("essential.version"));
+        assertThrows(ClassNotFoundException.class, () -> secondLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker"));
+
+        // Make available a newer stage2 version
+        // We make available version 5 even though stage3 only requires version 4; we expect it to upgrade straight to 5
+        Files.copy(withBranch(installation.stage2Meta, "5"), installation.stage2Meta, REPLACE_EXISTING);
+
+        // Restart to complete upgrade
+        IsolatedLaunch thirdLaunch = installation.launchFML();
+        assertEquals("5", thirdLaunch.getProperty("essential.stage2.version"));
+        assertEquals("4", thirdLaunch.getProperty("essential.version"));
     }
 }
