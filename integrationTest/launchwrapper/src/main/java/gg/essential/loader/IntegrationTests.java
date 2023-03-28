@@ -78,21 +78,6 @@ public class IntegrationTests {
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
-    @Test
-    public void testBundledVersionLaunch(Installation installation) throws Exception {
-        installation.addExampleMod("bundled");
-
-        IsolatedLaunch isolatedLaunch;
-        try (ForbiddenApiServer server = new ForbiddenApiServer()) {
-            isolatedLaunch = installation.newLaunchFML();
-            server.configure(isolatedLaunch);
-            isolatedLaunch.launch();
-        }
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
     private static class ForbiddenApiServer implements AutoCloseable {
         private final ServerSocket socket = new ServerSocket(0);
         private final AtomicInteger accessCount = new AtomicInteger();

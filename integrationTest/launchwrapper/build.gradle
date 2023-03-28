@@ -337,7 +337,7 @@ tasks.register("setupDownloadsApi", Sync) {
                 file.write(content.get())
             }
         }
-        json(v0Json, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
+        json(v0Json, { """{ "version": "$branch", "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
         json(v1Json, { """{ "version": "$branch", "checksum": "${jarFile.bytes.md5()}", "id": "$id" }""" })
         json(v1Download, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
     }

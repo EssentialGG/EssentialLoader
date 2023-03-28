@@ -48,6 +48,7 @@ pinnedFile=/path-to-embedded.jar
 # MD5 checksum of the above file
 pinnedFileMd5=d41d8cd98f00b204e9800998ecf8427e
 # Optional, the version as named in the Essential Mods Panel of the embedded jar.
+# Required if click-to-update is used.
 # May be required by your mod if it wants to know its own version.
 # Also required for diff-updates, otherwise the full jar will be downloaded on the first update.
 pinnedFileVersion=1.2.0
@@ -70,26 +71,54 @@ For legacy reasons the configuration file for Essential itself is at `.minecraft
 It may contain the following values:
 ```properties
 # Whether update checks are enabled.
-# If this property is set, regardless of its value, then the pinned version is ignored completely.
-# When set to true: the mod is updated to the latest version at `branch` on each game boot
-# When set to false: if a version is already downloaded, loads that version, otherwise downloads the latest version once
+# When set to `true`:
+#   The mod is updated to the latest version at `branch` on each game boot. Pinned versions are ignored.
+# When set to `false`:
+#   If a version is already downloaded, loads that version; otherwise downloads the latest version once or uses the
+#   latest pinned version if there is one.
+# When set to `with-prompt`:
+#   Checks for updates and sets the `pendingUpdateVersion` property if one is found.
+#   The mod is then expected to show an in-game update prompt and write to the `pendingUpdateResolution` property
+#   either `true` if the user accepted the upgrade or `false` if they want to ignore it.
+#   If the mod fails to write to the property, the loader will show its own prompt to allow the user to update even if
+#   the current mod version is bricked.
+# Defaults to `true` unless there is a pinned jar present in which case it defaults to `with-prompt`.
 autoUpdate=true
 # Specifies the branch to follow if autoUpdate is enabled.
-# Note that specific version names are valid targets. So you can implement click-to-update by fetching the latest
-# version ingame and then setting this property to its name whenever the user requests to update.
 branch=beta
+# Set by the loader when there is an update available.
+# This value **MUST NOT BE MODIFIED** by the mod.
+# Instead `pendingUpdateResolution` should be set.
+pendingUpdateVersion=1.2.0.13
+# Should be set by the mod when it finds the `pendingUpdateVersion` property to be set.
+# If the mod fails to write the property, the loader will show its own prompt to allow the user to update even if the
+# current mod version is bricked.
+# Should be set to `true` to accept and download the update.
+# Should be set to `false` to ignore this specific update.
+pendingUpdateResolution=true
+# INTERNAL USE ONLY
+# Stores the last version to which the mod has accepted upgrading.
+# Prevents downgrading when the container mod is upgraded (e.g. by a modpack author) to a version that's older than
+# this version:
+# If a pinned jar is found that's older than this version, then that jar is ignored.
+# If however a pinned jar is found that's newer than or equal to this version, then that jar will be used and this
+# property will be un-set to allow the user to downgrade the mod by downgrading the container mod.
+overridePinnedVersion=1.2.0.12
 ```
 
 ## Pinning stage2
 
-Stage2 can be pinned as well, however it is less configurable.
+Stage2 can be pinned as well.
 
-To pin a stage2 jar, place it at `gg/essential/loader/stage1/stage2.jar` inside the container mod.
+Instead of an `essential-loader.properties` file at the root of the container mod, the file must be placed at
+`gg/essential/loader/stage1/stage2.properties`.
+Only the `pinnedFile`, `pinnedFileMd5` and `pinnedFileVersion` properties are supported and all three are required.
 
 For external configuration file for stage2 is at `.minecraft/essential/loader/stage1/$variant/config.properties`.
-It provides the `autoUpdate` and the `branch` options with identical semantic meaning to the per-mod config files.
+It provides has the `autoUpdate`, `branch`, `pendingUpdateVersion` and `pendingUpdateResolution` properties with
+identical semantic meaning to the per-mod config files.
 
 TODO this needs some more work before we can open it up for third-party usage!
-Given stage2 is shared between all mods, we need to pick the latest version and also have a way to enable
+Given stage2 is shared between all mods, we need to have a way to enable
 auto-updates if one of the mods does not have it pinned, i.e. we only want it pinned if all the mods agree that it
 should be pinned. Currently a single mod can pin it for all. Kinda tricky with old loaders around though.

@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Stage2Tests {
@@ -79,25 +78,6 @@ public class Stage2Tests {
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testUpdateWithBundledVersion(Installation installation) throws Exception {
-        installation.addExampleMod("bundled");
-
-        installation.launchFML();
-
-        // Enable auto-update via config file (otherwise we won't even check when there's a pinned file present)
-        Files.write(installation.gameDir.resolve("essential").resolve("essential-loader.properties"),
-            "autoUpdate=true".getBytes(StandardCharsets.UTF_8));
-
-        Files.delete(installation.stage3Meta);
-        Files.copy(installation.stage3DummyMeta, installation.stage3Meta);
-
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker").getDeclaredField("dummyInitialized").getBoolean(null));
     }
 
     @Test

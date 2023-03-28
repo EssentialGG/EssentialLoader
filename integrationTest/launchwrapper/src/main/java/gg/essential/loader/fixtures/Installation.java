@@ -7,6 +7,10 @@ import java.nio.file.Path;
 
 public class Installation extends BaseInstallation {
 
+    public final Path stage1Folder = essentialDir.resolve("loader").resolve("stage1").resolve("launchwrapper");
+    public final Path stage1ConfigFile = stage1Folder.resolve("stage2.forge_1.8.8.properties");
+    public final Path stage2ConfigFile = essentialDir.resolve("essential-loader.properties");
+
     public Installation() throws IOException {
         Path dummyFile = Files.createTempFile("dummy", "");
         System.setProperty("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", dummyFile.toAbsolutePath().toString());

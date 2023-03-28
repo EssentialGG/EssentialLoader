@@ -82,33 +82,11 @@ public class Stage1Tests {
     }
 
     @Test
-    public void testUpdateWithBundledVersion(Installation installation) throws Exception {
-        installation.addExampleMod("bundled");
-
-        installation.launchFML();
-
-        // Enable auto-update via config file (otherwise we won't even check when there's a pinned file present)
-        Files.write(installation.gameDir.resolve("essential").resolve("loader").resolve("stage1").resolve("launchwrapper").resolve("config.properties"),
-            "autoUpdate=true".getBytes(StandardCharsets.UTF_8));
-
-        Files.delete(installation.stage2Meta);
-        Files.copy(installation.stage2DummyMeta, installation.stage2Meta);
-
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("loaded").getBoolean(null));
-        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("initialized").getBoolean(null));
-    }
-
-    @Test
     public void testBranchSpecifiedInConfigFile(Installation installation) throws Exception {
         installation.addExampleMod();
 
-        Path folder = installation.gameDir.resolve("essential").resolve("loader").resolve("stage1").resolve("launchwrapper");
-        Files.createDirectories(folder);
-        Files.write(folder.resolve("config.properties"), "branch=dummy".getBytes(StandardCharsets.UTF_8));
+        Files.createDirectories(installation.stage1ConfigFile.getParent());
+        Files.write(installation.stage1ConfigFile, "branch=dummy".getBytes(StandardCharsets.UTF_8));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 

@@ -64,6 +64,10 @@ public class IsolatedLaunch {
         this.systemProperties.put(key, value);
     }
 
+    public String getProperty(String key) {
+        return this.systemProperties.getProperty(key);
+    }
+
     public void addToClasspath(URL... urls) {
         this.classpath.addAll(Arrays.asList(urls));
     }

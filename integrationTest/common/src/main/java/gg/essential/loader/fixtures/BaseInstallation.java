@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,6 +24,7 @@ public abstract class BaseInstallation implements AutoCloseable {
     public final Path gameDir = Files.createTempDirectory("test game dir"); // spaces to make sure it can handle those
     public final Path modsDir = gameDir.resolve("mods");
     public final Path apiDir = gameDir.resolve("downloadsApi");
+    public final Path essentialDir = gameDir.resolve("essential");
     public final Path mixin07JarFile = apiDir.resolve("v1/mods/essential/mixin/updates/07/" + getPlatformVersion() + ".jar");
     public final Path stage0JarFile = apiDir.resolve("v1/mods/essential/loader-stage0/updates/stable/" + getPlatformVersion() + ".jar");
     public final Path stage1Dummy = apiDir.resolve("v1/mods/essential/loader-stage1/updates/dummy/" + getPlatformVersion() + ".json");
@@ -81,7 +83,7 @@ public abstract class BaseInstallation implements AutoCloseable {
     }
 
     public void addExampleMod(String branch) throws IOException {
-        Files.copy(withBranch(originalExampleModFile, branch), modsDir.resolve("examplemod.jar"));
+        Files.copy(withBranch(originalExampleModFile, branch), modsDir.resolve("examplemod.jar"), StandardCopyOption.REPLACE_EXISTING);
     }
 
     public void addExample2Mod() throws IOException {

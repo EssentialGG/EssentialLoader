@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -33,6 +34,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +52,10 @@ import java.util.stream.Stream;
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
 import static gg.essential.loader.stage2.util.Checksum.getChecksum;
+import static gg.essential.loader.stage2.util.VersionComparison.compareVersions;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 public abstract class EssentialLoaderBase {
 
@@ -67,9 +72,14 @@ public abstract class EssentialLoaderBase {
     private static final String FILE_BASE_NAME = "Essential (%s)";
     private static final String FILE_EXTENSION = "jar";
 
+    private static final String OVERRIDE_PINNED_VERSION_KEY = "overridePinnedVersion";
+    private static final String PENDING_UPDATE_VERSION_KEY = "pendingUpdateVersion";
+    private static final String PENDING_UPDATE_RESOLUTION_KEY = "pendingUpdateResolution";
+
     private final Path gameDir;
     private final String gameVersion;
     private final String apiGameVersion;
+    private final String currentStage2Version;
     private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion) {
@@ -77,12 +87,18 @@ public abstract class EssentialLoaderBase {
         this.gameVersion = gameVersion;
         this.apiGameVersion = gameVersion.replace(".", "-");
 
-        String stage2Branch = System.getProperty(
-            "essential.stage2.branch",
-            System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
-        );
-        if (!stage2Branch.equals("stable")) {
-            LOGGER.info("Essential Loader (stage2) branch set to \"{}\".", stage2Branch);
+        currentStage2Version = System.getProperty("essential.stage2.version");
+
+        // If this property is set, then stage1 will already have printed our version+branch
+        // We only need to do that for old versions, i.e. if the property isn't set
+        if (currentStage2Version == null) {
+            String stage2Branch = System.getProperty(
+                "essential.stage2.branch",
+                System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
+            );
+            if (!stage2Branch.equals("stable")) {
+                LOGGER.info("Essential Loader (stage2) branch set to \"{}\".", stage2Branch);
+            }
         }
 
         this.ui = LoaderUI.all(
@@ -157,7 +173,7 @@ public abstract class EssentialLoaderBase {
                     properties.getProperty("pinnedFileVersionId"),
                     properties.getProperty("pinnedFileVersion")
                 );
-                mod.autoUpdate = mod.pinnedFile == null;
+                mod.autoUpdate = mod.pinnedFile != null ? AutoUpdate.Manual : AutoUpdate.Full;
                 if (!mod.validate(url)) {
                     continue;
                 }
@@ -171,7 +187,7 @@ public abstract class EssentialLoaderBase {
             Mod mod = new Mod();
             mod.id = ModId.ESSENTIAL;
             mod.displayName = "Essential";
-            mod.autoUpdate = true;
+            mod.autoUpdate = AutoUpdate.Full;
             mod.branch = "stable";
             assert mod.validate(null);
             modList.add(mod);
@@ -188,22 +204,15 @@ public abstract class EssentialLoaderBase {
                 mod.fileBaseName = this.gameVersion;
             }
 
-            Path configFile = mod.dataDir.resolve("essential-loader.properties");
-            Properties config = new Properties();
-            if (Files.exists(configFile)) {
-                try (InputStream in = Files.newInputStream(configFile)) {
-                    config.load(in);
-                } catch (Exception e) {
-                    LOGGER.error("Failed to read config at " + configFile + ":", e);
-                }
-            }
+            mod.configFile = mod.dataDir.resolve("essential-loader.properties");
+            mod.readConfigFile();
 
-            String configuredBranch = config.getProperty("branch");
+            String configuredBranch = mod.config.getProperty("branch");
             mod.branch = determineBranch(mod, configuredBranch);
 
-            String configuredAutoUpdate = System.getProperty(mod.safeSlug() + ".autoUpdate", config.getProperty("autoUpdate"));
+            String configuredAutoUpdate = System.getProperty(mod.safeSlug() + "." + AutoUpdate.KEY, mod.config.getProperty(AutoUpdate.KEY));
             if (configuredAutoUpdate != null) {
-                mod.autoUpdate = Boolean.parseBoolean(configuredAutoUpdate);
+                mod.autoUpdate = AutoUpdate.from(configuredAutoUpdate);
             }
         }
 
@@ -212,8 +221,6 @@ public abstract class EssentialLoaderBase {
 
     private ModJarMetadata loadMod(Mod mod) throws IOException {
         Path essentialFile = findMostRecentFile(mod.dataDir, mod.fileBaseName, FILE_EXTENSION).getKey();
-
-        boolean needUpdate = false;
 
         // Load current metadata from existing jar (if one exists)
         ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
@@ -224,96 +231,122 @@ public abstract class EssentialLoaderBase {
                 LOGGER.warn("Failed to read existing " + mod + " jar metadata", e);
             }
         }
-        String currentChecksum = currentMeta.getChecksum();
 
-        if (currentChecksum == null) {
-            needUpdate = true;
-        }
-
-        if (mod.pinnedFile != null && !mod.autoUpdate) {
-            LOGGER.info("Skipping update check for {}, found pinned jar: {}", mod, mod.pinnedFile);
-            needUpdate = false;
-
-            if (!mod.pinnedFileMd5.equals(currentChecksum)) {
-                URL url;
-                if (mod.pinnedFile.startsWith("/")) {
-                    url = getClass().getClassLoader().getResource(mod.pinnedFile.substring(1));
-                    if (url == null) {
-                        LOGGER.fatal("Failed to find pinned jar file at {}", mod.pinnedFile);
-                        return null;
-                    }
-                } else {
-                    url = new URL(mod.pinnedFile);
+        // If we don't have a local jar, get hold of one
+        if (currentMeta == ModJarMetadata.EMPTY) {
+            if (mod.pinnedFile != null) {
+                essentialFile = mod.installPinnedFile(essentialFile);
+                if (essentialFile == null) {
+                    return null;
                 }
-
-                Path downloadedFile = Files.createTempFile("essential-extract-", "");
-                if (!downloadFile(mod, url, downloadedFile, mod.pinnedFileMd5)) {
-                    return null; // failed to download file
+                currentMeta = mod.pinnedFileMeta();
+            } else {
+                ModJarMetadata latestMeta = fetchLatestVersion(mod, mod.branch);
+                if (latestMeta == null) {
+                    return null;
                 }
-                downloadedFile = postProcessDownload(downloadedFile);
-
-                currentMeta = new ModJarMetadata(mod.id, mod.pinnedFileVersion, null, mod.pinnedFileMd5);
-                currentMeta.write(downloadedFile);
-
-                try {
-                    Files.deleteIfExists(essentialFile);
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to delete old " + mod + " file, will try again later.", e);
+                Path downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
+                if (downloadedFile == null) {
+                    return null;
                 }
-
-                // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
-                // and if not, we need to write to the next higher one.
-                essentialFile = findNextMostRecentFile(mod.dataDir, mod.fileBaseName, FILE_EXTENSION);
-
-                Files.move(downloadedFile, essentialFile);
+                essentialFile = mod.installFile(essentialFile, downloadedFile, latestMeta);
+                currentMeta = latestMeta;
             }
         }
 
-        // Fetch latest version metadata (if required)
-        ModJarMetadata latestMeta = null;
-        if (needUpdate || mod.autoUpdate) {
-            latestMeta = fetchLatestVersion(mod, mod.branch);
-            if (latestMeta == null && needUpdate) {
+        // If the pinned version is more recent than the local one, use it
+        if (mod.isPinnedVersionMoreRecentThan(currentMeta.getVersion())) {
+            essentialFile = mod.installPinnedFile(essentialFile);
+            if (essentialFile == null) {
                 return null;
             }
+            currentMeta = mod.pinnedFileMeta();
         }
 
-        // Check if our local version matches the latest
-        if (!needUpdate && latestMeta != null && !latestMeta.getChecksum().equals(currentChecksum)) {
-            needUpdate = true;
-        }
-
-
-        if (needUpdate) {
-            Path downloadedFile;
-
-            this.ui.start();
-            try {
-                downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
-                if (downloadedFile != null) {
-                    downloadedFile = postProcessDownload(downloadedFile);
+        if (mod.autoUpdate == AutoUpdate.Full) {
+            ModJarMetadata latestMeta = fetchLatestVersion(mod, mod.branch);
+            if (latestMeta != null && !latestMeta.getChecksum().equals(currentMeta.getChecksum())) {
+                this.ui.start();
+                try {
+                    Path downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
+                    if (downloadedFile != null) {
+                        essentialFile = mod.installFile(essentialFile, downloadedFile, latestMeta);
+                        currentMeta = latestMeta;
+                    }
+                } finally {
+                    this.ui.complete();
                 }
-            } finally {
-                this.ui.complete();
+            }
+        } else if (mod.autoUpdate == AutoUpdate.Manual) {
+            String latestPinnedVersion;
+            if (mod.pinnedFile != null) {
+                latestPinnedVersion = mod.pinnedFileVersion.getVersion();
+                if (latestPinnedVersion == null) {
+                    LOGGER.warn("Mod {} has pinned jar but does not specify version!", mod);
+                }
+            } else {
+                latestPinnedVersion = null;
             }
 
-            if (downloadedFile != null) {
-                latestMeta.write(downloadedFile);
+            // Check which version the user/mod wants us to be at
+            String pinOverride = mod.config.getProperty(OVERRIDE_PINNED_VERSION_KEY);
+            // If an override is set but no longer required, remove it, so we follow the real pin again
+            if (pinOverride != null && latestPinnedVersion != null && compareVersions(pinOverride, latestPinnedVersion) <= 0) {
+                mod.config.remove(OVERRIDE_PINNED_VERSION_KEY);
+                mod.writeConfigFile();
+                pinOverride = null;
+            }
 
-                try {
-                    Files.deleteIfExists(essentialFile);
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to delete old " + mod + " file, will try again later.", e);
+            // If no override is set and we have a pinned version, then use it
+            // This allows users to downgrade the effective version by downgrading the container jar
+            if (pinOverride == null && latestPinnedVersion != null && !currentMeta.getChecksum().equals(mod.pinnedFileMd5)) {
+                essentialFile = mod.installPinnedFile(essentialFile);
+                currentMeta = mod.pinnedFileMeta();
+            }
+
+            // Check if there's a newer version we could be using
+            ModJarMetadata onlineMeta = fetchLatestVersion(mod, mod.branch);
+            String onlineVersion = onlineMeta != null ? onlineMeta.getVersion().getVersion() : null;
+            String localVersion = currentMeta.getVersion().getVersion();
+            if (onlineVersion != null && localVersion != null && compareVersions(onlineVersion, localVersion) > 0) {
+                String pendingUpdateVersion = mod.config.getProperty(PENDING_UPDATE_VERSION_KEY);
+                if (Objects.equals(pendingUpdateVersion, onlineVersion)) {
+                    // Update was already pending, check whether we are allowed to install it
+                    Boolean resolution = booleanOrNull(mod.config.getProperty(PENDING_UPDATE_RESOLUTION_KEY));
+                    if (resolution == null) {
+                        resolution = showUpdatePrompt();
+                        mod.config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, Boolean.toString(resolution));
+                        mod.writeConfigFile();
+                    }
+
+                    // If the new version was accepted, download it. Otherwise, ignore it.
+                    if (resolution) {
+                        this.ui.start();
+                        try {
+                            Path downloadedFile = update(mod, essentialFile, currentMeta, onlineMeta);
+                            if (downloadedFile != null) {
+                                essentialFile = mod.installFile(essentialFile, downloadedFile, onlineMeta);
+                                currentMeta = onlineMeta;
+
+                                mod.config.setProperty(OVERRIDE_PINNED_VERSION_KEY, onlineMeta.getVersion().getVersion());
+                                mod.config.remove(PENDING_UPDATE_VERSION_KEY);
+                                mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                                mod.writeConfigFile();
+                            }
+                        } finally {
+                            this.ui.complete();
+                        }
+                    } else {
+                        LOGGER.warn("Found newer Essential version {} [{}], skipping at user request",
+                            onlineVersion, mod.branch);
+                    }
+                } else {
+                    LOGGER.info("Found newer Essential version {} [{}]", onlineVersion, mod.branch);
+                    // Queue update for in-game prompt and installation on next boot
+                    mod.config.setProperty(PENDING_UPDATE_VERSION_KEY, onlineVersion);
+                    mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                    mod.writeConfigFile();
                 }
-
-                // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
-                // and if not, we need to write to the next higher one.
-                essentialFile = findNextMostRecentFile(mod.dataDir, mod.fileBaseName, FILE_EXTENSION);
-
-                Files.move(downloadedFile, essentialFile);
-                currentMeta = latestMeta;
-            } else {
-                LOGGER.warn("Unable to download {}, please check your internet connection. If the problem persists, please contact Essential Support.", mod);
             }
         }
 
@@ -405,7 +438,11 @@ public abstract class EssentialLoaderBase {
         }
 
         // Otherwise fall back to downloading the full file
-        return updateViaDownload(mod, latestMeta);
+        Path downloadedFile = updateViaDownload(mod, latestMeta);
+        if (downloadedFile == null) {
+            LOGGER.warn("Unable to download {}, please check your internet connection. If the problem persists, please contact Essential Support.", mod);
+        }
+        return downloadedFile;
     }
 
     private Path updateViaDiff(Mod mod, Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
@@ -724,6 +761,51 @@ public abstract class EssentialLoaderBase {
         LOGGER.error("cf-ray: {}", connection.getHeaderField("cf-ray"));
     }
 
+    private boolean showUpdatePrompt() {
+        // Skip actual UI for integration tests
+        if (System.getProperty("essential.integration_testing") != null) {
+            String autoAnswer = System.getProperty("essential.stage2.fallback-prompt-auto-answer");
+            if (autoAnswer != null) {
+                return Boolean.parseBoolean(autoAnswer);
+            } else {
+                throw new RuntimeException("Update prompt opened unexpectedly!");
+            }
+        }
+
+        // TODO
+        return false;
+    }
+
+    private Boolean booleanOrNull(String str) {
+        return str == null ? null : Boolean.parseBoolean(str);
+    }
+
+    private static Properties readConfigFileAt(Path path) {
+        Properties config = new Properties();
+        if (Files.exists(path)) {
+            try (InputStream in = Files.newInputStream(path)) {
+                config.load(in);
+            } catch (Exception e) {
+                LOGGER.error("Failed to read config at " + path + ":", e);
+            }
+        }
+        return config;
+    }
+
+    private static void writeConfigFileTo(Path path, Properties config) throws IOException {
+        Files.createDirectories(path.getParent());
+
+        Path tempFile = Files.createTempFile(path.getParent(), "tmp-", ".properties");
+        try {
+            try (Writer out = Files.newBufferedWriter(tempFile)) {
+                config.store(out, null);
+            }
+            Files.move(tempFile, path, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
     private static class FileMeta {
         URL url;
         String checksum;
@@ -734,7 +816,7 @@ public abstract class EssentialLoaderBase {
         }
     }
 
-    public static class Mod {
+    public class Mod {
         // Configurable via essential-loader.properties
         ModId id;
         String displayName;
@@ -742,11 +824,13 @@ public abstract class EssentialLoaderBase {
         String pinnedFileMd5;
         ModVersion pinnedFileVersion;
         String branch;
-        boolean autoUpdate;
+        AutoUpdate autoUpdate;
 
         // Internal to stage2
         Path dataDir;
         String fileBaseName;
+        Path configFile;
+        Properties config;
 
         String slug() {
             String publisherSlug = id.getPublisherSlug();
@@ -761,6 +845,23 @@ public abstract class EssentialLoaderBase {
 
         boolean isEssential() {
             return slug().equals("essential");
+        }
+
+        URL pinnedFileUrl() throws MalformedURLException {
+            if (pinnedFile.startsWith("/")) {
+                URL url = getClass().getClassLoader().getResource(pinnedFile.substring(1));
+                if (url == null) {
+                    LOGGER.fatal("Failed to find pinned jar file at {}", pinnedFile);
+                }
+                return url;
+            } else {
+                return new URL(pinnedFile);
+            }
+        }
+
+        ModJarMetadata pinnedFileMeta() {
+            if (pinnedFileMd5 == null) return null;
+            return new ModJarMetadata(id, pinnedFileVersion, null, pinnedFileMd5);
         }
 
         boolean validate(URL source) {
@@ -780,9 +881,82 @@ public abstract class EssentialLoaderBase {
             return false;
         }
 
+        void readConfigFile() {
+            config = readConfigFileAt(configFile);
+        }
+
+        void writeConfigFile() throws IOException {
+            writeConfigFileTo(configFile, config);
+        }
+
+        Path installFile(Path destinationFile, Path sourceFile, ModJarMetadata metadata) throws IOException {
+            sourceFile = postProcessDownload(sourceFile);
+
+            metadata.write(sourceFile);
+
+            try {
+                Files.deleteIfExists(destinationFile);
+            } catch (IOException e) {
+                LOGGER.warn("Failed to delete old " + this + " file, will try again later.", e);
+            }
+
+            // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
+            // and if not, we need to write to the next higher one.
+            destinationFile = findNextMostRecentFile(dataDir, fileBaseName, FILE_EXTENSION);
+
+            Files.move(sourceFile, destinationFile);
+
+            return destinationFile;
+        }
+
+        Path installPinnedFile(Path destinationFile) throws IOException {
+            URL url = pinnedFileUrl();
+            if (url == null) {
+                return null;
+            }
+
+            Path downloadedFile = Files.createTempFile("essential-extract-", "");
+            if (!downloadFile(this, url, downloadedFile, pinnedFileMd5)) {
+                return null;
+            }
+
+            return installFile(destinationFile, downloadedFile, pinnedFileMeta());
+        }
+
+        public boolean isPinnedVersionMoreRecentThan(ModVersion version) {
+            if (pinnedFileVersion == null) return false;
+            if (pinnedFileVersion.getVersion() == null) return false;
+            if (version == null) return true;
+            if (version.getVersion() == null) return true;
+            return compareVersions(pinnedFileVersion.getVersion(), version.getVersion()) > 0;
+        }
+
         @Override
         public String toString() {
             return displayName;
+        }
+    }
+
+    public enum AutoUpdate {
+        /** Automatically checks for and installs newer versions. */
+        Full,
+        /** Checks for newer versions but does not automatically install them until the user consents. */
+        Manual,
+        /** No network communication beyond initial download is performed. */
+        Off,
+        ;
+
+        public static final String WITH_PROMPT = "with-prompt";
+        public static final String KEY = "autoUpdate";
+
+        private static AutoUpdate from(String value) {
+            if (value == null) {
+                return Full;
+            } else if (value.equalsIgnoreCase(WITH_PROMPT)) {
+                return Manual;
+            } else {
+                return Boolean.parseBoolean(value) ? Full : Off;
+            }
         }
     }
 }
