@@ -188,20 +188,42 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
     relocate("gg.essential.loader.stage0", "com.example.mod.essential.stage0")
 }
 
-tasks.register("exampleBundledModJar", Jar) {
-    def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
-    configure.delegate = delegate
-    configure(it)
+(1..5).each { i ->
+    def stage2Task = tasks.register("stage2V${i}Jar", Jar) {
+        archiveBaseName.set(name)
+        from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) })
+        // Dummy attribute so they all have different hashes
+        manifest {
+            attributes "Implementation-Version": "$i"
+        }
+    }
+    def stage3Task = tasks.register("stage3V${i}Jar", Jar) {
+        archiveBaseName.set(name)
+        from(tasks.essentialJar.archiveFile.map { zipTree(it) })
+        manifest {
+            // Dummy attribute so they all have different hashes
+            attributes "Implementation-Version": "$i"
+        }
+    }
+    tasks.register("exampleBundledModJar$i", Jar) {
+        def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+        configure.delegate = delegate
+        configure(it)
 
-    from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile) {
-        into("gg/essential/loader/stage1/")
-        rename { "stage2.jar" }
-    }
-    from(tasks.essentialJar.archiveFile) {
-        rename { "bundled-essential.jar" }
-    }
-    from(file("essential-loader.properties")) {
-        expand(["pinnedFileMd5": { tasks.essentialJar.archiveFile.get().asFile.bytes.md5() }])
+        def stage2Jar = stage2Task.get().archiveFile
+        def stage3Jar = stage3Task.get().archiveFile
+        from(stage2Jar) {
+            rename { "bundled-stage2-${i}.jar" }
+        }
+        from(stage3Jar) {
+            rename { "bundled-essential-${i}.jar" }
+        }
+        from(file("essential-loader-stage2.properties")) {
+            expand(["pinnedFileMd5": { stage2Jar.get().asFile.bytes.md5() }, version: i])
+        }
+        from(file("essential-loader.properties")) {
+            expand(["pinnedFileMd5": { stage3Jar.get().asFile.bytes.md5() }, "version": i])
+        }
     }
 }
 
@@ -367,7 +389,11 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
 
     mod(tasks.exampleRelocatedModJar.archiveFile, "example:mod", "relocated")
-    mod(tasks.exampleBundledModJar.archiveFile, "example:mod", "bundled")
+    (1..5).each { i ->
+        mod(tasks.named("exampleBundledModJar$i").map { it.archiveFile }, "example:mod", "bundled-$i")
+        mod(tasks.named("stage2V${i}Jar").map { it.archiveFile }, "essential:loader-stage2", "$i")
+        mod(tasks.named("stage3V${i}Jar").map { it.archiveFile }, "essential:essential", "$i")
+    }
 
     mod(tasks.oldKotlinModJar.archiveFile, "example:kotlin", "old")
 
