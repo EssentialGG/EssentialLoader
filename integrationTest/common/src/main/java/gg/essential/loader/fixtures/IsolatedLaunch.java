@@ -12,9 +12,11 @@ import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.JarURLConnection;
 import java.net.URI;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 public class IsolatedLaunch {
@@ -184,6 +187,21 @@ public class IsolatedLaunch {
                 } catch (FileSystemNotFoundException ignored) {}
             }
         } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // Same goes for Java itself when you open a url that points to a file in a jar.
+        // Though for those I see no way to flush them up via API. Reflection it is.
+        try {
+            Field field = Class.forName("sun.net.www.protocol.jar.JarFileFactory").getDeclaredField("fileCache");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, JarFile> fileCache = (Map<String, JarFile>) field.get(null);
+            // Closing will remove it from the cache, so we need to copy before iterating
+            for (JarFile jarFile : new ArrayList<>(fileCache.values())) {
+                jarFile.close();
+            }
+        } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException | IOException e) {
             throw new RuntimeException(e);
         }
     }
