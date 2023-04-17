@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import gg.essential.loader.stage2.components.ForkedUpdatePromptUI;
 import gg.essential.loader.stage2.data.ModId;
 import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.data.ModVersion;
@@ -71,6 +72,7 @@ public abstract class EssentialLoaderBase {
     private static final String VERSION_URL = VERSION_BASE_URL + "/platforms/%s";
     private static final String DOWNLOAD_URL = VERSION_URL + "/download";
     private static final String DIFF_URL = VERSION_BASE_URL + "/diff/%s/platforms/%s";
+    private static final String CHANGELOG_URL = VERSION_BASE_URL + "/changelog";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_BASE_NAME = "Essential (%s)";
     private static final String FILE_EXTENSION = "jar";
@@ -322,13 +324,15 @@ public abstract class EssentialLoaderBase {
                     // Update was already pending, check whether we are allowed to install it
                     Boolean resolution = booleanOrNull(mod.config.getProperty(PENDING_UPDATE_RESOLUTION_KEY));
                     if (resolution == null) {
-                        resolution = showUpdatePrompt();
-                        mod.config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, Boolean.toString(resolution));
-                        mod.writeConfigFile();
+                        resolution = showUpdatePrompt(onlineMeta);
+                        if (resolution != null) {
+                            mod.config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, Boolean.toString(resolution));
+                            mod.writeConfigFile();
+                        }
                     }
 
                     // If the new version was accepted, download it. Otherwise, ignore it.
-                    if (resolution) {
+                    if (resolution == Boolean.TRUE) {
                         this.ui.start();
                         try {
                             Path downloadedFile = update(mod, essentialFile, currentMeta, onlineMeta);
@@ -345,8 +349,9 @@ public abstract class EssentialLoaderBase {
                             this.ui.complete();
                         }
                     } else {
-                        LOGGER.warn("Found newer Essential version {} [{}], skipping at user request",
-                            onlineVersion, mod.branch);
+                        LOGGER.warn("Found newer Essential version {} [{}], skipping {}",
+                            onlineVersion, mod.branch,
+                            resolution == Boolean.FALSE ? "at user request" : "because no consent could be acquired");
                     }
                 } else {
                     LOGGER.info("Found newer Essential version {} [{}]", onlineVersion, mod.branch);
@@ -831,7 +836,19 @@ public abstract class EssentialLoaderBase {
         LOGGER.error("cf-ray: {}", connection.getHeaderField("cf-ray"));
     }
 
-    private boolean showUpdatePrompt() {
+    private Boolean showUpdatePrompt(ModJarMetadata newVersion) {
+        String description = "";
+        try {
+            JsonObject responseObject = fetchJsonObject(String.format(CHANGELOG_URL,
+                newVersion.getMod().getFullSlug(), newVersion.getVersion().getId()), false);
+
+            if (responseObject != null) {
+                description = responseObject.get("summary").getAsString();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to load changelog for " + newVersion, e);
+        }
+
         // Skip actual UI for integration tests
         if (System.getProperty("essential.integration_testing") != null) {
             String autoAnswer = System.getProperty("essential.stage2.fallback-prompt-auto-answer");
@@ -842,8 +859,9 @@ public abstract class EssentialLoaderBase {
             }
         }
 
-        // TODO
-        return false;
+        ForkedUpdatePromptUI promptUI = new ForkedUpdatePromptUI("Essential Mod Update!", description);
+        promptUI.show();
+        return promptUI.waitForClose();
     }
 
     private Boolean booleanOrNull(String str) {
