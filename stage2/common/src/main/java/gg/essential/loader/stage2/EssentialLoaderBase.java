@@ -248,12 +248,17 @@ public abstract class EssentialLoaderBase {
                 if (latestMeta == null) {
                     return null;
                 }
-                Path downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
-                if (downloadedFile == null) {
-                    return null;
+                this.ui.start();
+                try {
+                    Path downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
+                    if (downloadedFile == null) {
+                        return null;
+                    }
+                    essentialFile = mod.installFile(essentialFile, downloadedFile, latestMeta);
+                    currentMeta = latestMeta;
+                } finally {
+                    this.ui.complete();
                 }
-                essentialFile = mod.installFile(essentialFile, downloadedFile, latestMeta);
-                currentMeta = latestMeta;
             }
         }
 
