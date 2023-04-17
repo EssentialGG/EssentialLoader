@@ -301,7 +301,7 @@ public abstract class EssentialLoaderBase {
     }
 
     private boolean doDownload(FileMeta meta, Path jarFile, Path metaFile) throws IOException {
-        LOGGER.info("Updating Essential Loader (stage2) version {} ({}) from {}:", meta.version, meta.checksum, meta.url);
+        LOGGER.info("Updating Essential Loader (stage2) version {} ({}) from {}", meta.version, meta.checksum, meta.url);
 
         Path downloadedFile = Files.createTempFile(jarFile.getParent(), "download-", ".jar");
         if (downloadFile(meta, downloadedFile)) {
