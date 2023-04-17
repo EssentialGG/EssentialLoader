@@ -66,7 +66,7 @@ public class ForkedJvm implements AutoCloseable {
             Logger logger = LogManager.getLogger(main);
             BufferedReader reader = new BufferedReader(new InputStreamReader(this.process.getErrorStream(), StandardCharsets.UTF_8));
             try {
-                while (this.process.isAlive()) {
+                while (true) {
                     String line = reader.readLine();
                     if (line == null) {
                         break;
