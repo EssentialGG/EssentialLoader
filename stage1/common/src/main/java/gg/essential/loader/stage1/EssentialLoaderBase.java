@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import gg.essential.loader.stage1.gui.ForkedUpdatePromptUI;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -37,6 +38,14 @@ public abstract class EssentialLoaderBase {
         System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
     );
     private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/loader-stage2/updates/%s/%s/";
+
+    private static final String API_BASE_URL = System.getProperty(
+        "essential.download.url",
+        System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://api.essential.gg/mods")
+    );
+    private static final String VERSION_BASE_URL = API_BASE_URL + "/v1/essential:loader-stage2/versions/%s";
+    private static final String CHANGELOG_URL = VERSION_BASE_URL + "/changelog";
+
     private static final String BRANCH_KEY = "branch";
     private static final String AUTO_UPDATE_KEY = "autoUpdate";
     private static final String OVERRIDE_PINNED_VERSION_KEY = "overridePinnedVersion";
@@ -217,13 +226,15 @@ public abstract class EssentialLoaderBase {
                 if (blanketPermission || Objects.equals(pendingUpdateVersion, onlineMeta.version)) {
                     // Update was already pending, check whether we are allowed to install it
                     if (resolution == null) {
-                        resolution = showUpdatePrompt();
-                        config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, Boolean.toString(resolution));
-                        writeProperties(configFile, config);
+                        resolution = showUpdatePrompt(onlineMeta.version);
+                        if (resolution != null) {
+                            config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, Boolean.toString(resolution));
+                            writeProperties(configFile, config);
+                        }
                     }
 
                     // If the new version was accepted, download it. Otherwise, ignore it.
-                    if (resolution) {
+                    if (resolution == Boolean.TRUE) {
                         if (doDownload(onlineMeta, stage2File, stage2MetaFile)) {
                             localVersion = onlineMeta.version;
                             localMd5 = onlineMeta.checksum;
@@ -234,8 +245,9 @@ public abstract class EssentialLoaderBase {
                             writeProperties(configFile, config);
                         }
                     } else {
-                        LOGGER.warn("Found newer Essential Loader (stage2) version {} [{}], skipping at user request",
-                            onlineMeta.version, branch);
+                        LOGGER.warn("Found newer Essential Loader (stage2) version {} [{}], skipping {}",
+                            onlineMeta.version, branch,
+                            resolution == Boolean.FALSE ? "at user request" : "because no consent could be acquired");
                     }
                 } else {
                     LOGGER.info("Found newer Essential Loader (stage2) version {} [{}]", onlineMeta.version, branch);
@@ -356,12 +368,10 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
-    private FileMeta fetchLatestMetadata(String branch) {
+    private JsonObject fetchJsonObject(String endpoint, boolean allowEmpty) {
         URLConnection connection = null;
-        JsonObject responseObject;
         try {
-            String url = String.format(VERSION_URL, branch, this.gameVersion.replace(".", "-"));
-            connection = this.prepareConnection(new URL(url));
+            connection = this.prepareConnection(new URL(endpoint));
 
             String response;
             try (final InputStream inputStream = connection.getInputStream()) {
@@ -369,12 +379,24 @@ public abstract class EssentialLoaderBase {
             }
 
             JsonElement jsonElement = new JsonParser().parse(response);
-            responseObject = jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
+            if (!jsonElement.isJsonObject()) {
+                if (allowEmpty && jsonElement.isJsonNull()) {
+                    return null;
+                } else {
+                    throw new IOException("Excepted json object, got " + response);
+                }
+            }
+            return jsonElement.getAsJsonObject();
         } catch (final IOException | JsonParseException e) {
-            LOGGER.error("Error occurred checking for updates for game version {}.", this.gameVersion, e);
+            LOGGER.error("Error occurred fetching " + endpoint + ": ", e);
             logConnectionInfoOnError(connection);
             return null;
         }
+    }
+
+    private FileMeta fetchLatestMetadata(String branch) {
+        JsonObject responseObject = fetchJsonObject(String.format(VERSION_URL,
+            branch, this.gameVersion.replace(".", "-")), true);
 
         if (responseObject == null) {
             LOGGER.warn("Essential does not support the following game version: {}", this.gameVersion);
@@ -434,7 +456,18 @@ public abstract class EssentialLoaderBase {
         LOGGER.error("cf-ray: {}", connection.getHeaderField("cf-ray"));
     }
 
-    private boolean showUpdatePrompt() {
+    private Boolean showUpdatePrompt(String version) {
+        String description = "";
+        try {
+            JsonObject responseObject = fetchJsonObject(String.format(CHANGELOG_URL, version), false);
+
+            if (responseObject != null) {
+                description = responseObject.get("summary").getAsString();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to load changelog for " + version, e);
+        }
+
         // Skip actual UI for integration tests
         if (System.getProperty("essential.integration_testing") != null) {
             String autoAnswer = System.getProperty("essential.stage1.fallback-prompt-auto-answer");
@@ -445,8 +478,9 @@ public abstract class EssentialLoaderBase {
             }
         }
 
-        // TODO
-        return false;
+        ForkedUpdatePromptUI promptUI = new ForkedUpdatePromptUI("Essential Loader Update!", description);
+        promptUI.show();
+        return promptUI.waitForClose();
     }
 
     private Boolean booleanOrNull(String str) {
