@@ -41,7 +41,8 @@ public class IntegrationTests {
 
         installation.launchFML();
 
-        Delete.recursively(installation.apiDir.resolve("v1/mods/essential"));
+        Delete.recursively(installation.apiDir.resolve("v1/essential:loader-stage2"));
+        Delete.recursively(installation.apiDir.resolve("v1/essential:essential"));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 

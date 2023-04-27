@@ -27,7 +27,7 @@ public class Installation extends BaseInstallation {
 
     public IsolatedLaunch newLaunchFML(String version) throws MalformedURLException {
         IsolatedLaunch launch = newLaunchFMLWithoutRuntime();
-        launch.addToClasspath(apiDir.resolve("v1/mods/forge/runtime/updates/stable/" + version + ".jar").toUri().toURL());
+        launch.addToClasspath(apiDir.resolve("v1/forge:runtime/versions/stable/platforms/" + version + ".jar").toUri().toURL());
         return launch;
     }
 

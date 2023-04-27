@@ -147,10 +147,9 @@ tasks.register("setupDownloadsApi", Sync) {
     def nextId = 0
     def platformMod = { Provider<RegularFile> source, String mod, String branch, String platform ->
         def id = nextId++
-        def v0Json = "v1/mods/${mod.replace(':', '/')}/updates/$branch/$platform"
         def v1Json = "v1/$mod/versions/$branch/platforms/$platform"
         def v1Download = "$v1Json/download"
-        def dstJar = "${v0Json}.jar"
+        def dstJar = "${v1Json}.jar"
 
         def jarFile = new File(downloadsApi, dstJar).absoluteFile
         preserve.include(dstJar)
@@ -167,7 +166,6 @@ tasks.register("setupDownloadsApi", Sync) {
                 file.write(content.get())
             }
         }
-        json(v0Json, { """{ "version": "$branch", "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
         json(v1Json, { """{ "version": "$branch", "checksum": "${jarFile.bytes.md5()}", "id": "$id" }""" })
         json(v1Download, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
     }

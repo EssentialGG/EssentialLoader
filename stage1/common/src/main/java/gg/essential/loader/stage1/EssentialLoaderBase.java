@@ -33,11 +33,6 @@ public abstract class EssentialLoaderBase {
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoaderBase.class);
     protected static final String STAGE2_PKG = "gg.essential.loader.stage2.";
     protected static final String STAGE2_CLS = STAGE2_PKG + "EssentialLoader";
-    private static final String BASE_URL = System.getProperty(
-        "essential.download.url",
-        System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://downloads.essential.gg")
-    );
-    private static final String VERSION_URL = BASE_URL + "/v1/mods/essential/loader-stage2/updates/%s/%s/";
 
     private static final String API_BASE_URL = System.getProperty(
         "essential.download.url",
@@ -45,6 +40,8 @@ public abstract class EssentialLoaderBase {
     );
     private static final String VERSION_BASE_URL = API_BASE_URL + "/v1/essential:loader-stage2/versions/%s";
     private static final String CHANGELOG_URL = VERSION_BASE_URL + "/changelog";
+    private static final String VERSION_URL = VERSION_BASE_URL + "/platforms/%s";
+    private static final String DOWNLOAD_URL = VERSION_URL + "/download";
 
     private static final String BRANCH_KEY = "branch";
     private static final String AUTO_UPDATE_KEY = "autoUpdate";
@@ -301,6 +298,13 @@ public abstract class EssentialLoaderBase {
     }
 
     private boolean doDownload(FileMeta meta, Path jarFile, Path metaFile) throws IOException {
+        if (meta.url == null) {
+            meta.url = fetchDownloadUrl(meta.version);
+            if (meta.url == null) {
+                return false;
+            }
+        }
+
         LOGGER.info("Updating Essential Loader (stage2) version {} ({}) from {}", meta.version, meta.checksum, meta.url);
 
         Path downloadedFile = Files.createTempFile(jarFile.getParent(), "download-", ".jar");
@@ -405,20 +409,35 @@ public abstract class EssentialLoaderBase {
 
         final JsonElement
             jsonVersion = responseObject.get("version"),
-            jsonUrl = responseObject.get("url"),
             jsonChecksum = responseObject.get("checksum");
         final String
             version = jsonVersion != null && jsonVersion.isJsonPrimitive() ? jsonVersion.getAsString() : null,
-            url = jsonUrl != null && jsonUrl.isJsonPrimitive() ? jsonUrl.getAsString() : null,
             checksum = jsonChecksum != null && jsonChecksum.isJsonPrimitive() ? responseObject.get("checksum").getAsString() : null;
 
-        if (StringUtils.isEmpty(version) || StringUtils.isEmpty(url) || StringUtils.isEmpty(checksum)) {
-            LOGGER.warn("Unexpected response object data (version={}, url={}, checksum={})", version, jsonUrl, jsonChecksum);
+        if (StringUtils.isEmpty(version) || StringUtils.isEmpty(checksum)) {
+            LOGGER.warn("Unexpected response object data (version={}, checksum={})", version, jsonChecksum);
             return null;
         }
 
+        return new FileMeta(version, null, checksum);
+    }
+
+    private URL fetchDownloadUrl(String version) {
+        JsonObject responseObject = fetchJsonObject(String.format(DOWNLOAD_URL,
+            version, this.gameVersion.replace(".", "-")), false);
+
+        if (responseObject == null) {
+            return null;
+        }
+
+        final JsonElement jsonUrl = responseObject.get("url");
+        final String url = jsonUrl != null && jsonUrl.isJsonPrimitive() ? jsonUrl.getAsString() : null;
+
         try {
-            return new FileMeta(version, new URL(url), checksum);
+            if (url == null) {
+                throw new MalformedURLException();
+            }
+            return new URL(url);
         } catch (MalformedURLException e) {
             LOGGER.error("Received invalid url `" + url + "`:", e);
             return null;

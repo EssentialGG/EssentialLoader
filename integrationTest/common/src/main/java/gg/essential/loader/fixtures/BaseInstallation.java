@@ -17,22 +17,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class BaseInstallation implements AutoCloseable {
     private final Path originalApiDir = Paths.get("build", "downloadsApi");
-    private final Path originalExampleModFile = originalApiDir.resolve("v1/mods/example/mod/updates/stable/" + getPlatformVersion() + ".jar");
-    private final Path originalExample2ModFile = originalApiDir.resolve("v1/mods/example/mod2/updates/stable/" + getPlatformVersion() + ".jar");
-    private final Path originalKotlinModFile = originalApiDir.resolve("v1/mods/example/kotlin/updates/stable/" + getPlatformVersion() + ".jar");
+    private final Path originalExampleModFile = originalApiDir.resolve("v1/example:mod/versions/stable/platforms/" + getPlatformVersion() + ".jar");
+    private final Path originalExample2ModFile = originalApiDir.resolve("v1/example:mod2/versions/stable/platforms/" + getPlatformVersion() + ".jar");
+    private final Path originalKotlinModFile = originalApiDir.resolve("v1/example:kotlin/versions/stable/platforms/" + getPlatformVersion() + ".jar");
 
     public final Path gameDir = Files.createTempDirectory("test game dir"); // spaces to make sure it can handle those
     public final Path modsDir = gameDir.resolve("mods");
     public final Path apiDir = gameDir.resolve("downloadsApi");
     public final Path essentialDir = gameDir.resolve("essential");
-    public final Path mixin07JarFile = apiDir.resolve("v1/mods/essential/mixin/updates/07/" + getPlatformVersion() + ".jar");
-    public final Path stage0JarFile = apiDir.resolve("v1/mods/essential/loader-stage0/updates/stable/" + getPlatformVersion() + ".jar");
-    public final Path stage1Dummy = apiDir.resolve("v1/mods/essential/loader-stage1/updates/dummy/" + getPlatformVersion() + ".json");
-    public final Path stage2Meta = apiDir.resolve("v1/mods/essential/loader-stage2/updates/stable/" + getPlatformVersion() + ".json");
+    public final Path mixin07JarFile = apiDir.resolve("v1/essential:mixin/versions/07/platforms/" + getPlatformVersion() + ".jar");
+    public final Path stage0JarFile = apiDir.resolve("v1/essential:loader-stage0/versions/stable/platforms/" + getPlatformVersion() + ".jar");
+    public final Path stage1Dummy = apiDir.resolve("v1/essential:loader-stage1/versions/dummy/platforms/" + getPlatformVersion() + ".json");
+    public final Path stage2Meta = apiDir.resolve("v1/essential:loader-stage2/versions/stable/platforms/" + getPlatformVersion() + ".json");
     public final Path stage2DummyMeta = withBranch(stage2Meta, "dummy");
     public final Path stage3Meta = apiDir.resolve("v1/essential:essential/versions/stable/platforms/" + getPlatformVersion() + ".json");
     public final Path stage3MetaDownload = stage3Meta.resolveSibling(getPlatformVersion()).resolve("download.json");
-    public final Path stage3JarFile = apiDir.resolve("v1/mods/essential/essential/updates/stable/" + getPlatformVersion() + ".jar");
+    public final Path stage3JarFile = apiDir.resolve("v1/essential:essential/versions/stable/platforms/" + getPlatformVersion() + ".jar");
     public final Path stage3DummyMeta = withBranch(stage3Meta, "dummy");
     public final Path stage3DummyMetaDownload = stage3DummyMeta.resolveSibling(getPlatformVersion()).resolve("download.json");
     public final Path stage3DummyMetaDiff = apiDir.resolve("v1/essential:essential/versions/stable/diff/dummy/platforms/" + getPlatformVersion() + ".json");
@@ -133,10 +133,6 @@ public abstract class BaseInstallation implements AutoCloseable {
     }
 
     public static Path withBranch(Path endpoint, String branch) {
-        if (endpoint.getParent().endsWith("platforms")) {
-            return endpoint.getParent().getParent().resolveSibling(branch).resolve("platforms").resolve(endpoint.getFileName());
-        } else {
-            return endpoint.getParent().resolveSibling(branch).resolve(endpoint.getFileName());
-        }
+        return endpoint.getParent().getParent().resolveSibling(branch).resolve("platforms").resolve(endpoint.getFileName());
     }
 }
