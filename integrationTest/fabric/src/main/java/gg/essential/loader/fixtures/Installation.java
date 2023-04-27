@@ -58,7 +58,7 @@ public class Installation extends BaseInstallation {
     }
 
     public void addJijMod(String branch) throws IOException {
-        Path source = apiDir.resolve("v1/mods/example/jij/updates/" + branch + "/" + getPlatformVersion() + ".jar");
+        Path source = apiDir.resolve("v1/example:jij/versions/" + branch + "/platforms/" + getPlatformVersion() + ".jar");
         Files.copy(source, modsDir.resolve("jij-" + branch + ".jar"));
     }
 }

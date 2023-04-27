@@ -8,7 +8,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 public class LoaderSwingUI implements LoaderUI, EssentialStyle {
-    private static final Rectangle PROGRESS_BOUNDS = new Rectangle(0, 0, 249, 35);
+    private static final Rectangle PROGRESS_BOUNDS = new Rectangle(0, 0, 376, 45);
 
     private JFrame frame;
     private JProgressBar progressBar;
@@ -59,11 +59,11 @@ public class LoaderSwingUI implements LoaderUI, EssentialStyle {
         progressBar.setBounds(PROGRESS_BOUNDS);
 
         final JLabel taskLabel = new JLabel("Updating...", SwingConstants.LEFT);
-        taskLabel.setBorder(new EmptyBorder(0, 12, 0, 0));
-        taskLabel.setForeground(Color.BLACK);
+        taskLabel.setBorder(new EmptyBorder(0, 16, 0, 0));
+        taskLabel.setForeground(COLOR_HIGHLIGHT);
         taskLabel.setAlignmentX(Container.LEFT_ALIGNMENT);
         if (Fonts.semiBold != null) {
-            taskLabel.setFont(Fonts.semiBold.deriveFont(15F));
+            taskLabel.setFont(Fonts.semiBold.deriveFont(16F));
         }
         taskLabel.setBounds(PROGRESS_BOUNDS);
 
@@ -81,7 +81,7 @@ public class LoaderSwingUI implements LoaderUI, EssentialStyle {
 
         final JPanel progressBarPanel = new JPanel(new GridLayout());
         progressBarPanel.setBackground(COLOR_BACKGROUND);
-        progressBarPanel.setBorder(new EmptyBorder(0, 10, 10, 10));
+        progressBarPanel.setBorder(new EmptyBorder(0, 12, 12, 12));
         progressBarPanel.add(progressBarLayers);
 
         contentPane.add(progressBarPanel);

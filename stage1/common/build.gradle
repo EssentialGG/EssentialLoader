@@ -6,4 +6,10 @@ dependencies {
     compileOnly("commons-codec:commons-codec:1.9")
     compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
     compileOnly("com.google.code.gson:gson:2.2.4")
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
+}
+
+test {
+    useJUnitPlatform()
 }

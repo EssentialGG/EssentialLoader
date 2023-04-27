@@ -55,9 +55,12 @@ public class EssentialLoader extends EssentialLoaderBase {
     @Override
     protected Path postProcessDownload(Path downloadedFile) {
 
-        // We need to strip the stage0 loader bundled with Essential (to allow it to be dropped directly in the mods
+        // We need to strip the stage1 loader bundled in mods (to allow them to be dropped directly in the mods
         // folder) because it might be more recent than the version currently on the classpath and as such may prompt
         // an update of stage1 inside a relaunch (failing hard on Windows because the stage1 jar is currently loaded).
+        // FIXME do we really have to do this next part? would be much nicer if we could treat Essential just like any
+        //       other third-party mod here; and we can't just strip the Tweaker for third-party mods because those may
+        //       actually need it.
         // We also need to strip the corresponding manifest entry because otherwise stage1 might try to load us as a
         // regular Essential-using mod, which won't actually work (Essential will function but it won't appear as a
         // mod in the Mods menu, etc.).
@@ -140,6 +143,7 @@ public class EssentialLoader extends EssentialLoaderBase {
             url = path.toUri().toURL();
             Launch.classLoader.addURL(url);
 
+            // FIXME only if jar has a tweaker. and if so, we need to chain-load that tweaker; maybe also the AT?
             // And its parent (for those classes that are excluded from the launch class loader)
             final ClassLoader classLoader = Launch.classLoader.getClass().getClassLoader();
             final Method method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
@@ -149,6 +153,7 @@ public class EssentialLoader extends EssentialLoaderBase {
             throw new RuntimeException("Unexpected error", e);
         }
 
+        // FIXME not everything that goes through here is necessarily Essential anymore
         ourEssentialPath = path;
         ourEssentialUrl = url;
         ourMixinUrl = url;

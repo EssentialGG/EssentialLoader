@@ -123,7 +123,7 @@ def includeMixin(AbstractArchiveTask task, Configuration mixin) {
 }
 
 def configureExampleModJar = { String tweaker, Configuration mixin = null -> return { AbstractArchiveTask task ->
-    archiveBaseName.set(name)
+    archiveBaseName.set(task.name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
     from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } })
@@ -184,8 +184,51 @@ tasks.register("example2ModMixinTweakerWithMixin08Jar", Jar, configureExample2Mo
 tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
     configure.delegate = delegate
-    configure()
+    configure(it)
     relocate("gg.essential.loader.stage0", "com.example.mod.essential.stage0")
+}
+
+(1..5).each { i ->
+    def stage2Task = tasks.register("stage2V${i}Jar", Jar) {
+        archiveBaseName.set(name)
+        from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) })
+        // Dummy attribute so they all have different hashes
+        manifest {
+            attributes "Implementation-Version": "$i"
+        }
+    }
+    def stage3Task = tasks.register("stage3V${i}Jar", Jar) {
+        archiveBaseName.set(name)
+        from(tasks.essentialJar.archiveFile.map { zipTree(it) })
+        manifest {
+            // Dummy attribute so they all have different hashes
+            attributes "Implementation-Version": "$i"
+            // For stage3 version 4+, we add an explicit requirement on stage2 version 4
+            if (i >= 4) {
+                attributes "Requires-Essential-Stage2-Version": "4"
+            }
+        }
+    }
+    tasks.register("exampleBundledModJar$i", Jar) {
+        def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+        configure.delegate = delegate
+        configure(it)
+
+        def stage2Jar = stage2Task.get().archiveFile
+        def stage3Jar = stage3Task.get().archiveFile
+        from(stage2Jar) {
+            rename { "bundled-stage2-${i}.jar" }
+        }
+        from(stage3Jar) {
+            rename { "bundled-essential-${i}.jar" }
+        }
+        from(file("essential-loader-stage2.properties")) {
+            expand(["pinnedFileMd5": { stage2Jar.get().asFile.bytes.md5() }, version: i])
+        }
+        from(file("essential-loader.properties")) {
+            expand(["pinnedFileMd5": { stage3Jar.get().asFile.bytes.md5() }, "version": i])
+        }
+    }
 }
 
 tasks.register("oldKotlinModJar", Jar) {
@@ -278,10 +321,9 @@ tasks.register("setupDownloadsApi", Sync) {
     def nextId = 0
     def platformMod = { Provider<RegularFile> source, String mod, String branch, String platform ->
         def id = nextId++
-        def v0Json = "v1/mods/${mod.replace(':', '/')}/updates/$branch/$platform"
         def v1Json = "v1/$mod/versions/$branch/platforms/$platform"
         def v1Download = "$v1Json/download"
-        def dstJar = "${v0Json}.jar"
+        def dstJar = "${v1Json}.jar"
 
         def jarFile = new File(downloadsApi, dstJar).absoluteFile
         preserve.include(dstJar)
@@ -298,7 +340,6 @@ tasks.register("setupDownloadsApi", Sync) {
                 file.write(content.get())
             }
         }
-        json(v0Json, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
         json(v1Json, { """{ "version": "$branch", "checksum": "${jarFile.bytes.md5()}", "id": "$id" }""" })
         json(v1Download, { """{ "url": "${jarFile.toURI()}", "checksum": "${jarFile.bytes.md5()}" }""" })
     }
@@ -350,6 +391,11 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
 
     mod(tasks.exampleRelocatedModJar.archiveFile, "example:mod", "relocated")
+    (1..5).each { i ->
+        mod(tasks.named("exampleBundledModJar$i").map { it.archiveFile }, "example:mod", "bundled-$i")
+        mod(tasks.named("stage2V${i}Jar").map { it.archiveFile }, "essential:loader-stage2", "$i")
+        mod(tasks.named("stage3V${i}Jar").map { it.archiveFile }, "essential:essential", "$i")
+    }
 
     mod(tasks.oldKotlinModJar.archiveFile, "example:kotlin", "old")
 

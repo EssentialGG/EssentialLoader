@@ -1,4 +1,4 @@
-package gg.essential.loader.stage2.components;
+package gg.essential.loader.stage1.gui;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -16,7 +16,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 public interface EssentialStyle {
-    String ASSETS_BASE = "/assets/essential-loader-stage2";
+    String ASSETS_BASE = "/assets/essential-loader-stage1";
 
     Color COLOR_BACKGROUND = new Color(0x181818);
     Color COLOR_FOREGROUND = new Color(0x999999);

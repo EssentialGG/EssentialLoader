@@ -1,4 +1,4 @@
-package gg.essential.loader.stage2.jvm;
+package gg.essential.loader.stage1.util;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,11 +29,11 @@ public class ForkedJvm implements AutoCloseable {
     public ForkedJvm(Class<?> main) throws IOException {
         CodeSource codeSource = getClass().getProtectionDomain().getCodeSource();
         if (codeSource == null) {
-            throw new UnsupportedOperationException("Failed to get CodeSource for Essential stage2 loader");
+            throw new UnsupportedOperationException("Failed to get CodeSource for Essential stage1 loader");
         }
         URL essentialJarUrl = codeSource.getLocation();
         if (essentialJarUrl == null) {
-            throw new UnsupportedOperationException("Failed to get location of Essential stage2 loader jar");
+            throw new UnsupportedOperationException("Failed to get location of Essential stage1 loader jar");
         }
 
         // Try to convert the URL to a real path

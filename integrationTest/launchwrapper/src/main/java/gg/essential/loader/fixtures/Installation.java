@@ -7,6 +7,10 @@ import java.nio.file.Path;
 
 public class Installation extends BaseInstallation {
 
+    public final Path stage1Folder = essentialDir.resolve("loader").resolve("stage1").resolve("launchwrapper");
+    public final Path stage1ConfigFile = stage1Folder.resolve("stage2.forge_1.8.8.properties");
+    public final Path stage2ConfigFile = essentialDir.resolve("essential-loader.properties");
+
     public Installation() throws IOException {
         Path dummyFile = Files.createTempFile("dummy", "");
         System.setProperty("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", dummyFile.toAbsolutePath().toString());
@@ -23,7 +27,7 @@ public class Installation extends BaseInstallation {
 
     public IsolatedLaunch newLaunchFML(String version) throws MalformedURLException {
         IsolatedLaunch launch = newLaunchFMLWithoutRuntime();
-        launch.addToClasspath(apiDir.resolve("v1/mods/forge/runtime/updates/stable/" + version + ".jar").toUri().toURL());
+        launch.addToClasspath(apiDir.resolve("v1/forge:runtime/versions/stable/platforms/" + version + ".jar").toUri().toURL());
         return launch;
     }
 

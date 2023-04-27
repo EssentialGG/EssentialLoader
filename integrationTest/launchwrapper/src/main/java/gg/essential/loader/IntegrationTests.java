@@ -41,7 +41,8 @@ public class IntegrationTests {
 
         installation.launchFML();
 
-        Delete.recursively(installation.apiDir.resolve("v1/mods/essential"));
+        Delete.recursively(installation.apiDir.resolve("v1/essential:loader-stage2"));
+        Delete.recursively(installation.apiDir.resolve("v1/essential:essential"));
 
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
@@ -55,37 +56,13 @@ public class IntegrationTests {
 
         installation.launchFML();
 
-        ServerSocket socket = new ServerSocket(0);
-        AtomicInteger accessCount = new AtomicInteger();
-        Thread thread = new Thread(() -> {
-            while (!socket.isClosed()) {
-                try {
-                    socket.accept().close();
-                    accessCount.incrementAndGet();
-                } catch (IOException e) {
-                    if (!socket.isClosed()) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-        thread.setDaemon(true);
-        thread.start();
         IsolatedLaunch isolatedLaunch;
-        try {
+        try (ForbiddenApiServer server = new ForbiddenApiServer()) {
             isolatedLaunch = installation.newLaunchFML();
-            isolatedLaunch.setProperty("essential.download.url", "http://127.0.0.1:" + socket.getLocalPort());
+            server.configure(isolatedLaunch);
             isolatedLaunch.setProperty("essential.autoUpdate", "false");
             isolatedLaunch.launch();
-        } finally {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
-        thread.join();
-        assertEquals(0, accessCount.get(), "Server connections");
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -100,5 +77,43 @@ public class IntegrationTests {
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
+    private static class ForbiddenApiServer implements AutoCloseable {
+        private final ServerSocket socket = new ServerSocket(0);
+        private final AtomicInteger accessCount = new AtomicInteger();
+        private final Thread thread = new Thread(() -> {
+            while (!socket.isClosed()) {
+                try {
+                    socket.accept().close();
+                    accessCount.incrementAndGet();
+                } catch (IOException e) {
+                    if (!socket.isClosed()) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        ForbiddenApiServer() throws IOException {
+            thread.setDaemon(true);
+            thread.start();
+        }
+
+        public void configure(IsolatedLaunch launch) {
+            launch.setProperty("essential.download.url", "http://127.0.0.1:" + socket.getLocalPort());
+        }
+
+        @Override
+        public void close() throws Exception {
+            socket.close();
+            thread.join();
+
+            assertNeverAccessed();
+        }
+
+        public void assertNeverAccessed() {
+            assertEquals(0, accessCount.get(), "Server connections");
+        }
     }
 }

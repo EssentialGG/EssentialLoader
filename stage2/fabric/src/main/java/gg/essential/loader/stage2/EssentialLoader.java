@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 public class EssentialLoader extends EssentialLoaderBase {
     private static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
     private final LoaderInternals loaderInternals = new LoaderInternals();
-    private final JarInJarDependenciesHandler jijHandler = new JarInJarDependenciesHandler(getExtractedJarsRoot());
 
     public EssentialLoader(Path gameDir, String gameVersion) {
         super(gameDir, gameVersion);
@@ -106,7 +105,12 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     @Override
-    protected void addToClasspath(Path mainJar, List<Path> innerJars) {
+    protected void addToClasspath(Mod mod, Path mainJar, List<Path> innerJars) {
+        // FIXME doing this mod-by-mod may require a restart per mod; naively sharing the same handler between all mods
+        //       may cause conflicts between them. we should probably implement a proper solution before prime time.
+        //       we also need to black-list our stage0
+        JarInJarDependenciesHandler jijHandler = new JarInJarDependenciesHandler(getExtractedJarsRoot(mod));
+
         innerJars = innerJars.stream()
             .flatMap(path -> jijHandler.loadMod(path).stream())
             .collect(Collectors.toCollection(ArrayList::new));
@@ -119,7 +123,7 @@ public class EssentialLoader extends EssentialLoaderBase {
             return;
         }
 
-        super.addToClasspath(mainJar, innerJars);
+        super.addToClasspath(mod, mainJar, innerJars);
     }
 
     @Override
@@ -398,6 +402,8 @@ public class EssentialLoader extends EssentialLoaderBase {
                     addMethod.invoke(entrypointStorage, modContainer, key, entrypointMetadata, adapterMap);
                 }
             }
+            // FIXME need to chain-load prelaunch entrypoint for mods that need it because that one has already been
+            //       (or rather, is currently being) invoked
         }
     }
 }

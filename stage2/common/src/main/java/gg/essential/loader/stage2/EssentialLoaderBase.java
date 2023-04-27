@@ -4,11 +4,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import gg.essential.loader.stage2.components.ForkedUpdatePromptUI;
 import gg.essential.loader.stage2.data.ModId;
 import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.data.ModVersion;
 import gg.essential.loader.stage2.diff.DiffPatcher;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
+import gg.essential.loader.stage2.restart.ForkedNeedsRestartUI;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -21,7 +23,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Writer;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -32,19 +36,30 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
 import static gg.essential.loader.stage2.util.Checksum.getChecksum;
+import static gg.essential.loader.stage2.util.VersionComparison.compareVersions;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 public abstract class EssentialLoaderBase {
 
@@ -53,34 +68,42 @@ public abstract class EssentialLoaderBase {
         "essential.download.url",
         System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://api.essential.gg/mods")
     );
-    private static final String DEFAULT_BRANCH = "stable";
-    private static final String VERSION_BASE_URL = BASE_URL + "/v1/essential:essential/versions/%s";
+    private static final String VERSION_BASE_URL = BASE_URL + "/v1/%s/versions/%s";
     private static final String VERSION_URL = VERSION_BASE_URL + "/platforms/%s";
     private static final String DOWNLOAD_URL = VERSION_URL + "/download";
     private static final String DIFF_URL = VERSION_BASE_URL + "/diff/%s/platforms/%s";
+    private static final String CHANGELOG_URL = VERSION_BASE_URL + "/changelog";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_BASE_NAME = "Essential (%s)";
     private static final String FILE_EXTENSION = "jar";
-    private static final boolean AUTO_UPDATE = "true".equals(System.getProperty("essential.autoUpdate", "true"));
+
+    private static final String OVERRIDE_PINNED_VERSION_KEY = "overridePinnedVersion";
+    private static final String PENDING_UPDATE_VERSION_KEY = "pendingUpdateVersion";
+    private static final String PENDING_UPDATE_RESOLUTION_KEY = "pendingUpdateResolution";
 
     private final Path gameDir;
     private final String gameVersion;
     private final String apiGameVersion;
-    private final String fileBaseName;
+    private final String currentStage2Version;
     private final LoaderUI ui;
 
     public EssentialLoaderBase(final Path gameDir, final String gameVersion) {
         this.gameDir = gameDir;
         this.gameVersion = gameVersion;
         this.apiGameVersion = gameVersion.replace(".", "-");
-        this.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
 
-        String stage2Branch = System.getProperty(
-            "essential.stage2.branch",
-            System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
-        );
-        if (!stage2Branch.equals("stable")) {
-            LOGGER.info("Essential Loader (stage2) branch set to \"{}\".", stage2Branch);
+        currentStage2Version = System.getProperty("essential.stage2.version");
+
+        // If this property is set, then stage1 will already have printed our version+branch
+        // We only need to do that for old versions, i.e. if the property isn't set
+        if (currentStage2Version == null) {
+            String stage2Branch = System.getProperty(
+                "essential.stage2.branch",
+                System.getenv().getOrDefault("ESSENTIAL_STAGE2_BRANCH", "stable")
+            );
+            if (!stage2Branch.equals("stable")) {
+                LOGGER.info("Essential Loader (stage2) branch set to \"{}\".", stage2Branch);
+            }
         }
 
         this.ui = LoaderUI.all(
@@ -90,11 +113,6 @@ public abstract class EssentialLoaderBase {
     }
 
     public void load() throws IOException {
-        final Path dataDir = this.gameDir.resolve("essential").toRealPath();
-        if (Files.notExists(dataDir)) { // check first, symlinks may exist but Java does not consider them directories
-            Files.createDirectories(dataDir);
-        }
-
         // Check if Essential is already loaded as a regular mod. If so, there's not much for us to do here.
         if (isInClassPath()) {
             if (!Boolean.getBoolean("essential.loader.relaunched")) {
@@ -104,9 +122,110 @@ public abstract class EssentialLoaderBase {
             return;
         }
 
-        Path essentialFile = findMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION).getKey();
+        List<Mod> modList = findMods();
+        Map<Mod, ModJarMetadata> loadedMods = new HashMap<>();
+        for (Mod mod : modList) {
+            if (Files.notExists(mod.dataDir)) { // check first, symlinks may exist but Java does not consider them directories
+                Files.createDirectories(mod.dataDir);
+            }
 
-        boolean needUpdate = false;
+            ModJarMetadata loadedMeta = loadMod(mod);
+
+            if (loadedMeta == null) {
+                continue;
+            }
+            loadedMods.put(mod, loadedMeta);
+
+            // Put the mod version into the system properties, so the mod can read it to know its own version
+            ModVersion version = loadedMeta.getVersion();
+            if (version.getVersion() != null) {
+                System.setProperty(mod.safeSlug() + ".version", version.getVersion());
+            }
+        }
+
+        if (loadedMods.keySet().stream().anyMatch(Mod::isEssential)) {
+            loadPlatform();
+        }
+    }
+
+    private List<Mod> findMods() {
+        List<Mod> modList = new ArrayList<>();
+        try {
+            Enumeration<URL> urls = getClass().getClassLoader().getResources("essential-loader.properties");
+            while (urls.hasMoreElements()) {
+                URL url = urls.nextElement();
+                LOGGER.trace("Reading properties file at {}", url);
+
+                Properties properties = new Properties();
+                try (InputStream in = url.openStream()) {
+                    properties.load(in);
+                } catch (IOException e) {
+                    LOGGER.warn("Failed to read properties file at `" + url + "`:", e);
+                }
+
+                Mod mod = new Mod();
+                mod.id = new ModId(
+                    properties.getProperty("publisherSlug"),
+                    properties.getProperty("publisherId"),
+                    properties.getProperty("modSlug"),
+                    properties.getProperty("modId")
+                );
+                mod.displayName = properties.getProperty("displayName");
+                mod.branch = properties.getProperty("branch", "stable");
+                mod.pinnedFile = properties.getProperty("pinnedFile");
+                mod.pinnedFileMd5 = properties.getProperty("pinnedFileMd5");
+                mod.pinnedFileVersion = new ModVersion(
+                    properties.getProperty("pinnedFileVersionId"),
+                    properties.getProperty("pinnedFileVersion")
+                );
+                mod.autoUpdate = mod.pinnedFile != null ? AutoUpdate.Manual : AutoUpdate.Full;
+                if (!mod.validate(url)) {
+                    continue;
+                }
+                modList.add(mod);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Error looking for essential-loader property files:", e);
+        }
+
+        if (modList.stream().noneMatch(Mod::isEssential)) {
+            Mod mod = new Mod();
+            mod.id = ModId.ESSENTIAL;
+            mod.displayName = "Essential";
+            mod.autoUpdate = AutoUpdate.Full;
+            mod.branch = "stable";
+            assert mod.validate(null);
+            modList.add(mod);
+        }
+
+        Path dataDir = this.gameDir.resolve("essential");
+        for (Mod mod : modList) {
+            if (mod.isEssential()) {
+                // For legacy reasons, Essential does not have its own folder and a different file name pattern
+                mod.dataDir = dataDir;
+                mod.fileBaseName = String.format(FILE_BASE_NAME, this.gameVersion);
+            } else {
+                mod.dataDir = dataDir.resolve("mods").resolve(mod.safeSlug());
+                mod.fileBaseName = this.gameVersion;
+            }
+
+            mod.configFile = mod.dataDir.resolve("essential-loader.properties");
+            mod.readConfigFile();
+
+            String configuredBranch = mod.config.getProperty("branch");
+            mod.branch = determineBranch(mod, configuredBranch);
+
+            String configuredAutoUpdate = System.getProperty(mod.safeSlug() + "." + AutoUpdate.KEY, mod.config.getProperty(AutoUpdate.KEY));
+            if (configuredAutoUpdate != null) {
+                mod.autoUpdate = AutoUpdate.from(configuredAutoUpdate);
+            }
+        }
+
+        return modList;
+    }
+
+    private ModJarMetadata loadMod(Mod mod) throws IOException {
+        Path essentialFile = findMostRecentFile(mod.dataDir, mod.fileBaseName, FILE_EXTENSION).getKey();
 
         // Load current metadata from existing jar (if one exists)
         ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
@@ -114,90 +233,185 @@ public abstract class EssentialLoaderBase {
             try {
                 currentMeta = ModJarMetadata.read(essentialFile);
             } catch (IOException e) {
-                LOGGER.warn("Failed to read existing Essential jar metadata", e);
-            }
-        }
-        String currentChecksum = currentMeta.getChecksum();
-
-        if (currentChecksum == null) {
-            needUpdate = true;
-        }
-
-        String branch = determineBranch();
-
-        // Fetch latest version metadata (if required)
-        ModJarMetadata latestMeta = null;
-        if (needUpdate || AUTO_UPDATE) {
-            latestMeta = fetchLatestVersion(ModId.ESSENTIAL, branch);
-            if (latestMeta == null && needUpdate) {
-                return;
+                LOGGER.warn("Failed to read existing " + mod + " jar metadata", e);
             }
         }
 
-        // Check if our local version matches the latest
-        if (!needUpdate && latestMeta != null && !latestMeta.getChecksum().equals(currentChecksum)) {
-            needUpdate = true;
-        }
-
-
-        if (needUpdate) {
-            Path downloadedFile;
-
-            this.ui.start();
-            try {
-                downloadedFile = update(essentialFile, currentMeta, latestMeta);
-                downloadedFile = postProcessDownload(downloadedFile);
-            } finally {
-                this.ui.complete();
-            }
-
-            if (downloadedFile != null) {
-                latestMeta.write(downloadedFile);
-
-                try {
-                    Files.deleteIfExists(essentialFile);
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to delete old Essential file, will try again later.", e);
+        // If we don't have a local jar, get hold of one
+        if (currentMeta == ModJarMetadata.EMPTY) {
+            if (mod.pinnedFile != null) {
+                essentialFile = mod.installPinnedFile(essentialFile);
+                if (essentialFile == null) {
+                    return null;
                 }
-
-                // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
-                // and if not, we need to write to the next higher one.
-                essentialFile = findNextMostRecentFile(dataDir, this.fileBaseName, FILE_EXTENSION);
-
-                Files.move(downloadedFile, essentialFile);
-                currentMeta = latestMeta;
+                currentMeta = mod.pinnedFileMeta();
             } else {
-                LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
+                ModJarMetadata latestMeta = fetchLatestVersion(mod, mod.branch);
+                if (latestMeta == null) {
+                    return null;
+                }
+                this.ui.start();
+                try {
+                    Path downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
+                    if (downloadedFile == null) {
+                        return null;
+                    }
+                    essentialFile = mod.installFile(essentialFile, downloadedFile, latestMeta);
+                    currentMeta = latestMeta;
+                } finally {
+                    this.ui.complete();
+                }
+            }
+        }
+
+        // If the pinned version is more recent than the local one, use it
+        if (mod.isPinnedVersionMoreRecentThan(currentMeta.getVersion())) {
+            essentialFile = mod.installPinnedFile(essentialFile);
+            if (essentialFile == null) {
+                return null;
+            }
+            currentMeta = mod.pinnedFileMeta();
+        }
+
+        if (mod.autoUpdate == AutoUpdate.Full) {
+            ModJarMetadata latestMeta = fetchLatestVersion(mod, mod.branch);
+            if (latestMeta != null && !latestMeta.getChecksum().equals(currentMeta.getChecksum())) {
+                this.ui.start();
+                try {
+                    Path downloadedFile = update(mod, essentialFile, currentMeta, latestMeta);
+                    if (downloadedFile != null) {
+                        essentialFile = mod.installFile(essentialFile, downloadedFile, latestMeta);
+                        currentMeta = latestMeta;
+                    }
+                } finally {
+                    this.ui.complete();
+                }
+            }
+        } else if (mod.autoUpdate == AutoUpdate.Manual) {
+            String latestPinnedVersion;
+            if (mod.pinnedFile != null) {
+                latestPinnedVersion = mod.pinnedFileVersion.getVersion();
+                if (latestPinnedVersion == null) {
+                    LOGGER.warn("Mod {} has pinned jar but does not specify version!", mod);
+                }
+            } else {
+                latestPinnedVersion = null;
+            }
+
+            // Check which version the user/mod wants us to be at
+            String pinOverride = mod.config.getProperty(OVERRIDE_PINNED_VERSION_KEY);
+            // If an override is set but no longer required, remove it, so we follow the real pin again
+            if (pinOverride != null && latestPinnedVersion != null && compareVersions(pinOverride, latestPinnedVersion) <= 0) {
+                mod.config.remove(OVERRIDE_PINNED_VERSION_KEY);
+                mod.writeConfigFile();
+                pinOverride = null;
+            }
+
+            // If no override is set and we have a pinned version, then use it
+            // This allows users to downgrade the effective version by downgrading the container jar
+            if (pinOverride == null && latestPinnedVersion != null && !currentMeta.getChecksum().equals(mod.pinnedFileMd5)) {
+                essentialFile = mod.installPinnedFile(essentialFile);
+                currentMeta = mod.pinnedFileMeta();
+            }
+
+            // Check if there's a newer version we could be using
+            ModJarMetadata onlineMeta = fetchLatestVersion(mod, mod.branch);
+            String onlineVersion = onlineMeta != null ? onlineMeta.getVersion().getVersion() : null;
+            String localVersion = currentMeta.getVersion().getVersion();
+            if (onlineVersion != null && localVersion != null && compareVersions(onlineVersion, localVersion) > 0) {
+                String pendingUpdateVersion = mod.config.getProperty(PENDING_UPDATE_VERSION_KEY);
+                if (Objects.equals(pendingUpdateVersion, onlineVersion)) {
+                    // Update was already pending, check whether we are allowed to install it
+                    Boolean resolution = booleanOrNull(mod.config.getProperty(PENDING_UPDATE_RESOLUTION_KEY));
+                    if (resolution == null) {
+                        resolution = showUpdatePrompt(onlineMeta);
+                        if (resolution != null) {
+                            mod.config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, Boolean.toString(resolution));
+                            mod.writeConfigFile();
+                        }
+                    }
+
+                    // If the new version was accepted, download it. Otherwise, ignore it.
+                    if (resolution == Boolean.TRUE) {
+                        this.ui.start();
+                        try {
+                            Path downloadedFile = update(mod, essentialFile, currentMeta, onlineMeta);
+                            if (downloadedFile != null) {
+                                essentialFile = mod.installFile(essentialFile, downloadedFile, onlineMeta);
+                                currentMeta = onlineMeta;
+
+                                mod.config.setProperty(OVERRIDE_PINNED_VERSION_KEY, onlineMeta.getVersion().getVersion());
+                                mod.config.remove(PENDING_UPDATE_VERSION_KEY);
+                                mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                                mod.writeConfigFile();
+                            }
+                        } finally {
+                            this.ui.complete();
+                        }
+                    } else {
+                        LOGGER.warn("Found newer Essential version {} [{}], skipping {}",
+                            onlineVersion, mod.branch,
+                            resolution == Boolean.FALSE ? "at user request" : "because no consent could be acquired");
+                    }
+                } else {
+                    LOGGER.info("Found newer Essential version {} [{}]", onlineVersion, mod.branch);
+                    // Queue update for in-game prompt and installation on next boot
+                    mod.config.setProperty(PENDING_UPDATE_VERSION_KEY, onlineVersion);
+                    mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                    mod.writeConfigFile();
+                }
             }
         }
 
         // Check if we can continue, otherwise do not even try
         if (!Files.exists(essentialFile)) {
-            return;
+            return null;
         }
 
-        // Put the mod version into the system properties, so the mod can read it to know its own version
-        ModVersion version = currentMeta.getVersion();
-        if (version.getVersion() != null) {
-            System.setProperty("essential.version", version.getVersion());
+        // Check if the current stage2 meets the requirements of the mod
+        String requiredStage2Version = getRequiredStage2VersionIfOutdated(essentialFile);
+        if (requiredStage2Version != null) {
+            // Find the stage1 config file
+            Path jarFile;
+            try {
+                jarFile = Paths.get(getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+            String jarFileName = jarFile.getFileName().toString();
+            Path configFile = jarFile.resolveSibling(jarFileName.substring(0, jarFileName.length() - 4) + ".properties");
+
+            // Tell stage1 to upgrade stage2 on next boot
+            Properties config = readConfigFileAt(configFile);
+            config.remove(PENDING_UPDATE_VERSION_KEY); // upgrade to latest version
+            config.setProperty(PENDING_UPDATE_RESOLUTION_KEY, "true");
+            if (AutoUpdate.from(config.getProperty(AutoUpdate.KEY)) == AutoUpdate.Off) {
+                // auto-update is turned off, we need to turn it on
+                config.setProperty(AutoUpdate.KEY, AutoUpdate.WITH_PROMPT);
+            }
+            writeConfigFileTo(configFile, config);
+
+            // Inform user and restart game
+            ForkedNeedsRestartUI ui = new ForkedNeedsRestartUI(singletonList("Essential Loader"), emptyList());
+            ui.show();
+            ui.waitForClose();
+            ui.exit();
+            throw new AssertionError("JVM should have exited by now");
         }
 
-        this.addToClasspath(essentialFile, this.extractJarsInJar(essentialFile));
+        this.addToClasspath(mod, essentialFile, this.extractJarsInJar(mod, essentialFile));
 
-        if (this.classpathUpdatesImmediately() && !this.isInClassPath()) {
-            throw new IllegalStateException("Could not find Essential in the classpath even though we added it without errors (fileExists=" + Files.exists(essentialFile) + ").");
-        }
-
-        loadPlatform();
+        return currentMeta;
     }
 
-    private String determineBranch() {
+    private String determineBranch(Mod mod, String configuredBranch) {
         final String DEFAULT_SOURCE = "default";
         List<Pair<String, String>> configs = Arrays.asList(
-            Pair.of("property", System.getProperty("essential.branch")),
-            Pair.of("environment", System.getenv().get("ESSENTIAL_BRANCH")),
-            Pair.of("file", determineBranchFromFile()),
-            Pair.of(DEFAULT_SOURCE, DEFAULT_BRANCH)
+            Pair.of("property", System.getProperty(mod.safeSlug() + ".branch")),
+            Pair.of("environment", System.getenv().get(mod.safeSlug().toUpperCase(Locale.ROOT) + "_BRANCH")),
+            Pair.of("config", configuredBranch),
+            Pair.of("file", determineBranchFromFile(mod)),
+            Pair.of(DEFAULT_SOURCE, mod.branch)
         );
 
         String resultBranch = null;
@@ -207,22 +421,22 @@ public abstract class EssentialLoaderBase {
             String branch = config.getValue();
 
             if (branch == null) {
-                LOGGER.trace("Checked {} for Essential branch, was not supplied.", source);
+                LOGGER.trace("Checked {} for {} branch, was not supplied.", source, mod);
                 continue;
             }
 
             if (resultBranch != null) {
                 if (!source.equals(DEFAULT_SOURCE)) {
                     LOGGER.warn(
-                        "Essential branch supplied via {} as \"{}\" but ignored because {} is more important.",
-                        source, branch, resultSource
+                        "{} branch supplied via {} as \"{}\" but ignored because {} is more important.",
+                        mod, source, branch, resultSource
                     );
                 }
                 continue;
             }
 
             Level level = source.equals(DEFAULT_SOURCE) ? Level.DEBUG : Level.INFO;
-            LOGGER.log(level, "Essential branch set to \"{}\" via {}.", branch, source);
+            LOGGER.log(level, "{} branch set to \"{}\" via {}.", mod, branch, source);
 
             resultBranch = branch;
             resultSource = source;
@@ -230,13 +444,13 @@ public abstract class EssentialLoaderBase {
         assert resultBranch != null;
 
         // Write the result back to the system property, so the mod can read it to know the branch too
-        System.setProperty("essential.branch", resultBranch);
+        System.setProperty(mod.safeSlug() + ".branch", resultBranch);
 
         return resultBranch;
     }
 
-    private String determineBranchFromFile() {
-        final String BRANCH_FILE_NAME = "essential_branch.txt";
+    private String determineBranchFromFile(Mod mod) {
+        final String BRANCH_FILE_NAME = mod.safeSlug() + "_branch.txt";
         try {
             Enumeration<URL> resources = getClass().getClassLoader().getResources(BRANCH_FILE_NAME);
             if (!resources.hasMoreElements()) {
@@ -258,27 +472,31 @@ public abstract class EssentialLoaderBase {
         }
     }
 
-    private Path update(Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+    private Path update(Mod mod, Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
         // If we can, try fetching a diff first
         if (!currentMeta.getVersion().isUnknown()) {
-            Path updatedFile = updateViaDiff(essentialFile, currentMeta, latestMeta);
+            Path updatedFile = updateViaDiff(mod, essentialFile, currentMeta, latestMeta);
             if (updatedFile != null) {
                 return updatedFile;
             }
         }
 
         // Otherwise fall back to downloading the full file
-        return updateViaDownload(latestMeta);
+        Path downloadedFile = updateViaDownload(mod, latestMeta);
+        if (downloadedFile == null) {
+            LOGGER.warn("Unable to download {}, please check your internet connection. If the problem persists, please contact Essential Support.", mod);
+        }
+        return downloadedFile;
     }
 
-    private Path updateViaDiff(Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+    private Path updateViaDiff(Mod mod, Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
         FileMeta meta = fetchDiffUrl(latestMeta.getMod(), currentMeta.getVersion(), latestMeta.getVersion());
         if (meta == null) {
             return null; // no diff available
         }
 
         Path downloadedFile = Files.createTempFile("essential-download-", "");
-        if (!downloadFile(meta.url, downloadedFile, meta.checksum)) {
+        if (!downloadFile(mod, meta.url, downloadedFile, meta.checksum)) {
             return null; // failed to download diff
         }
 
@@ -297,14 +515,14 @@ public abstract class EssentialLoaderBase {
         return patchedFile; // success
     }
 
-    private Path updateViaDownload(ModJarMetadata latestMeta) throws IOException {
+    private Path updateViaDownload(Mod mod, ModJarMetadata latestMeta) throws IOException {
         FileMeta meta = fetchDownloadUrl(latestMeta.getMod(), latestMeta.getVersion());
         if (meta == null) {
             return null; // no download available, this is bad
         }
 
         Path downloadedFile = Files.createTempFile("essential-download-", "");
-        if (!downloadFile(meta.url, downloadedFile, meta.checksum)) {
+        if (!downloadFile(mod, meta.url, downloadedFile, meta.checksum)) {
             return null; // failed to download file
         }
 
@@ -314,7 +532,7 @@ public abstract class EssentialLoaderBase {
     private JsonObject fetchJsonObject(String endpoint, boolean allowEmpty) {
         URLConnection connection = null;
         try {
-            connection = this.prepareConnection(endpoint);
+            connection = this.prepareConnection(new URL(endpoint));
 
             String response;
             try (final InputStream inputStream = connection.getInputStream()) {
@@ -337,11 +555,11 @@ public abstract class EssentialLoaderBase {
         }
     }
 
-    private ModJarMetadata fetchLatestVersion(ModId modId, String branch) {
-        JsonObject responseObject = fetchJsonObject(String.format(VERSION_URL, branch, this.apiGameVersion), true);
+    private ModJarMetadata fetchLatestVersion(Mod mod, String branch) {
+        JsonObject responseObject = fetchJsonObject(String.format(VERSION_URL, mod.id.getFullSlug(), branch, this.apiGameVersion), true);
 
         if (responseObject == null) {
-            LOGGER.warn("Essential does not support the following game version: {}", this.gameVersion);
+            LOGGER.warn("{} does not support the following game version: {}", mod, this.gameVersion);
             return null;
         }
 
@@ -357,15 +575,15 @@ public abstract class EssentialLoaderBase {
             return null;
         }
 
-        return new ModJarMetadata(modId, new ModVersion(id, version), this.apiGameVersion, checksum);
+        return new ModJarMetadata(mod.id, new ModVersion(id, version), this.apiGameVersion, checksum);
     }
 
     private FileMeta fetchDownloadUrl(ModId modId, ModVersion modVersion) {
-        return fetchFileMeta(String.format(DOWNLOAD_URL, modVersion.getVersion(), this.apiGameVersion));
+        return fetchFileMeta(String.format(DOWNLOAD_URL, modId.getFullSlug(), modVersion.getVersion(), this.apiGameVersion));
     }
 
     private FileMeta fetchDiffUrl(ModId modId, ModVersion oldVersion, ModVersion modVersion) {
-        return fetchFileMeta(String.format(DIFF_URL, oldVersion.getVersion(), modVersion.getVersion(), this.apiGameVersion));
+        return fetchFileMeta(String.format(DIFF_URL, modId.getFullSlug(), oldVersion.getVersion(), modVersion.getVersion(), this.apiGameVersion));
     }
 
     private FileMeta fetchFileMeta(String endpoint) {
@@ -387,11 +605,16 @@ public abstract class EssentialLoaderBase {
             return null;
         }
 
-        return new FileMeta(url, checksum);
+        try {
+            return new FileMeta(new URL(url), checksum);
+        } catch (MalformedURLException e) {
+            LOGGER.error("Received invalid url `" + url + "`:", e);
+            return null;
+        }
     }
 
-    private URLConnection prepareConnection(final String url) throws IOException {
-        final URLConnection urlConnection = new URL(url).openConnection();
+    private URLConnection prepareConnection(final URL url) throws IOException {
+        final URLConnection urlConnection = url.openConnection();
 
         if (urlConnection instanceof HttpURLConnection) {
             final HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
@@ -412,20 +635,52 @@ public abstract class EssentialLoaderBase {
         return downloadedFile;
     }
 
-    protected Path getExtractedJarsRoot() {
-        return gameDir
-            .resolve("essential")
+    private String getRequiredStage2VersionIfOutdated(Path modFile) {
+        // If we don't know our own version, then stage1 predates pinning, so it'll always auto-update and we're always
+        // up-to-date enough for all mods (assuming the stage2 update is released before mods that require it).
+        if (currentStage2Version == null) {
+            return null;
+        }
+
+        try (FileSystem fileSystem = FileSystems.newFileSystem(modFile, (ClassLoader) null)) {
+            Path manifestPath = fileSystem.getPath("META-INF", "MANIFEST.MF");
+            if (!Files.exists(manifestPath)) {
+                return null; // no requirement, good to go
+            }
+            Manifest manifest = new Manifest();
+            try (InputStream in = Files.newInputStream(manifestPath)) {
+                manifest.read(in);
+            }
+            String requiredVersion = manifest.getMainAttributes().getValue(new Attributes.Name("Requires-Essential-Stage2-Version"));
+            if (requiredVersion == null) {
+                return null; // no requirement, good to go
+            }
+            if (compareVersions(currentStage2Version, requiredVersion) >= 0) {
+                return null; // current version is recent enough
+            } else {
+                return requiredVersion; // need to update
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Failed to read mod metadata from jar file at " + modFile + ":", e);
+            return null; // assume it's good enough, nothing else we can really do
+        }
+    }
+
+    protected Path getExtractedJarsRoot(Mod mod) {
+        return mod.dataDir
             .resolve("libraries")
             .resolve(gameVersion);
     }
 
-    private List<Path> extractJarsInJar(Path outerJar) throws IOException {
-        final Path extractedJarsRoot = getExtractedJarsRoot();
+    private List<Path> extractJarsInJar(Mod mod, Path outerJar) throws IOException {
+        final Path extractedJarsRoot = getExtractedJarsRoot(mod);
         Files.createDirectories(extractedJarsRoot);
 
         final List<Path> extractedJars = new ArrayList<>();
 
         try (FileSystem fileSystem = FileSystems.newFileSystem(outerJar, (ClassLoader) null)) {
+            // FIXME: For third-party mods we must not simply extract everything in this directory, fabric's JiJ may or
+            //        may not use it as well and we should be handling both cases correctly
             final Path innerJarsRoot = fileSystem.getPath("META-INF", "jars");
             if (!Files.isDirectory(innerJarsRoot)) {
                 return extractedJars;
@@ -460,7 +715,7 @@ public abstract class EssentialLoaderBase {
     @Nullable
     protected abstract ClassLoader getModClassLoader();
 
-    protected void addToClasspath(Path mainJar, final List<Path> innerJars) {
+    protected void addToClasspath(Mod mod, Path mainJar, final List<Path> innerJars) {
         this.addToClasspath(mainJar);
         for (final Path jar : innerJars) {
             this.addToClasspath(jar);
@@ -509,9 +764,9 @@ public abstract class EssentialLoaderBase {
         return new URI("jar:" + uri.getScheme(), uri.getHost(), uri.getPath(), uri.getFragment());
     }
 
-    private boolean downloadFile(final String url, final Path target, String expectedHash) throws IOException {
+    private boolean downloadFile(final Mod mod, final URL url, final Path target, String expectedHash) throws IOException {
         if (!this.attemptDownload(url, target)) {
-            LOGGER.warn("Unable to download Essential, please check your internet connection. If the problem persists, please contact Support.");
+            LOGGER.warn("Unable to download {}, please check your internet connection. If the problem persists, please contact Essential Support.", mod);
 
             // Do not keep the file they downloaded if the download failed half way through
             Files.deleteIfExists(target);
@@ -526,8 +781,8 @@ public abstract class EssentialLoaderBase {
         }
 
         LOGGER.warn(
-            "Downloaded Essential file checksum did not match what we expected (downloaded={}, expected={}",
-            downloadedChecksum, expectedHash
+            "Downloaded {} file checksum did not match what we expected (downloaded={}, expected={}",
+            mod, downloadedChecksum, expectedHash
         );
 
         // Do not keep the file they downloaded if validation failed.
@@ -536,7 +791,7 @@ public abstract class EssentialLoaderBase {
         return false;
     }
 
-    private boolean attemptDownload(final String url, final Path target) {
+    private boolean attemptDownload(final URL url, final Path target) {
         URLConnection connection = null;
         try {
             connection = this.prepareConnection(url);
@@ -581,13 +836,215 @@ public abstract class EssentialLoaderBase {
         LOGGER.error("cf-ray: {}", connection.getHeaderField("cf-ray"));
     }
 
+    private Boolean showUpdatePrompt(ModJarMetadata newVersion) {
+        String description = "";
+        try {
+            JsonObject responseObject = fetchJsonObject(String.format(CHANGELOG_URL,
+                newVersion.getMod().getFullSlug(), newVersion.getVersion().getId()), false);
+
+            if (responseObject != null) {
+                description = responseObject.get("summary").getAsString();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to load changelog for " + newVersion, e);
+        }
+
+        // Skip actual UI for integration tests
+        if (System.getProperty("essential.integration_testing") != null) {
+            String autoAnswer = System.getProperty("essential.stage2.fallback-prompt-auto-answer");
+            if (autoAnswer != null) {
+                return Boolean.parseBoolean(autoAnswer);
+            } else {
+                throw new RuntimeException("Update prompt opened unexpectedly!");
+            }
+        }
+
+        ForkedUpdatePromptUI promptUI = new ForkedUpdatePromptUI("Essential Mod Update!", description);
+        promptUI.show();
+        return promptUI.waitForClose();
+    }
+
+    private Boolean booleanOrNull(String str) {
+        return str == null ? null : Boolean.parseBoolean(str);
+    }
+
+    private static Properties readConfigFileAt(Path path) {
+        Properties config = new Properties();
+        if (Files.exists(path)) {
+            try (InputStream in = Files.newInputStream(path)) {
+                config.load(in);
+            } catch (Exception e) {
+                LOGGER.error("Failed to read config at " + path + ":", e);
+            }
+        }
+        return config;
+    }
+
+    private static void writeConfigFileTo(Path path, Properties config) throws IOException {
+        Files.createDirectories(path.getParent());
+
+        Path tempFile = Files.createTempFile(path.getParent(), "tmp-", ".properties");
+        try {
+            try (Writer out = Files.newBufferedWriter(tempFile)) {
+                config.store(out, null);
+            }
+            Files.move(tempFile, path, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
     private static class FileMeta {
-        String url;
+        URL url;
         String checksum;
 
-        public FileMeta(String url, String checksum) {
+        public FileMeta(URL url, String checksum) {
             this.url = url;
             this.checksum = checksum;
+        }
+    }
+
+    public class Mod {
+        // Configurable via essential-loader.properties
+        ModId id;
+        String displayName;
+        String pinnedFile;
+        String pinnedFileMd5;
+        ModVersion pinnedFileVersion;
+        String branch;
+        AutoUpdate autoUpdate;
+
+        // Internal to stage2
+        Path dataDir;
+        String fileBaseName;
+        Path configFile;
+        Properties config;
+
+        String slug() {
+            String publisherSlug = id.getPublisherSlug();
+            String modSlug = id.getModSlug();
+            return Objects.equals(publisherSlug, modSlug) ? modSlug : publisherSlug + ":" + modSlug;
+        }
+
+        String safeSlug() {
+            // Windows doesn't allow `:` in file names.
+            return slug().replace(":", "_");
+        }
+
+        boolean isEssential() {
+            return slug().equals("essential");
+        }
+
+        URL pinnedFileUrl() throws MalformedURLException {
+            if (pinnedFile.startsWith("/")) {
+                URL url = getClass().getClassLoader().getResource(pinnedFile.substring(1));
+                if (url == null) {
+                    LOGGER.fatal("Failed to find pinned jar file at {}", pinnedFile);
+                }
+                return url;
+            } else {
+                return new URL(pinnedFile);
+            }
+        }
+
+        ModJarMetadata pinnedFileMeta() {
+            if (pinnedFileMd5 == null) return null;
+            return new ModJarMetadata(id, pinnedFileVersion, null, pinnedFileMd5);
+        }
+
+        boolean validate(URL source) {
+            return Stream.of(
+                validateNotNull(source, "publisherSlug", id.getPublisherSlug()),
+                validateNotNull(source, "modSlug", id.getModSlug()),
+                validateNotNull(source, "displayName", displayName),
+                pinnedFile == null || validateNotNull(source, "pinnedFileMd5", pinnedFileMd5)
+            ).allMatch(it -> it);
+        }
+
+        private boolean validateNotNull(URL source, String name, Object value) {
+            if (value != null) {
+                return true;
+            }
+            LOGGER.error("Mod configuration at {} is missing `{}` entry!", source, name);
+            return false;
+        }
+
+        void readConfigFile() {
+            config = readConfigFileAt(configFile);
+        }
+
+        void writeConfigFile() throws IOException {
+            writeConfigFileTo(configFile, config);
+        }
+
+        Path installFile(Path destinationFile, Path sourceFile, ModJarMetadata metadata) throws IOException {
+            sourceFile = postProcessDownload(sourceFile);
+
+            metadata.write(sourceFile);
+
+            try {
+                Files.deleteIfExists(destinationFile);
+            } catch (IOException e) {
+                LOGGER.warn("Failed to delete old " + this + " file, will try again later.", e);
+            }
+
+            // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
+            // and if not, we need to write to the next higher one.
+            destinationFile = findNextMostRecentFile(dataDir, fileBaseName, FILE_EXTENSION);
+
+            Files.move(sourceFile, destinationFile);
+
+            return destinationFile;
+        }
+
+        Path installPinnedFile(Path destinationFile) throws IOException {
+            URL url = pinnedFileUrl();
+            if (url == null) {
+                return null;
+            }
+
+            Path downloadedFile = Files.createTempFile("essential-extract-", "");
+            if (!downloadFile(this, url, downloadedFile, pinnedFileMd5)) {
+                return null;
+            }
+
+            return installFile(destinationFile, downloadedFile, pinnedFileMeta());
+        }
+
+        public boolean isPinnedVersionMoreRecentThan(ModVersion version) {
+            if (pinnedFileVersion == null) return false;
+            if (pinnedFileVersion.getVersion() == null) return false;
+            if (version == null) return true;
+            if (version.getVersion() == null) return true;
+            return compareVersions(pinnedFileVersion.getVersion(), version.getVersion()) > 0;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
+    }
+
+    public enum AutoUpdate {
+        /** Automatically checks for and installs newer versions. */
+        Full,
+        /** Checks for newer versions but does not automatically install them until the user consents. */
+        Manual,
+        /** No network communication beyond initial download is performed. */
+        Off,
+        ;
+
+        public static final String WITH_PROMPT = "with-prompt";
+        public static final String KEY = "autoUpdate";
+
+        private static AutoUpdate from(String value) {
+            if (value == null) {
+                return Full;
+            } else if (value.equalsIgnoreCase(WITH_PROMPT)) {
+                return Manual;
+            } else {
+                return Boolean.parseBoolean(value) ? Full : Off;
+            }
         }
     }
 }

@@ -4,7 +4,9 @@ import gg.essential.loader.fixtures.Installation;
 import gg.essential.loader.fixtures.IsolatedLaunch;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -77,5 +79,20 @@ public class Stage1Tests {
         assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
         assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
         assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
+
+    @Test
+    public void testBranchSpecifiedInConfigFile(Installation installation) throws Exception {
+        installation.addExampleMod();
+
+        Files.createDirectories(installation.stage1ConfigFile.getParent());
+        Files.write(installation.stage1ConfigFile, "branch=dummy".getBytes(StandardCharsets.UTF_8));
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("loaded").getBoolean(null));
+        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("initialized").getBoolean(null));
     }
 }
