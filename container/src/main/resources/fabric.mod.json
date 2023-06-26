@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "essential-container",
+  "version": "1.0.0",
+  "environment": "client",
+  "icon": "assets/essential-container/essential.png",
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": {
+        "id": "essential",
+        "name": "Essential",
+        "description": "Provides essential features to Minecraft and our Partners.",
+        "icon": "assets/essential-container/essential.png",
+        "badges": ["library"]
+      }
+    }
+  },
+  "jars": [
+    {
+      "file": "essential-loader.jar"
+    }
+  ]
+}

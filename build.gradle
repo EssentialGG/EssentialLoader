@@ -1,4 +1,6 @@
 subprojects {
+    if (name == "container") return
+
     apply plugin: "java"
 
     group = "gg.essential"

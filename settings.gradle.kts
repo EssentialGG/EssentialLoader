@@ -1,3 +1,6 @@
+includeBuild("build-logic")
+
+include(":container")
 include(":stage0:common")
 include(":stage0:fabric")
 include(":stage0:launchwrapper")
