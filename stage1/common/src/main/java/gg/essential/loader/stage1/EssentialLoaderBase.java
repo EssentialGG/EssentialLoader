@@ -258,6 +258,18 @@ public abstract class EssentialLoaderBase {
             }
         }
 
+        if (autoUpdate != AutoUpdate.Manual) {
+            // Clean up pending update properties if we are no longer in Manual update mode
+            if (config.getProperty(PENDING_UPDATE_VERSION_KEY) != null
+                || config.getProperty(PENDING_UPDATE_RESOLUTION_KEY) != null
+                || config.getProperty(OVERRIDE_PINNED_VERSION_KEY) != null) {
+                config.remove(PENDING_UPDATE_VERSION_KEY);
+                config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                config.remove(OVERRIDE_PINNED_VERSION_KEY);
+                writeProperties(configFile, config);
+            }
+        }
+
         // Check if we can continue, otherwise do not even try
         if (!Files.exists(stage2File)) {
             return;
