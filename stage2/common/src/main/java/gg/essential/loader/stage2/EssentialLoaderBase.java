@@ -363,6 +363,18 @@ public abstract class EssentialLoaderBase {
             }
         }
 
+        if (mod.autoUpdate != AutoUpdate.Manual) {
+            // Clean up pending update properties if we are no longer in Manual update mode
+            if (mod.config.getProperty(PENDING_UPDATE_VERSION_KEY) != null
+                || mod.config.getProperty(PENDING_UPDATE_RESOLUTION_KEY) != null
+                || mod.config.getProperty(OVERRIDE_PINNED_VERSION_KEY) != null) {
+                mod.config.remove(PENDING_UPDATE_VERSION_KEY);
+                mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                mod.config.remove(OVERRIDE_PINNED_VERSION_KEY);
+                mod.writeConfigFile();
+            }
+        }
+
         // Check if we can continue, otherwise do not even try
         if (!Files.exists(essentialFile)) {
             return null;
