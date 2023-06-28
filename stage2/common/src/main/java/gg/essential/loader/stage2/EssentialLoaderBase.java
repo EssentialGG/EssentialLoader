@@ -219,6 +219,9 @@ public abstract class EssentialLoaderBase {
             if (configuredAutoUpdate != null) {
                 mod.autoUpdate = AutoUpdate.from(configuredAutoUpdate);
             }
+
+            // Write effective autoUpdate value back to the system property, so the mod can know it too
+            System.setProperty(mod.safeSlug() + "." + AutoUpdate.KEY, mod.autoUpdate.toPropertyValue());
         }
 
         return modList;
@@ -1057,6 +1060,15 @@ public abstract class EssentialLoaderBase {
             } else {
                 return Boolean.parseBoolean(value) ? Full : Off;
             }
+        }
+
+        private String toPropertyValue() {
+            switch (this) {
+                case Full: return "true";
+                case Manual: return WITH_PROMPT;
+                case Off: return "false";
+            }
+            throw new AssertionError();
         }
     }
 }
