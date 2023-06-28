@@ -49,6 +49,8 @@ public abstract class EssentialLoaderBase {
     private static final String PENDING_UPDATE_VERSION_KEY = "pendingUpdateVersion";
     private static final String PENDING_UPDATE_RESOLUTION_KEY = "pendingUpdateResolution";
 
+    private static final boolean RELAUNCHING = Boolean.parseBoolean(System.getProperty("essential.loader.relaunched", "false"));
+
     private final String variant;
     private final String gameVersion;
     private Object stage2;
@@ -186,7 +188,7 @@ public abstract class EssentialLoaderBase {
             }
         }
 
-        if (autoUpdate == AutoUpdate.Full) {
+        if (autoUpdate == AutoUpdate.Full && !RELAUNCHING) {
             // Update if our local version isn't exactly the same as the latest online version
             FileMeta latestOnlineMeta = fetchLatestMetadata(branch);
             if (latestOnlineMeta != null && !latestOnlineMeta.checksum.equals(localMd5)) {
@@ -195,7 +197,7 @@ public abstract class EssentialLoaderBase {
                     localMd5 = latestOnlineMeta.checksum;
                 }
             }
-        } else if (autoUpdate == AutoUpdate.Manual) {
+        } else if (autoUpdate == AutoUpdate.Manual && !RELAUNCHING) {
             // Check which version the user/mod wants us to be at
             String pinOverride = config.getProperty(OVERRIDE_PINNED_VERSION_KEY);
             // If an override is set but no longer required, remove it, so we follow the real pin again
