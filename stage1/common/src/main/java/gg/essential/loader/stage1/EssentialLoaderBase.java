@@ -278,6 +278,7 @@ public abstract class EssentialLoaderBase {
         LOGGER.info("Starting Essential Loader (stage2) version {} ({}) [{}]", localVersion, localMd5, branch);
         System.setProperty("essential.stage2.version", localVersion);
         System.setProperty("essential.stage2.branch", branch);
+        System.setProperty("essential.stage2.autoUpdate", autoUpdate.toPropertyValue());
 
         // Add stage2 file to class loader
         ClassLoader classLoader = addToClassLoader(stage2Url);
@@ -553,6 +554,15 @@ public abstract class EssentialLoaderBase {
             } else {
                 return Boolean.parseBoolean(value) ? Full : Off;
             }
+        }
+
+        private String toPropertyValue() {
+            switch (this) {
+                case Full: return "true";
+                case Manual: return WITH_PROMPT;
+                case Off: return "false";
+            }
+            throw new AssertionError();
         }
     }
 
