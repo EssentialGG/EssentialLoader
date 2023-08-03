@@ -32,7 +32,7 @@ public class Relaunch {
     private static final String ENABLED_PROPERTY = "essential.loader.relaunch";
     public static final String FORCE_PROPERTY = "essential.loader.relaunch.force";
 
-    /** Whether we are currently inside of a re-launch due to classpath complications. */
+    /** Whether we are currently inside a re-launch due to classpath complications. */
     public static final boolean HAPPENED = Boolean.parseBoolean(System.getProperty(HAPPENED_PROPERTY, "false"));
     /** Whether we should try to re-launch in case of classpath complications. */
     public static final boolean ENABLED = !HAPPENED && Boolean.parseBoolean(System.getProperty(ENABLED_PROPERTY, "true"));

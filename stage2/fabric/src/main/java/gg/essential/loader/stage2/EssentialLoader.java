@@ -190,9 +190,9 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     /**
-     * This class provides access to internal of Fabric Loader.
+     * This class provides access to the internals of Fabric Loader.
      * As such, any access must be made with utmost care (expect errors due to incompatible class changes) and where
-     * possible have an appropriate fallback so we do not explode when Fabric Loader's internals change.
+     * possible have an appropriate fallback so that we do not explode when Fabric Loader's internals change.
      */
     public class LoaderInternals {
         private Class<?> findImplClass(final String name) throws ClassNotFoundException {

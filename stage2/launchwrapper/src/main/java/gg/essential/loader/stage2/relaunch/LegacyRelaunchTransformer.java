@@ -23,7 +23,6 @@ import static gg.essential.loader.stage2.relaunch.Relaunch.FML_TWEAKER;
 public class LegacyRelaunchTransformer implements BiFunction<String, byte[], byte[]> {
     @Override
     public byte[] apply(String name, byte[] bytes) {
-        // Fuck forge
         // It installs a SecurityManager which locks itself down by rejecting any future managers and forge
         // itself refuses to boot if its manager is rejected (e.g. by a manager previously installed by it).
         if (name.equals(FML_TWEAKER)) {
