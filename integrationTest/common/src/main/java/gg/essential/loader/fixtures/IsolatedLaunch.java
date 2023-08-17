@@ -242,7 +242,6 @@ public class IsolatedLaunch {
             synchronized (getClassLoadingLock(name)) {
                 cls = findLoadedClass(name);
                 if (cls == null) {
-                    // Fuck forge
                     // We need to remove the SecurityManager lock down.. and it refuses to boot if we reject its manager
                     // (re-defining the whole package so we can ignore the signature)
                     // Unrelated to forge, we also want to remove the System.exit(1) from Launch and just re-throw any

@@ -30,8 +30,8 @@ public class ActualEssentialLoader extends EssentialLoaderBase {
                 try {
                     return it.getLayer(IModuleLayerManager.Layer.GAME);
                 } catch (NullPointerException e) {
-                    // Workaround ModLoader being stupid and throwing a NPE instead of just returning Optional.empty()
-                    // as its return type would suggest.
+                    // Workaround for an old ModLauncher bug, where it throws a NPE instead of just returning
+                    // Optional.empty() as its return type would suggest.
                     return Optional.empty();
                 }
             })

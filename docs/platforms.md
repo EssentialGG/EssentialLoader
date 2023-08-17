@@ -129,12 +129,11 @@ ModLauncher 8 is used by Forge 1.16.5.
 
 ### Background
 
-ModLauncher is Forge's new "improved" LaunchWrapper.
+ModLauncher is Forge's successor to LaunchWrapper. It has much bigger ambitions and as such is much more complex.
 
-It's now much more complex (and difficult to read because apparently someone discovered Lambdas and then make plenty
-use of that hammer) while doing less (there's now a fixed three rounds of discovery).
-I honestly couldn't tell you a thing which ModLauncher does which you could not already do with LaunchWrapper.
-At least not until ModLauncher 9 which supports Java 9's module system (but doesn't do anything useful with it).
+Unfortunately for us, most of what it does is geared specifically to Forge and is of little use to us. So in the end 
+it's usually just much more difficult to get it to do what we want. And consequently we more often need to resort to 
+hacks and usually those are more complex too.
 
 ### Entrypoint
 

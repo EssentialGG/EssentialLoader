@@ -105,7 +105,7 @@ public class EssentialTransformationService implements ITransformationService {
      * By default, if there are multiple jars declaring the same module in a layer, ModLauncher will simply pick
      * whichever was registered first (see JarModuleFinder). Registration order is effectively random (HashMap iteration
      * order), so it effectively picks a random version, which is no good.
-     * To workaround this behavior, we replace the list which holds all jars in a layer with one that automatically
+     * To work around this behavior, we replace the list which holds all jars in a layer with one that automatically
      * sorts by version.
      * This may fail if ModLauncher internals change but there isn't much we can do about it. In such case, we will
      * simply fall back to the old, unstable behavior.
@@ -139,7 +139,7 @@ public class EssentialTransformationService implements ITransformationService {
      * service or FML is called first, we simply try both methods, one of which should be at the right moment.
      *
      * If this fails (e.g. because Forge internals change), then we fall back to simply adding our jar to the game layer
-     * directly, which will still allow Mixin to pick it up and therefore it will still mostly function correctly (but
+     * directly, which will still allow Mixin to pick it up, and therefore it will still mostly function correctly (but
      * it won't show in the mods menu).
      */
     private boolean injectMods() {

@@ -69,7 +69,7 @@ public class JarInJarDependenciesHandler {
     /**
      * Fabric Loader prior to 0.12 does not consider Jar in Jar mods if the mod is installed directly. To work around
      * that, we'll disable (change extension to end with {@code .jar.disabled}) those.
-     * However we must delay these renames cause Windows doesn't allow us to delete or rename files which are currently
+     * However, we must delay these renames cause Windows doesn't allow us to delete or rename files which are currently
      * in use.
      */
     private final List<Path> modsToDisable = new ArrayList<>();
@@ -186,7 +186,7 @@ public class JarInJarDependenciesHandler {
     }
 
     /**
-     * Checks whether classes of a given mod id is already on the classpath.
+     * Checks whether classes of a given mod id are already on the classpath.
      *
      * There's a special case for the Kotlin mod in a development environment.
      * If Kotlin is already set up in the app class loader (e.g. because a Gradle dependency for it exists),

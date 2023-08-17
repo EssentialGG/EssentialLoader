@@ -18,9 +18,9 @@ import java.util.Set;
 /**
  * A jar metadata which takes the name of another jar with the same packages in the same layer.
  *
- * By default, modlauncher derives module names from the jar file. As a result, they are generally unstable and we
- * cannot  upgrade an old version by ship a newer version with the same name (cause the existing older one might have a
- * different module name, in which case they'll conflict instead).
+ * By default, ModLauncher derives module names from the jar file. As a result, they are generally unstable, and we
+ * cannot upgrade an old version by shipping a newer version with the same name (cause the existing older one might have
+ * a different module name, in which case they'll conflict instead).
  * This jar metadata works around that by automatically "renaming" our jar if it can find another jar with overlapping
  * packages (this may result in false positives, but such cases would have crashed the game due to non-unique exports
  * anyway).
