@@ -19,3 +19,10 @@ subprojects {
         maven { url "https://libraries.minecraft.net/" }
     }
 }
+
+allprojects {
+    tasks.withType(AbstractArchiveTask.class).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
+}
