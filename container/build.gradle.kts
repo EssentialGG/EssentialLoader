@@ -2,6 +2,7 @@ import essential.*
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
+    id("base")
     id("essential.build-logic")
 }
 
@@ -87,13 +88,9 @@ tasks.withType<Jar> {
     }
 }
 
-val assemble by tasks.registering {
+tasks.assemble {
     dependsOn(fabricJar)
     dependsOn(launchwrapperJar)
     dependsOn(modlauncher8Jar)
     dependsOn(modlauncher9Jar)
-}
-
-tasks.register("build") {
-    dependsOn(assemble)
 }
