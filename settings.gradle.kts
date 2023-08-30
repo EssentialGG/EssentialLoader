@@ -1,6 +1,9 @@
 includeBuild("build-logic")
 
-include(":container")
+include(":container:fabric")
+include(":container:launchwrapper")
+include(":container:modlauncher8")
+include(":container:modlauncher9")
 include(":stage0:common")
 include(":stage0:fabric")
 include(":stage0:launchwrapper")

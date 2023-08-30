@@ -1,5 +1,5 @@
 subprojects {
-    if (name == "container") return
+    if (parent.name == "container") return
 
     apply plugin: "java"
 
