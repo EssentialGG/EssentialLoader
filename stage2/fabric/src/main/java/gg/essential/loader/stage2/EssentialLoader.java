@@ -2,6 +2,7 @@ package gg.essential.loader.stage2;
 
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
+import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.jij.JarInJarDependenciesHandler;
 import gg.essential.loader.stage2.restart.ForkedNeedsRestartUI;
 import net.fabricmc.api.EnvType;
@@ -105,7 +106,7 @@ public class EssentialLoader extends EssentialLoaderBase {
     }
 
     @Override
-    protected void addToClasspath(Mod mod, Path mainJar, List<Path> innerJars) {
+    protected void addToClasspath(Mod mod, ModJarMetadata jarMeta, Path mainJar, List<Path> innerJars) {
         // FIXME doing this mod-by-mod may require a restart per mod; naively sharing the same handler between all mods
         //       may cause conflicts between them. we should probably implement a proper solution before prime time.
         //       we also need to black-list our stage0
@@ -123,7 +124,7 @@ public class EssentialLoader extends EssentialLoaderBase {
             return;
         }
 
-        super.addToClasspath(mod, mainJar, innerJars);
+        super.addToClasspath(mod, jarMeta, mainJar, innerJars);
     }
 
     @Override

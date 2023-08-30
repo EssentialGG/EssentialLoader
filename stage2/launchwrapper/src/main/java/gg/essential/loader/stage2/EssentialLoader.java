@@ -1,5 +1,6 @@
 package gg.essential.loader.stage2;
 
+import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.relaunch.Relaunch;
 import gg.essential.loader.stage2.util.Delete;
 import gg.essential.loader.stage2.utils.Versions;
@@ -24,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
@@ -36,6 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
+
+import static gg.essential.loader.stage2.Utils.findMostRecentFile;
+import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
 
 public class EssentialLoader extends EssentialLoaderBase {
     public static final Logger LOGGER = LogManager.getLogger(EssentialLoader.class);
@@ -52,9 +57,7 @@ public class EssentialLoader extends EssentialLoaderBase {
         super(gameDir, gameVersion);
     }
 
-    @Override
-    protected Path postProcessDownload(Path downloadedFile) {
-
+    private void deleteEmbeddedStage0(Path downloadedFile) throws IOException {
         // We need to strip the stage1 loader bundled in mods (to allow them to be dropped directly in the mods
         // folder) because it might be more recent than the version currently on the classpath and as such may prompt
         // an update of stage1 inside a relaunch (failing hard on Windows because the stage1 jar is currently loaded).
@@ -84,11 +87,7 @@ public class EssentialLoader extends EssentialLoaderBase {
                     manifest.write(out);
                 }
             }
-        } catch (IOException e) {
-            LOGGER.warn("Failed to remove embedded stage0 from downloaded Essential jar:", e);
         }
-
-        return super.postProcessDownload(downloadedFile);
     }
 
     @Override
@@ -133,6 +132,54 @@ public class EssentialLoader extends EssentialLoaderBase {
         //  deployed before we can switch here).
         // return Launch.classLoader;
         return Launch.classLoader.getClass().getClassLoader();
+    }
+
+    @Override
+    protected void addToClasspath(Mod mod, ModJarMetadata jarMeta, Path mainJar, List<Path> innerJars) {
+        if (mod.isEssential()) {
+            // If we were to load the downloaded Essential jar directly, we will run into issues if the game goes on to
+            // relaunch. See [deleteEmbeddedStage0] for details.
+            // To prevent that, we'll create a copy of the downloaded jar, delete the embedded stage0 from that, and
+            // then add that jar to the classpath instead.
+            // We don't just modify the original directly because that would mess up its checksum.
+            try {
+                String fileBaseName = mod.fileBaseName + ".processed";
+                Path processedMainJar = findMostRecentFile(mod.dataDir, fileBaseName, FILE_EXTENSION).getKey();
+
+                ModJarMetadata processedMeta = ModJarMetadata.EMPTY;
+                if (Files.exists(processedMainJar)) {
+                    try {
+                        processedMeta = ModJarMetadata.read(processedMainJar);
+                    } catch (IOException e) {
+                        LOGGER.warn("Failed to read existing processed jar metadata", e);
+                    }
+                }
+
+                if (!processedMeta.equals(jarMeta)) {
+                    Path tmpFile = Files.createTempFile(processedMainJar.getParent(), "processing", ".jar");
+                    Files.copy(mainJar, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+                    deleteEmbeddedStage0(tmpFile);
+                    jarMeta.write(tmpFile);
+
+                    try {
+                        Files.deleteIfExists(processedMainJar);
+                    } catch (IOException e) {
+                        LOGGER.warn("Failed to delete old processed file, will try again later.", e);
+                    }
+
+                    // If we succeeded in deleting that file, we might now be able to write to a lower-numbered one
+                    // and if not, we need to write to the next higher one.
+                    processedMainJar = findNextMostRecentFile(mod.dataDir, fileBaseName, FILE_EXTENSION);
+
+                    Files.move(tmpFile, processedMainJar);
+                }
+
+                mainJar = processedMainJar;
+            } catch (IOException e) {
+                LOGGER.warn("Failed to post-process downloaded Essential jar:", e);
+            }
+        }
+        super.addToClasspath(mod, jarMeta, mainJar, innerJars);
     }
 
     @Override

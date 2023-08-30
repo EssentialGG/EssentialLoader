@@ -75,7 +75,7 @@ public abstract class EssentialLoaderBase {
     private static final String CHANGELOG_URL = VERSION_BASE_URL + "/changelog";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_BASE_NAME = "Essential (%s)";
-    private static final String FILE_EXTENSION = "jar";
+    protected static final String FILE_EXTENSION = "jar";
 
     private static final String OVERRIDE_PINNED_VERSION_KEY = "overridePinnedVersion";
     private static final String PENDING_UPDATE_VERSION_KEY = "pendingUpdateVersion";
@@ -414,7 +414,7 @@ public abstract class EssentialLoaderBase {
             throw new AssertionError("JVM should have exited by now");
         }
 
-        this.addToClasspath(mod, essentialFile, this.extractJarsInJar(mod, essentialFile));
+        this.addToClasspath(mod, currentMeta, essentialFile, this.extractJarsInJar(mod, essentialFile));
 
         return currentMeta;
     }
@@ -646,10 +646,6 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
-    protected Path postProcessDownload(Path downloadedFile) {
-        return downloadedFile;
-    }
-
     private String getRequiredStage2VersionIfOutdated(Path modFile) {
         // If we don't know our own version, then stage1 predates pinning, so it'll always auto-update and we're always
         // up-to-date enough for all mods (assuming the stage2 update is released before mods that require it).
@@ -730,7 +726,7 @@ public abstract class EssentialLoaderBase {
     @Nullable
     protected abstract ClassLoader getModClassLoader();
 
-    protected void addToClasspath(Mod mod, Path mainJar, final List<Path> innerJars) {
+    protected void addToClasspath(Mod mod, ModJarMetadata jarMeta, Path mainJar, final List<Path> innerJars) {
         this.addToClasspath(mainJar);
         for (final Path jar : innerJars) {
             this.addToClasspath(jar);
@@ -993,8 +989,6 @@ public abstract class EssentialLoaderBase {
         }
 
         Path installFile(Path destinationFile, Path sourceFile, ModJarMetadata metadata) throws IOException {
-            sourceFile = postProcessDownload(sourceFile);
-
             metadata.write(sourceFile);
 
             try {
