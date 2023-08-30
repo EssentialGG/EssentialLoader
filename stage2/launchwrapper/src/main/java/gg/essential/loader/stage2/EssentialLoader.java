@@ -149,7 +149,7 @@ public class EssentialLoader extends EssentialLoaderBase {
                 ModJarMetadata processedMeta = ModJarMetadata.EMPTY;
                 if (Files.exists(processedMainJar)) {
                     try {
-                        processedMeta = ModJarMetadata.read(processedMainJar);
+                        processedMeta = ModJarMetadata.readFromJarFile(processedMainJar);
                     } catch (IOException e) {
                         LOGGER.warn("Failed to read existing processed jar metadata", e);
                     }
@@ -159,7 +159,7 @@ public class EssentialLoader extends EssentialLoaderBase {
                     Path tmpFile = Files.createTempFile(processedMainJar.getParent(), "processing", ".jar");
                     Files.copy(mainJar, tmpFile, StandardCopyOption.REPLACE_EXISTING);
                     deleteEmbeddedStage0(tmpFile);
-                    jarMeta.write(tmpFile);
+                    jarMeta.writeToJarFile(tmpFile);
 
                     try {
                         Files.deleteIfExists(processedMainJar);

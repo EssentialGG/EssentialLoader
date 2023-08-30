@@ -234,7 +234,10 @@ public abstract class EssentialLoaderBase {
         ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
         if (Files.exists(essentialFile)) {
             try {
-                currentMeta = ModJarMetadata.read(essentialFile);
+                currentMeta = ModJarMetadata.readFromMetaFile(essentialFile);
+                if (currentMeta == ModJarMetadata.EMPTY) {
+                    currentMeta = ModJarMetadata.readFromJarFile(essentialFile);
+                }
             } catch (IOException e) {
                 LOGGER.warn("Failed to read existing " + mod + " jar metadata", e);
             }
@@ -989,10 +992,9 @@ public abstract class EssentialLoaderBase {
         }
 
         Path installFile(Path destinationFile, Path sourceFile, ModJarMetadata metadata) throws IOException {
-            metadata.write(sourceFile);
-
             try {
                 Files.deleteIfExists(destinationFile);
+                Files.deleteIfExists(ModJarMetadata.metaFilePath(destinationFile));
             } catch (IOException e) {
                 LOGGER.warn("Failed to delete old " + this + " file, will try again later.", e);
             }
@@ -1001,6 +1003,7 @@ public abstract class EssentialLoaderBase {
             // and if not, we need to write to the next higher one.
             destinationFile = findNextMostRecentFile(dataDir, fileBaseName, FILE_EXTENSION);
 
+            metadata.writeToMetaFile(destinationFile);
             Files.move(sourceFile, destinationFile);
 
             return destinationFile;
