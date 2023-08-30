@@ -36,6 +36,7 @@ public abstract class BaseInstallation implements AutoCloseable {
     public final Path stage3DummyMeta = withBranch(stage3Meta, "dummy");
     public final Path stage3DummyMetaDownload = stage3DummyMeta.resolveSibling(getPlatformVersion()).resolve("download.json");
     public final Path stage3DummyMetaDiff = apiDir.resolve("v1/essential:essential/versions/stable/diff/dummy/platforms/" + getPlatformVersion() + ".json");
+    public final Path stage3DummyJarFile = apiDir.resolve("v1/essential:essential/versions/dummy/platforms/" + getPlatformVersion() + ".jar");
 
     private final HttpServer server;
     private final String downloadApiUrl;

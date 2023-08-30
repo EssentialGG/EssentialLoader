@@ -11,6 +11,7 @@ import gg.essential.loader.stage2.data.ModVersion;
 import gg.essential.loader.stage2.diff.DiffPatcher;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
 import gg.essential.loader.stage2.restart.ForkedNeedsRestartUI;
+import gg.essential.loader.stage2.util.Checksum;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -508,6 +509,10 @@ public abstract class EssentialLoaderBase {
     }
 
     private Path updateViaDiff(Mod mod, Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+        if (!Objects.equals(currentMeta.getChecksum(), Checksum.getChecksum(essentialFile))) {
+            return null; // current file has unexpected hash (either corrupted, or from old stage2 version)
+        }
+
         FileMeta meta = fetchDiffUrl(latestMeta.getMod(), currentMeta.getVersion(), latestMeta.getVersion());
         if (meta == null) {
             return null; // no diff available
@@ -523,6 +528,12 @@ public abstract class EssentialLoaderBase {
         try {
             DiffPatcher.apply(patchedFile, downloadedFile);
             Files.delete(downloadedFile);
+
+            String expected = latestMeta.getChecksum();
+            String actual = getChecksum(patchedFile);
+            if (!Objects.equals(expected, actual)) {
+                throw new IOException("Excepted checksum of result to be " + expected + " but was " + actual);
+            }
         } catch (Exception e) {
             LOGGER.error("Error while applying diff:", e);
             Files.deleteIfExists(patchedFile);

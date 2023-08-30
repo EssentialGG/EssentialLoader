@@ -1,13 +1,25 @@
 package gg.essential.loader.stage2.diff;
 
 import gg.essential.loader.stage2.util.Delete;
+import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Applies diffs in the form of a zip file to a given target archive file.
@@ -28,6 +40,7 @@ public class DiffPatcher {
                 walk(diffFileSystem.getPath("/+"), targetFileSystem, DiffPatcher::add);
             }
         }
+        stripNonDeterminism(targetFile);
     }
 
     private static void add(Path diffPath, Path targetPath) throws IOException {
@@ -78,6 +91,31 @@ public class DiffPatcher {
             return stream.findAny().isPresent();
         }
     }
+
+    private static void stripNonDeterminism(Path path) throws IOException {
+        Path tmpPath = Files.createTempFile(path.getParent(), "tmp", ".jar");
+        try {
+            try (OutputStream fileOut = Files.newOutputStream(tmpPath, StandardOpenOption.TRUNCATE_EXISTING);
+                 ZipOutputStream zipOut = new ZipOutputStream(fileOut);
+                 ZipFile zipIn = new ZipFile(path.toFile())) {
+                List<? extends ZipEntry> entries = Collections.list(zipIn.entries());
+                entries.sort(Comparator.comparing(ZipEntry::getName));
+                for (ZipEntry entry : entries) {
+                    ZipEntry newEntry = new ZipEntry(entry.getName());
+                    newEntry.setTime(CONSTANT_TIME_FOR_ZIP_ENTRIES);
+                    zipOut.putNextEntry(newEntry);
+                    IOUtils.copy(zipIn.getInputStream(entry), zipOut);
+                }
+            }
+            Files.move(tmpPath, path, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(tmpPath);
+        }
+    }
+
+    // A safe, constant value for creating consistent zip entries
+    // From: https://github.com/gradle/gradle/blob/d6c7fd470449a59fc57a26b4ebc0ad83c64af50a/subprojects/core/src/main/java/org/gradle/api/internal/file/archive/ZipCopyAction.java#L42-L57
+    private static final long CONSTANT_TIME_FOR_ZIP_ENTRIES = new GregorianCalendar(1980, Calendar.FEBRUARY, 1, 0, 0, 0).getTimeInMillis();
 
     @FunctionalInterface
     private interface PatchingFunction {
