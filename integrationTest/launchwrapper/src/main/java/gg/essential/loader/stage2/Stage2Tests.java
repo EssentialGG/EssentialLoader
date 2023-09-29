@@ -12,6 +12,7 @@ import static gg.essential.loader.fixtures.BaseInstallation.withBranch;
 import static gg.essential.loader.stage1.Stage1BundledTests.props;
 import static gg.essential.loader.stage1.Stage1BundledTests.writeProps;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -48,6 +49,10 @@ public class Stage2Tests {
 
         installation.assertModLaunched(isolatedLaunch);
         assertTrue(isolatedLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker").getDeclaredField("dummyInitialized").getBoolean(null));
+
+        String expectedHash = "694929e3f553445861cf55ba7f9b3be7";
+        assertEquals(expectedHash, md5Hex(Files.readAllBytes(installation.stage3DummyJarFile)));
+        assertEquals(expectedHash, md5Hex(Files.readAllBytes(installation.essentialDir.resolve("Essential (forge_1.8.8).jar"))));
     }
 
     @Test

@@ -11,6 +11,7 @@ import gg.essential.loader.stage2.data.ModVersion;
 import gg.essential.loader.stage2.diff.DiffPatcher;
 import gg.essential.loader.stage2.jvm.ForkedJvmLoaderSwingUI;
 import gg.essential.loader.stage2.restart.ForkedNeedsRestartUI;
+import gg.essential.loader.stage2.util.Checksum;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -75,7 +76,7 @@ public abstract class EssentialLoaderBase {
     private static final String CHANGELOG_URL = VERSION_BASE_URL + "/changelog";
     protected static final String CLASS_NAME = "gg.essential.api.tweaker.EssentialTweaker";
     private static final String FILE_BASE_NAME = "Essential (%s)";
-    private static final String FILE_EXTENSION = "jar";
+    protected static final String FILE_EXTENSION = "jar";
 
     private static final String OVERRIDE_PINNED_VERSION_KEY = "overridePinnedVersion";
     private static final String PENDING_UPDATE_VERSION_KEY = "pendingUpdateVersion";
@@ -234,7 +235,10 @@ public abstract class EssentialLoaderBase {
         ModJarMetadata currentMeta = ModJarMetadata.EMPTY;
         if (Files.exists(essentialFile)) {
             try {
-                currentMeta = ModJarMetadata.read(essentialFile);
+                currentMeta = ModJarMetadata.readFromMetaFile(essentialFile);
+                if (currentMeta == ModJarMetadata.EMPTY) {
+                    currentMeta = ModJarMetadata.readFromJarFile(essentialFile);
+                }
             } catch (IOException e) {
                 LOGGER.warn("Failed to read existing " + mod + " jar metadata", e);
             }
@@ -414,7 +418,7 @@ public abstract class EssentialLoaderBase {
             throw new AssertionError("JVM should have exited by now");
         }
 
-        this.addToClasspath(mod, essentialFile, this.extractJarsInJar(mod, essentialFile));
+        this.addToClasspath(mod, currentMeta, essentialFile, this.extractJarsInJar(mod, essentialFile));
 
         return currentMeta;
     }
@@ -505,6 +509,10 @@ public abstract class EssentialLoaderBase {
     }
 
     private Path updateViaDiff(Mod mod, Path essentialFile, ModJarMetadata currentMeta, ModJarMetadata latestMeta) throws IOException {
+        if (!Objects.equals(currentMeta.getChecksum(), Checksum.getChecksum(essentialFile))) {
+            return null; // current file has unexpected hash (either corrupted, or from old stage2 version)
+        }
+
         FileMeta meta = fetchDiffUrl(latestMeta.getMod(), currentMeta.getVersion(), latestMeta.getVersion());
         if (meta == null) {
             return null; // no diff available
@@ -520,6 +528,12 @@ public abstract class EssentialLoaderBase {
         try {
             DiffPatcher.apply(patchedFile, downloadedFile);
             Files.delete(downloadedFile);
+
+            String expected = latestMeta.getChecksum();
+            String actual = getChecksum(patchedFile);
+            if (!Objects.equals(expected, actual)) {
+                throw new IOException("Excepted checksum of result to be " + expected + " but was " + actual);
+            }
         } catch (Exception e) {
             LOGGER.error("Error while applying diff:", e);
             Files.deleteIfExists(patchedFile);
@@ -646,10 +660,6 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
-    protected Path postProcessDownload(Path downloadedFile) {
-        return downloadedFile;
-    }
-
     private String getRequiredStage2VersionIfOutdated(Path modFile) {
         // If we don't know our own version, then stage1 predates pinning, so it'll always auto-update and we're always
         // up-to-date enough for all mods (assuming the stage2 update is released before mods that require it).
@@ -730,7 +740,7 @@ public abstract class EssentialLoaderBase {
     @Nullable
     protected abstract ClassLoader getModClassLoader();
 
-    protected void addToClasspath(Mod mod, Path mainJar, final List<Path> innerJars) {
+    protected void addToClasspath(Mod mod, ModJarMetadata jarMeta, Path mainJar, final List<Path> innerJars) {
         this.addToClasspath(mainJar);
         for (final Path jar : innerJars) {
             this.addToClasspath(jar);
@@ -993,12 +1003,9 @@ public abstract class EssentialLoaderBase {
         }
 
         Path installFile(Path destinationFile, Path sourceFile, ModJarMetadata metadata) throws IOException {
-            sourceFile = postProcessDownload(sourceFile);
-
-            metadata.write(sourceFile);
-
             try {
                 Files.deleteIfExists(destinationFile);
+                Files.deleteIfExists(ModJarMetadata.metaFilePath(destinationFile));
             } catch (IOException e) {
                 LOGGER.warn("Failed to delete old " + this + " file, will try again later.", e);
             }
@@ -1007,6 +1014,7 @@ public abstract class EssentialLoaderBase {
             // and if not, we need to write to the next higher one.
             destinationFile = findNextMostRecentFile(dataDir, fileBaseName, FILE_EXTENSION);
 
+            metadata.writeToMetaFile(destinationFile);
             Files.move(sourceFile, destinationFile);
 
             return destinationFile;

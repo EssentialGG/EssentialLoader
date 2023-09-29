@@ -1,5 +1,5 @@
 subprojects {
-    if (name == "container") return
+    if (parent.name == "container") return
 
     apply plugin: "java"
 
@@ -17,5 +17,12 @@ subprojects {
     repositories {
         mavenCentral()
         maven { url "https://libraries.minecraft.net/" }
+    }
+}
+
+allprojects {
+    tasks.withType(AbstractArchiveTask.class).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
     }
 }

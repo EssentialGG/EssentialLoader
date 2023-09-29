@@ -14,10 +14,11 @@ configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" 
         dependsOn configurations.bundle
         from { configurations.bundle.collect { zipTree(it) } }
 
-        inputs.property("project.version", project.version)
+        def version = provider { project.version }
+        inputs.property("project.version", version)
         manifest {
             attributes("Name": "gg/essential/loader/stage1/")
-            attributes("Implementation-Version": project.version)
+            attributes("Implementation-Version": version)
         }
     }
 

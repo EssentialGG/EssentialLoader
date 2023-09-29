@@ -1,4 +1,12 @@
+import org.apache.commons.io.IOUtils
+
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.util.function.Supplier
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     id "com.github.johnrengelman.shadow" version "7.1.2" apply false
@@ -41,6 +49,7 @@ dependencies {
     def forge = "net.minecraftforge:forge:1.8.8-11.15.0.1655:universal"
 
     implementation(project.parent.project("common"))
+    implementation("commons-codec:commons-codec:1.9")
 
     // Versions based on the one which MC include by default in 1.8.9 (minimal supported version)
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
@@ -299,7 +308,6 @@ tasks.register("forge10808Jar", Jar) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
     }
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.register("forge11202Jar", Jar) {
@@ -311,7 +319,35 @@ tasks.register("forge11202Jar", Jar) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
     }
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    doLast {
+        // A safe, constant value for creating consistent zip entries
+        // From: https://github.com/gradle/gradle/blob/d6c7fd470449a59fc57a26b4ebc0ad83c64af50a/subprojects/core/src/main/java/org/gradle/api/internal/file/archive/ZipCopyAction.java#L42-L57
+        def CONSTANT_TIME_FOR_ZIP_ENTRIES = new GregorianCalendar(1980, Calendar.FEBRUARY, 1, 0, 0, 0).getTimeInMillis();
+
+        def path = archiveFile.get().asFile.toPath()
+        def tmpPath = Files.createTempFile(path.parent, "tmp", ".jar")
+        try {
+            try (OutputStream fileOut = Files.newOutputStream(tmpPath, StandardOpenOption.TRUNCATE_EXISTING);
+                 ZipOutputStream zipOut = new ZipOutputStream(fileOut);
+                 ZipFile zipIn = new ZipFile(path.toFile())) {
+                List<? extends ZipEntry> entries = Collections.list(zipIn.entries())
+                entries.sort(Comparator.comparing(ZipEntry::getName))
+                for (ZipEntry entry : entries) {
+                    ZipEntry newEntry = new ZipEntry(entry.getName())
+                    newEntry.setTime(CONSTANT_TIME_FOR_ZIP_ENTRIES)
+                    zipOut.putNextEntry(newEntry)
+                    IOUtils.copy(zipIn.getInputStream(entry), zipOut)
+                }
+            }
+            Files.move(tmpPath, path, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(tmpPath);
+        }
+    }
 }
 
 tasks.register("setupDownloadsApi", Sync) {

@@ -60,7 +60,20 @@ public class ModJarMetadata {
         return Objects.hash(mod, version, platform, checksum);
     }
 
-    public void write(Path jarFile) throws IOException {
+    public static Path metaFilePath(Path jarFile) {
+        return jarFile.resolveSibling(jarFile.getFileName() + ".meta");
+    }
+
+    public void writeToMetaFile(Path jarFile) throws IOException {
+        try (OutputStream out = Files.newOutputStream(metaFilePath(jarFile), CREATE)) {
+            Manifest manifest = new Manifest();
+            manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1"); // unused but required by JRE
+            write(manifest.getMainAttributes());
+            manifest.write(out);
+        }
+    }
+
+    public void writeToJarFile(Path jarFile) throws IOException {
         try (FileSystem fileSystem = FileSystems.newFileSystem(jarFile, (ClassLoader) null)) {
             Path manifestPath = fileSystem.getPath("META-INF", "MANIFEST.MF");
 
@@ -113,7 +126,18 @@ public class ModJarMetadata {
         );
     }
 
-    public static ModJarMetadata read(Path jarFile) throws IOException {
+    public static ModJarMetadata readFromMetaFile(Path jarFile) throws IOException {
+        ModJarMetadata metadata = ModJarMetadata.EMPTY;
+        Path manifestPath = metaFilePath(jarFile);
+        if (Files.exists(manifestPath)) {
+            try (InputStream in = Files.newInputStream(manifestPath)) {
+                metadata = read(new Manifest(in).getMainAttributes());
+            }
+        }
+        return metadata;
+    }
+
+    public static ModJarMetadata readFromJarFile(Path jarFile) throws IOException {
         ModJarMetadata metadata = ModJarMetadata.EMPTY;
         try (FileSystem fileSystem = FileSystems.newFileSystem(jarFile, (ClassLoader) null)) {
             Path manifestPath = fileSystem.getPath("META-INF", "MANIFEST.MF");
