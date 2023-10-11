@@ -31,14 +31,6 @@ configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" 
         publications {
             maven(MavenPublication) {
                 artifactId = "loader-$variant"
-                def branch = this.properties.get("branch")
-                if (branch == "master") branch = null
-                afterEvaluate {
-                    version = [
-                            branch,
-                            project.version,
-                    ].findAll { it != null }.join("-")
-                }
                 artifact jar
             }
         }
@@ -47,7 +39,7 @@ configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" 
             if (project.hasProperty("nexus_user")) {
                 maven {
                     name 'nexus'
-                    url "https://repo.sk1er.club/repository/maven-${this.properties.getOrDefault("IS_CI", false) ? "snapshots" : "releases"}/"
+                    url "https://repo.essential.gg/repository/maven-releases/"
 
                     credentials {
                         username project.nexus_user

@@ -1,0 +1,26 @@
+name: Publish stage0
+
+on:
+  push:
+    tags:
+      - stage0/v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: |
+            8
+            16
+            17
+
+      - name: Publish
+        run: ./gradlew :stage0:{launchwrapper,fabric,modlauncher{8,9}}:publish --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_nexus_user: ${{ secrets.NEXUS_USER }}
+          ORG_GRADLE_PROJECT_nexus_password: ${{ secrets.NEXUS_PASSWORD }}

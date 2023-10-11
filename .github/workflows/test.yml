@@ -1,5 +1,9 @@
 name: Run Tests
-on: [push, pull_request]
+on:
+  push:
+    tags-ignore:
+      - stage0/v*
+  pull_request:
 
 jobs:
   build:
