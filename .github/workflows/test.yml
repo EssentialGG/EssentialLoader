@@ -3,6 +3,7 @@ on:
   push:
     tags-ignore:
       - stage0/v*
+      - stage2/v*
   pull_request:
 
 jobs:
