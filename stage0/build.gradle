@@ -1,5 +1,9 @@
+version = "1.2.1"
+
 configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
     apply plugin: 'maven-publish'
+
+    version = parent.version
 
     def variant = project.name
 

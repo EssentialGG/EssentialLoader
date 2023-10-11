@@ -1,4 +1,8 @@
+version = "7"
+
 configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
+    version = parent.version
+
     configurations {
         bundle
     }
