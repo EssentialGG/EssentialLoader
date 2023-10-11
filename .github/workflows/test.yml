@@ -1,6 +1,8 @@
 name: Run Tests
 on:
   push:
+    branches:
+      - '**'
     tags-ignore:
       - stage0/v*
       - stage2/v*
