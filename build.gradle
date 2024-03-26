@@ -10,6 +10,7 @@ subprojects {
             "compatibility": 16,
             "modlauncher9": 16,
             "forge40": 17,
+            "forge49": 17,
             "modlauncher10": 17,
     ]
     java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersions.getOrDefault(project.name, 8)))

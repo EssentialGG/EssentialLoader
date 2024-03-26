@@ -5,6 +5,7 @@ repositories {
 dependencies {
     bundle(implementation(project("compatibility")))
     bundle(project("forge40"))
+    bundle(project("forge49"))
     bundle(project("modlauncher10"))
 
     compileOnly("cpw.mods:modlauncher:9.0.7")
