@@ -3,6 +3,7 @@ repositories {
 }
 
 dependencies {
+    compileOnly(project(":stage2:common"))
     compileOnly(parent.project("compatibility"))
 
     compileOnly("cpw.mods:modlauncher:10.0.1")
