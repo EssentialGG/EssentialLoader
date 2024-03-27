@@ -16,6 +16,7 @@ import java.util.function.Function;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A LanguageLoadingProvider which sorts all jars by their Implementation-Version (latest first) and only picks the most
@@ -30,6 +31,8 @@ public class SortedLanguageLoadingProvider extends LanguageLoadingProvider {
     //            It is instantiated via `Unsafe.allocateInstance` (because it cannot call the package-private super
     //            constructor), so its constructor is never invoked.
 
+    public List<Path> extraHighPriorityFiles;
+
     @Override
     public void addAdditionalLanguages(List<ModFile> modFiles) {
         if (modFiles == null) {
@@ -38,9 +41,14 @@ public class SortedLanguageLoadingProvider extends LanguageLoadingProvider {
 
         Set<String> visited = new HashSet<>();
 
-        modFiles = modFiles.stream()
+        Stream<ModFile> filteredFiles = modFiles.stream()
             .sorted(Comparator.comparing(this::getVersion).reversed())
-            .filter(modFile -> visited.add(getName(modFile)))
+            .filter(modFile -> visited.add(getName(modFile)));
+
+        Stream<ModFile> extraFiles = extraHighPriorityFiles.stream()
+            .map(path -> new ModFile(path, null, null));
+
+        modFiles = Stream.concat(extraFiles, filteredFiles)
             .collect(Collectors.toList());
 
         super.addAdditionalLanguages(modFiles);
