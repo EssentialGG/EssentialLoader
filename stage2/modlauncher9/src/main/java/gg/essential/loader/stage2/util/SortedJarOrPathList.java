@@ -26,7 +26,7 @@ import java.util.function.Function;
 public class SortedJarOrPathList extends ArrayList<Object> {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ArtifactVersion FALLBACK_VERSION = new DefaultArtifactVersion("1");
-    private Function<Object, SecureJar> jarGetter;
+    private static Function<Object, SecureJar> jarGetter;
     private Function<SecureJar, JarMetadata> metadataGetter;
     private BiFunction<NamedPath, SecureJar, Object> pathOrJarConstructor;
 
@@ -54,7 +54,11 @@ public class SortedJarOrPathList extends ArrayList<Object> {
         return new DefaultArtifactVersion(version);
     }
 
-    private SecureJar getJar(Object pathOrJar) {
+    public static SecureJar getJar(Object pathOrJar) {
+        if (pathOrJar instanceof SecureJar secureJar) {
+            return secureJar;
+        }
+
         if (jarGetter == null) {
             try {
                 Field jarField = pathOrJar.getClass().getDeclaredField("jar");
@@ -110,6 +114,10 @@ public class SortedJarOrPathList extends ArrayList<Object> {
         SecureJar newJar = substitute.apply(orgJar);
         if (newJar == orgJar) {
             return orgPathOrJar;
+        }
+
+        if (orgPathOrJar instanceof SecureJar) {
+            return newJar;
         }
 
         if (pathOrJarConstructor == null) {
