@@ -46,7 +46,7 @@ public class UnsafeHacks {
         }
     }
 
-    public static <T, U> Function<T, U> makeGetter(Class<? super T> cls, String field) {
+    public static <T, U> Function<T, U> makeGetter(Class<? extends T> cls, String field) {
         return UnsafeHacks.<T, U>makeAccessor(cls, field)::get;
     }
 
@@ -54,7 +54,7 @@ public class UnsafeHacks {
         return UnsafeHacks.<T, U>makeAccessor(field)::get;
     }
 
-    public static <O, T> Accessor<O, T> makeAccessor(Class<? super O> cls, String field) {
+    public static <O, T> Accessor<O, T> makeAccessor(Class<? extends O> cls, String field) {
         try {
             return makeAccessor(cls.getDeclaredField(field));
         } catch (NoSuchFieldException e) {

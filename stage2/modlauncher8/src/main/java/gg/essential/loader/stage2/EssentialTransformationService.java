@@ -27,10 +27,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class EssentialTransformationService implements ITransformationService {
     private static final Supplier<TypesafeMap.Key<List<Path>>> JARS_KEY = IEnvironment.buildKey("essential.stage2._jars", List.class);
+
+    /**
+     * Essential JiJ files matching this pattern are injected into the language class loader instead of being injected
+     * as regular mods. This is used to override old Kotlin versions in KotlinForForge with newer ones.
+     */
+    private static final Pattern JIJ_KOTLIN_FILES = Pattern.compile("kotlinx?-([a-z0-9-]+)-(\\d+\\.\\d+\\.\\d+)\\.jar");
 
     private final List<Path> jars = new ArrayList<>();
 
@@ -105,17 +113,26 @@ public class EssentialTransformationService implements ITransformationService {
             // We need to hijack it somewhere between those two. And this constructor happens to be running at one such
             // point (during `runScan` but before `discoverMods`, in the constructor of `ModDiscoverer`).
             UnsafeHacks.<FMLLoader, LanguageLoadingProvider>makeAccessor(FMLLoader.class, "languageLoadingProvider")
-                .update(null, oldProvider -> UnsafeHacks.allocateCopy(oldProvider, SortedLanguageLoadingProvider.class));
+                .update(null, oldProvider -> {
+                    SortedLanguageLoadingProvider newProvider = UnsafeHacks.allocateCopy(oldProvider, SortedLanguageLoadingProvider.class);
+                    newProvider.extraHighPriorityFiles = getJars(true).collect(Collectors.toList());
+                    return newProvider;
+                });
 
             // TODO upgrading of third-party (non-language) mods
         }
 
-        @Override
-        public List<IModFile> scanMods() {
+        private Stream<Path> getJars(boolean kotlin) {
             return Launcher.INSTANCE.environment()
                 .getProperty(JARS_KEY.get())
                 .orElseThrow(IllegalStateException::new)
                 .stream()
+                .filter(it -> JIJ_KOTLIN_FILES.matcher(it.getFileName().toString()).matches() == kotlin);
+        }
+
+        @Override
+        public List<IModFile> scanMods() {
+            return getJars(false)
                 .map(path -> ModFile.newFMLInstance(path, this))
                 .peek(modFile -> modJars.computeIfAbsent(modFile, this::createFileSystem))
                 .collect(Collectors.toList());
