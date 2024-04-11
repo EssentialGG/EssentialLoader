@@ -188,7 +188,14 @@ public class KFFMerger {
                 return 0; // this is one of our slim jars, always consider it outdated
             }
             URL url = root.toUri().toURL();
-            url = new URL(url.getProtocol(), url.getHost(), url.getFile() + "/");
+            if (url.getProtocol().equals("jar") && url.getPath().endsWith("!/")) {
+                // Forge 1.20.4 SecureJars aren't wrapped in the "union" file system.
+                // Their URLs take the form jar:file:/some/path/to/archive.jar!/
+                url = new URL(url.getPath().substring(0, url.getPath().length() - 2));
+            } else {
+                // Otherwise, assume it's a union jar and use the installed protocol handler to read it
+                url = new URL(url.getProtocol(), url.getHost(), url.getFile() + "/");
+            }
             URLClassLoader classLoader = new URLClassLoader(new URL[]{url});
             Class<?> kotlinVersionClass = classLoader.loadClass("kotlin.KotlinVersion");
             Field currentField = kotlinVersionClass.getDeclaredField("CURRENT");

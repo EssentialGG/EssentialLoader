@@ -5,6 +5,7 @@ import cpw.mods.jarhandling.SecureJar;
 import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IModuleLayerManager;
 import gg.essential.loader.stage2.util.DelegatingJarMetadata;
+import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -78,15 +79,9 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
     }
 
     private List<SecureJar> getLayerJars() throws Throwable {
-        Field jarField = null;
-
         List<SecureJar> jars = new ArrayList<>();
         for (Object pathOrJar : getLayerElements()) {
-            if (jarField == null) {
-                jarField = pathOrJar.getClass().getDeclaredField("jar");
-                jarField.setAccessible(true);
-            }
-            SecureJar jar = (SecureJar) jarField.get(pathOrJar);
+            SecureJar jar = SortedJarOrPathList.getJar(pathOrJar);
             if (jar != null) {
                 jars.add(jar);
             }

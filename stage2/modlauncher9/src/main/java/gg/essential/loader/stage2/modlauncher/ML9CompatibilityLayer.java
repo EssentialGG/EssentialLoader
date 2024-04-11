@@ -4,7 +4,7 @@ import cpw.mods.jarhandling.SecureJar;
 
 import java.util.jar.Manifest;
 
-import static gg.essential.loader.stage2.util.Utils.hasClass;
+import static gg.essential.loader.stage2.Utils.hasClass;
 
 public class ML9CompatibilityLayer implements CompatibilityLayer {
     @Override

@@ -10,10 +10,4 @@ import java.util.stream.Stream;
 
 public interface EssentialModLocator extends IModLocator {
     Iterable<ModFile> scanMods(Stream<Path> paths);
-
-    Stream<Path> scanCandidates();
-
-    boolean isValid(final IModFile modFile);
-
-    void scanFile(IModFile modFile, Consumer<Path> pathConsumer);
 }

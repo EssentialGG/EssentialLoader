@@ -105,4 +105,13 @@ public class Utils {
         String ext = fileName.substring(separator);
         return mapper.apply(base) + ext;
     }
+
+    public static boolean hasClass(String name) {
+        try {
+            Class.forName(name);
+            return true;
+        } catch (ClassNotFoundException ignored) {
+            return false;
+        }
+    }
 }
