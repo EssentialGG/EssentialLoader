@@ -86,7 +86,7 @@ public interface EssentialStyle {
         try {
             final Image icon = ImageIO.read(Objects.requireNonNull(getClass().getResource(ASSETS_BASE + "/essential.png")));
             final JLabel label = new JLabel(new ImageIcon(icon));
-            label.setBorder(new EmptyBorder(36, 0, 39, 0));
+            label.setBorder(new EmptyBorder(43, 0, 43, 0));
             label.setAlignmentX(Container.CENTER_ALIGNMENT);
             contentPane.add(label);
         } catch (IOException e) {
