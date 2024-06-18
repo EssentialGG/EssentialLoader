@@ -28,10 +28,10 @@ public abstract class EssentialTransformationServiceBase extends DelegatingTrans
     ) throws Exception {
         super(stage1 -> newFallbackService.apply(findUniqueId(stage0)));
 
-        // Check if another transformation service has already loaded stage2 (we do not want to load it twice)
+        // Check if another stage 1 loader has already loaded stage2 (we do not want to load it twice)
         final TypesafeMap blackboard = Launcher.INSTANCE.blackboard();
         final TypesafeMap.Key<ITransformationService> LOADED =
-            TypesafeMap.Key.getOrCreate(blackboard, KEY_LOADED, ITransformationService.class);
+            TypesafeMap.Key.getOrCreate(blackboard, KEY_LOADED, Object.class);
         if (blackboard.get(LOADED).isPresent()) {
             return;
         }
