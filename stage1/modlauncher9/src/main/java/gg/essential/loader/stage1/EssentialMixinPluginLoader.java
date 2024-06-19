@@ -27,7 +27,8 @@ public class EssentialMixinPluginLoader {
                 .getProperty(IEnvironment.Keys.GAMEDIR.get())
                 .orElse(Paths.get("."));
 
-        EssentialLoader loader = EssentialLoader.getInstance("modlauncher", "forge_" + FMLLoader.versionInfo().mcVersion());
+        // variant and game version to match transformation service path
+        EssentialLoader loader = EssentialLoader.getInstance("modlauncher9", "forge_1.17.1");
         loader.load(gameDir);
 
         loader.getStage2().getClass()
