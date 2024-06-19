@@ -40,7 +40,7 @@ public class EssentialLoader {
         ui.start();
         DedicatedJarLoader.downloadDedicatedJar(ui, modsDir, "forge_" + FMLLoader.versionInfo().mcVersion());
         ui.complete();
-        RestartUI restartUI = new RestartUI("Restart Required!", "One of the mods you have installed requires Essential. To complete the installation process, please restart.");
+        RestartUI restartUI = new RestartUI("Restart Required!", "One of the mods you have installed requires Essential. To complete the installation process, please restart minecraft.");
         restartUI.show();
         restartUI.waitForClose();
         System.exit(0);
