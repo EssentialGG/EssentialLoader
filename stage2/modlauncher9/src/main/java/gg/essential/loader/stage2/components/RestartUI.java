@@ -47,7 +47,7 @@ public class RestartUI implements EssentialStyle {
         final JPanel buttons = new JPanel();
         buttons.setOpaque(false);
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-        buttons.add(makeButton("Restart", COLOR_PRIMARY_BUTTON, COLOR_BUTTON_HOVER, () -> closedFuture.complete(true)));
+        buttons.add(makeButton("Quit Game", COLOR_PRIMARY_BUTTON, COLOR_BUTTON_HOVER, () -> closedFuture.complete(true)));
         content.add(buttons);
 
         content.add(Box.createVerticalStrut(32 - Y_SHADOW));

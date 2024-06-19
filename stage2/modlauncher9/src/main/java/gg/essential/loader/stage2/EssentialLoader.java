@@ -47,7 +47,7 @@ public class EssentialLoader {
             LogManager.getLogger().warn("Failed to download dedicated jar:", e);
         } finally {
             ui.complete();
-            ForkedRestartUI restartUI = new ForkedRestartUI("Restart Required!", "One of the mods you have installed requires Essential. To complete the installation process, please restart minecraft.");
+            ForkedRestartUI restartUI = new ForkedRestartUI("Restart Required", "One of the mods you have installed requires Essential. To complete the installation process, please restart Minecraft.");
             restartUI.show();
             restartUI.waitForClose();
         }
