@@ -26,9 +26,10 @@ public class DedicatedJarLoader {
     private static final String DOWNLOAD_URL = VERSION_URL + "/download";
 
     protected static void downloadDedicatedJar(LoaderUI ui, Path modsDir, String gameVersion) throws IOException {
-        final String essentialVersion = getEssentialVersionMeta(gameVersion).get("version").getAsString();
+        final String apiVersion = gameVersion.replace('.', '-');
+        final String essentialVersion = getEssentialVersionMeta(apiVersion).get("version").getAsString();
 
-        final JsonObject meta = getEssentialDownloadMeta(essentialVersion, gameVersion);
+        final JsonObject meta = getEssentialDownloadMeta(essentialVersion, apiVersion);
         final URL url = new URL(meta.get("url").getAsString());
         final URLConnection connection = url.openConnection();
 
