@@ -33,7 +33,7 @@ public class DedicatedJarLoader {
         ui.setDownloadSize(connection.getContentLength());
 
         final String essentialVersion = getEssentialVersionMeta(gameVersion).get("version").getAsString();
-        final Path target = modsDir.resolve(String.format("Essential %s (%s).jar", gameVersion, essentialVersion));
+        final Path target = modsDir.resolve(String.format("Essential %s (%s).jar", essentialVersion, gameVersion));
         final Path tempFile = Files.createTempFile("Dedicated Essential jar", "");
 
         try (
