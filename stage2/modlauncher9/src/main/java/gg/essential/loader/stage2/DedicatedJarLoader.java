@@ -22,17 +22,18 @@ public class DedicatedJarLoader {
             "essential.download.url",
             System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://api.essential.gg/mods")
     );
-    private static final String VERSION_URL = BASE_URL + "/v1/essential:essential-pinned/versions/stable/platforms/%s";
+    private static final String VERSION_URL = BASE_URL + "/v1/essential:essential-pinned/versions/%s/platforms/%s";
     private static final String DOWNLOAD_URL = VERSION_URL + "/download";
 
     protected static void downloadDedicatedJar(LoaderUI ui, Path modsDir, String gameVersion) throws IOException {
-        final JsonObject meta = getEssentialDownloadMeta(gameVersion);
+        final String essentialVersion = getEssentialVersionMeta(gameVersion).get("version").getAsString();
+
+        final JsonObject meta = getEssentialDownloadMeta(essentialVersion, gameVersion);
         final URL url = new URL(meta.get("url").getAsString());
         final URLConnection connection = url.openConnection();
 
         ui.setDownloadSize(connection.getContentLength());
 
-        final String essentialVersion = getEssentialVersionMeta(gameVersion).get("version").getAsString();
         final Path target = modsDir.resolve(String.format("Essential %s (%s).jar", essentialVersion, gameVersion));
         final Path tempFile = Files.createTempFile("Dedicated Essential jar", "");
 
@@ -63,10 +64,10 @@ public class DedicatedJarLoader {
     }
 
     private static JsonObject getEssentialVersionMeta(String gameVersion) throws IOException {
-        return getEssentialMeta(new URL(String.format(VERSION_URL, gameVersion)));
+        return getEssentialMeta(new URL(String.format(VERSION_URL, "stable", gameVersion)));
     }
 
-    private static JsonObject getEssentialDownloadMeta(String gameVersion) throws IOException {
-        return getEssentialMeta(new URL(String.format(DOWNLOAD_URL, gameVersion)));
+    private static JsonObject getEssentialDownloadMeta(String essentialVersion, String gameVersion) throws IOException {
+        return getEssentialMeta(new URL(String.format(DOWNLOAD_URL, essentialVersion, gameVersion)));
     }
 }
