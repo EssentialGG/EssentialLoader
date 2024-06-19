@@ -3,6 +3,8 @@ package gg.essential.loader.stage2;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,7 +14,10 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+
 public class DedicatedJarLoader {
+    private static final Logger LOGGER = LogManager.getLogger(DedicatedJarLoader.class);
     private static final String BASE_URL = System.getProperty(
             "essential.download.url",
             System.getenv().getOrDefault("ESSENTIAL_DOWNLOAD_URL", "https://api.essential.gg/mods")
@@ -29,12 +34,12 @@ public class DedicatedJarLoader {
 
         final String essentialVersion = getEssentialVersionMeta(gameVersion).get("version").getAsString();
         final Path target = modsDir.resolve(String.format("Essential %s (%s).jar", gameVersion, essentialVersion));
+        final Path tempFile = Files.createTempFile("Dedicated Essential jar", "");
 
         try (
                 final InputStream in = connection.getInputStream();
-                final OutputStream out = Files.newOutputStream(target);
+                final OutputStream out = Files.newOutputStream(tempFile);
         ) {
-
             final byte[] buffer = new byte[1024];
             int totalRead = 0;
             int read;
@@ -43,6 +48,8 @@ public class DedicatedJarLoader {
                 totalRead += read;
                 ui.setDownloaded(totalRead);
             }
+
+            Files.move(tempFile, target, ATOMIC_MOVE);
         }
     }
 
