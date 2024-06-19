@@ -1,6 +1,4 @@
-package gg.essential.loader.stage2;
-
-import gg.essential.loader.stage2.components.EssentialStyle;
+package gg.essential.loader.stage2.components;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
