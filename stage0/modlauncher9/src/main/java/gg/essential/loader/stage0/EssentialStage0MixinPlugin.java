@@ -18,17 +18,13 @@ import static gg.essential.loader.stage0.EssentialLoader.STAGE1_PKG;
 @SuppressWarnings("unused")
 public class EssentialStage0MixinPlugin implements IMixinConfigPlugin {
     private static final String STAGE1_CLS = STAGE1_PKG + "EssentialMixinPluginLoader";
-    @Override
-    public void onLoad(String mixinPackage) {
-        loadStage1OrThrow(this);
+
+    public EssentialStage0MixinPlugin() throws Exception {
+        loadStage1(this);
     }
 
-    private static void loadStage1OrThrow(Object stage0) {
-        try {
-            loadStage1(stage0);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    @Override
+    public void onLoad(String mixinPackage) {
     }
 
     private static void loadStage1(Object stage0) throws Exception {
