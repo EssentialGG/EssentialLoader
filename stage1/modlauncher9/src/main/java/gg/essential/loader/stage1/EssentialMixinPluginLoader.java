@@ -9,9 +9,10 @@ import net.minecraftforge.fml.loading.FMLLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static gg.essential.loader.stage1.EssentialTransformationServiceBase.KEY_LOADED;
+
 @SuppressWarnings("unused")
 public class EssentialMixinPluginLoader {
-    private static final String KEY_LOADED = "gg.essential.loader.stage1.loaded";
 
     public EssentialMixinPluginLoader() throws Exception {
         // Check if another transformation service has already loaded stage2 (we do not want to load it twice)
