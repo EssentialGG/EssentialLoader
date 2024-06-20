@@ -34,7 +34,7 @@ public class EssentialLoader {
     }
 
     @SuppressWarnings("unused") // called via reflection from stage1
-    public void loadFromMixin(Path gameDir) {
+    public void loadFromMixin(Path gameDir) throws IOException {
         final Path modsDir = gameDir.resolve("mods");
         LoaderUI ui = LoaderUI.all(
                 new LoaderLoggingUI().updatesEveryMillis(1000),
@@ -43,14 +43,12 @@ public class EssentialLoader {
         ui.start();
         try {
             DedicatedJarLoader.downloadDedicatedJar(ui, modsDir, "forge_" + FMLLoader.versionInfo().mcVersion());
-        } catch (IOException e) {
-            LogManager.getLogger().warn("Failed to download dedicated jar:", e);
         } finally {
             ui.complete();
-            ForkedRestartUI restartUI = new ForkedRestartUI("Restart Required", "One of the mods you have installed requires Essential. To complete the installation process, please restart Minecraft.");
-            restartUI.show();
-            restartUI.waitForClose();
         }
+        ForkedRestartUI restartUI = new ForkedRestartUI("Restart Required", "One of the mods you have installed requires Essential. To complete the installation process, please restart Minecraft.");
+        restartUI.show();
+        restartUI.waitForClose();
         System.exit(0);
     }
 }
