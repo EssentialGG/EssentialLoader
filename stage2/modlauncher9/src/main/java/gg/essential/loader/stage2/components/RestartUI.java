@@ -15,12 +15,10 @@ public class RestartUI implements EssentialStyle {
 
     private final JFrame frame = makeFrame(it -> closedFuture.complete(null));
 
-    private final String title;
-    private final String description;
+    private final List<String> mods;
 
-    public RestartUI(String title, String description) {
-        this.title = title;
-        this.description = description;
+    public RestartUI(List<String> mods) {
+        this.mods = mods;
     }
 
     public void show() {
@@ -30,9 +28,9 @@ public class RestartUI implements EssentialStyle {
         content.setBorder(new EmptyBorder(0, 60 - X_SHADOW, 0, 60 - X_SHADOW));
         content.add(Box.createHorizontalStrut(CONTENT_WIDTH));
 
-        htmlLabels.add(makeTitle(content, html(centered(title))));
+        htmlLabels.add(makeTitle(content, html(centered("Please restart your game to automatically install Essential."))));
 
-        final JLabel explanation = new JLabel(html(centered(description)), SwingConstants.CENTER);
+        final JLabel explanation = new JLabel(html(centered("The following mods require Essential Mod's API:")), SwingConstants.CENTER);
         explanation.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
         explanation.setForeground(COLOR_FOREGROUND);
         explanation.setAlignmentX(Container.CENTER_ALIGNMENT);
@@ -41,6 +39,25 @@ public class RestartUI implements EssentialStyle {
         }
         content.add(explanation);
         htmlLabels.add(explanation);
+
+        content.add(Box.createVerticalStrut(19));
+
+        final JPanel modList = new JPanel();
+        modList.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+        modList.setBackground(COLOR_BACKGROUND);
+        modList.setLayout(new BoxLayout(modList, BoxLayout.Y_AXIS));
+        content.add(modList);
+
+        for (String modName : mods) {
+            final JLabel text = new JLabel(html(centered(modName)), SwingConstants.CENTER);
+            text.setForeground(COLOR_HIGHLIGHT);
+            text.setAlignmentX(Container.CENTER_ALIGNMENT);
+            if (Fonts.mediumItalic != null) {
+                text.setFont(Fonts.mediumItalic.deriveFont(16F));
+            }
+            modList.add(text);
+            htmlLabels.add(text);
+        }
 
         content.add(Box.createVerticalStrut(32 - Y_SHADOW));
 
@@ -72,7 +89,7 @@ public class RestartUI implements EssentialStyle {
     }
 
     public static void main(String[] args) {
-        RestartUI ui = new RestartUI("Restart required!", "A restart is required for something.");
+        RestartUI ui = new RestartUI(List.of("Skytils"));
         ui.show();
         System.out.println(ui.waitForClose());
     }

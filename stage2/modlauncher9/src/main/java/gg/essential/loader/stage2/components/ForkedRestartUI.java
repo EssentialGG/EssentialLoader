@@ -7,16 +7,16 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ForkedRestartUI {
     private final Logger LOGGER = LogManager.getLogger();
-    private final String title;
-    private final String description;
+    private final List<String> mods;
     private ForkedJvm jvm;
 
-    public ForkedRestartUI(String title, String description) {
-        this.title = title;
-        this.description = description;
+    public ForkedRestartUI(List<String> mods) {
+        this.mods = mods;
     }
 
     public void show() {
@@ -24,8 +24,11 @@ public class ForkedRestartUI {
             this.jvm = new ForkedJvm(getClass());
 
             DataOutputStream out = new DataOutputStream(this.jvm.process.getOutputStream());
-            out.writeUTF(title);
-            out.writeUTF(description);
+            for (String name : this.mods) {
+                out.writeBoolean(true); // signal more entries
+                out.writeUTF(name);
+            }
+            out.writeBoolean(false); // signal end of list
             out.flush();
         } catch (IOException e) {
             LOGGER.warn("Failed to fork JVM for RestartUI:", e);
@@ -50,12 +53,14 @@ public class ForkedRestartUI {
     public static void main(String[] args) throws IOException {
         DataInputStream in = new DataInputStream(System.in);
 
-        String title = in.readUTF();
-        String description = in.readUTF();
+        List<String> mods = new ArrayList<>();
+        while(in.readBoolean()) {
+            mods.add(in.readUTF());
+        }
 
         Boolean verdict = null;
         try {
-            RestartUI ui = new RestartUI(title, description);
+            RestartUI ui = new RestartUI(mods);
             ui.show();
 
             verdict = ui.waitForClose();

@@ -8,7 +8,13 @@ import net.minecraftforge.fml.loading.FMLLoader;
 import org.apache.logging.log4j.LogManager;
 
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * The initial entrypoint for stage2. With ModLauncher, we cannot yet know the MC version at this point, so this is a
@@ -34,7 +40,7 @@ public class EssentialLoader {
     }
 
     @SuppressWarnings("unused") // called via reflection from stage1
-    public void loadFromMixin(Path gameDir) throws IOException {
+    public void loadFromMixin(Path gameDir) throws Exception {
         final Path modsDir = gameDir.resolve("mods");
         LoaderUI ui = LoaderUI.all(
                 new LoaderLoggingUI().updatesEveryMillis(1000),
@@ -46,7 +52,13 @@ public class EssentialLoader {
         } finally {
             ui.complete();
         }
-        ForkedRestartUI restartUI = new ForkedRestartUI("Restart Required", "One of the mods you have installed requires Essential. To complete the installation process, please restart Minecraft.");
+        List<URL> modNameMarkers = Collections.list(this.getClass().getClassLoader().getResources("META-INF/essential-loader-mod-name.txt"));
+        List<String> modNames = new ArrayList<>();
+        for (URL url : modNameMarkers) {
+            String modName = Files.readString(Paths.get(url.toURI()));
+            modNames.add(modName);
+        }
+        ForkedRestartUI restartUI = new ForkedRestartUI(modNames);
         restartUI.show();
         restartUI.waitForClose();
         System.exit(0);
