@@ -58,6 +58,9 @@ public class EssentialLoader {
             String modName = Files.readString(Paths.get(url.toURI()));
             modNames.add(modName);
         }
+        if (modNames.isEmpty()) {
+            modNames = List.of("Unknown");
+        }
         ForkedRestartUI restartUI = new ForkedRestartUI(modNames);
         restartUI.show();
         restartUI.waitForClose();
