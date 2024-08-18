@@ -262,7 +262,14 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         @SuppressWarnings("UnstableApiUsage")
         public void remapMod(ModMetadata metadata, Path inputPath, Path outputPath) throws Exception {
-            Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
+            Class<?> ModCandidate;
+            try {
+                // fabric-loader 0.16.1
+                ModCandidate = findImplClass("discovery.ModCandidateImpl");
+            } catch (ClassNotFoundException e) {
+                // fabric-loader 0.16.0
+                ModCandidate = findImplClass("discovery.ModCandidate");
+            }
             Class<?> ModResolver = findImplClass("discovery.ModResolver");
             Class<?> RuntimeModRemapper = findImplClass("discovery.RuntimeModRemapper");
 
@@ -313,7 +320,14 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         private Object createCandidate(Path path, URL url, Object metadata) throws ClassNotFoundException, InvocationTargetException, InstantiationException, IllegalAccessException, NoSuchMethodException {
             Class<?> LoaderModMetadata = findImplClass("metadata.LoaderModMetadata");
-            Class<?> ModCandidate = findImplClass("discovery.ModCandidate");
+            Class<?> ModCandidate;
+            try {
+                // fabric-loader 0.16.1
+                ModCandidate = findImplClass("discovery.ModCandidateImpl");
+            } catch (ClassNotFoundException e) {
+                // fabric-loader 0.16.0
+                ModCandidate = findImplClass("discovery.ModCandidate");
+            }
             try {
                 // fabric loader 0.11
                 return ModCandidate.getConstructor(LoaderModMetadata, URL.class, int.class, boolean.class)
@@ -384,9 +398,10 @@ public class EssentialLoader extends EssentialLoaderBase {
                         .newInstance(metadata, path);
                 } catch (NoSuchMethodException e1) {
                     // fabric-loader 0.13
+                    Object modCandidate = createCandidate(path, url, metadata);
                     modContainer = ModContainerImpl
-                        .getConstructor(findImplClass("discovery.ModCandidate"))
-                        .newInstance(createCandidate(path, url, metadata));
+                        .getConstructor(modCandidate.getClass())
+                        .newInstance(modCandidate);
                 }
             }
             mods.add(modContainer);
