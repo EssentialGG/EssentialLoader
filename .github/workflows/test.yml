@@ -117,14 +117,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ failure() || success() }}
         with:
-          name: Raw Test Results
+          name: ${{ matrix.test.platform }}_${{ matrix.test.class }} Results
           path: integrationTest/${{ matrix.test.platform }}/build/test-results/**/*.xml
           retention-days: 1 # only for the report at the end
 
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: ${{ matrix.test.platform }}:${{ matrix.test.class }} Results
+          name: ${{ matrix.test.platform }}_${{ matrix.test.class }} Reports
           path: integrationTest/${{ matrix.test.platform }}/build/reports/
 
   test_report:
