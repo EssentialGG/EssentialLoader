@@ -35,15 +35,13 @@ public class ForkedRestartUI {
         }
     }
 
-    public Boolean waitForClose() {
-        if (this.jvm == null) return null;
+    public void waitForClose() {
+        if (this.jvm == null) return;
 
         try {
-            int verdict = this.jvm.process.getInputStream().read();
-            return verdict == 1 ? Boolean.TRUE : verdict == 2 ? Boolean.FALSE : null;
-        } catch (IOException e) {
+            this.jvm.process.getInputStream().wait();
+        } catch (InterruptedException e) {
             LOGGER.warn("Failed to wait for RestartUI to close:", e);
-            return null;
         } finally {
             this.jvm.close();
             this.jvm = null;
@@ -58,23 +56,16 @@ public class ForkedRestartUI {
             mods.add(in.readUTF());
         }
 
-        Boolean verdict = null;
         try {
             RestartUI ui = new RestartUI(mods);
             ui.show();
 
-            verdict = ui.waitForClose();
+            ui.waitForClose();
         } catch (Throwable t) {
             t.printStackTrace();
         }
 
-        if (verdict == Boolean.TRUE) {
-            System.out.write(1);
-        } else if (verdict == Boolean.FALSE) {
-            System.out.write(2);
-        } else {
-            System.out.write(0);
-        }
         System.out.flush();
+        System.out.close();
     }
 }
