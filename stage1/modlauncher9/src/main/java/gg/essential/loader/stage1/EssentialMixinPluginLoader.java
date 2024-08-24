@@ -15,7 +15,7 @@ import static gg.essential.loader.stage1.EssentialTransformationServiceBase.KEY_
 public class EssentialMixinPluginLoader {
 
     public EssentialMixinPluginLoader() throws Exception {
-        // Check if another transformation service has already loaded stage2 (we do not want to load it twice)
+        // Check if stage 2 has already been loaded by a transformation service
         final TypesafeMap blackboard = Launcher.INSTANCE.blackboard();
         final TypesafeMap.Key<ITransformationService> LOADED =
                 TypesafeMap.Key.getOrCreate(blackboard, KEY_LOADED, ITransformationService.class);
