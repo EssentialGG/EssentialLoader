@@ -36,7 +36,7 @@ public class ForkedRestartUI {
     }
 
     public Boolean waitForClose() {
-        if (this.jvm != null) return null;
+        if (this.jvm == null) return null;
 
         try {
             int verdict = this.jvm.process.getInputStream().read();
