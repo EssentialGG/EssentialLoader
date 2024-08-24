@@ -30,7 +30,7 @@ public class RestartUI implements EssentialStyle {
 
         htmlLabels.add(makeTitle(content, html(centered("Please restart your game to automatically install Essential."))));
 
-        final JLabel explanation = new JLabel(html(centered("The following mods require Essential Mod's API:")), SwingConstants.CENTER);
+        final JLabel explanation = new JLabel(html(centered("The following mods require<br>Essential Mod's API:")), SwingConstants.CENTER);
         explanation.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
         explanation.setForeground(COLOR_FOREGROUND);
         explanation.setAlignmentX(Container.CENTER_ALIGNMENT);
