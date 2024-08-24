@@ -36,7 +36,7 @@ public class DedicatedJarLoader {
         ui.setDownloadSize(connection.getContentLength());
 
         final Path target = modsDir.resolve(String.format("Essential %s (%s).jar", essentialVersion, gameVersion));
-        final Path tempFile = Files.createTempFile("Dedicated Essential jar", "");
+        final Path tempFile = Files.createFile(modsDir.resolve("Essential Jar Download.jar.tmp"));
 
         try (
                 final InputStream in = connection.getInputStream();
@@ -50,10 +50,12 @@ public class DedicatedJarLoader {
                 totalRead += read;
                 ui.setDownloaded(totalRead);
             }
-
-            Files.move(tempFile, target, ATOMIC_MOVE);
         } finally {
-            Files.deleteIfExists(tempFile);
+            try {
+                Files.move(tempFile, target, ATOMIC_MOVE);
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
         }
     }
 
