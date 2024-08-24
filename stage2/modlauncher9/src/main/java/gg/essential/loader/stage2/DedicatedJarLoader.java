@@ -52,6 +52,8 @@ public class DedicatedJarLoader {
             }
 
             Files.move(tempFile, target, ATOMIC_MOVE);
+        } finally {
+            Files.deleteIfExists(tempFile);
         }
     }
 
