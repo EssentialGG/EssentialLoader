@@ -39,8 +39,8 @@ public class ForkedRestartUI {
         if (this.jvm == null) return;
 
         try {
-            this.jvm.process.getInputStream().wait();
-        } catch (InterruptedException e) {
+            this.jvm.process.getInputStream().read();
+        } catch (IOException e) {
             LOGGER.warn("Failed to wait for RestartUI to close:", e);
         } finally {
             this.jvm.close();
