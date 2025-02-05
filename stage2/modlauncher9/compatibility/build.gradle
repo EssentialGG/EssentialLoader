@@ -5,5 +5,4 @@ repositories {
 dependencies {
     compileOnly("cpw.mods:securejarhandler:0.9.50")
     compileOnly("cpw.mods:modlauncher:9.0.7")
-    compileOnly("net.minecraftforge:fmlloader:1.17.1-37.0.82")
 }

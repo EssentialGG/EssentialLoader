@@ -8,8 +8,6 @@ import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
 import gg.essential.loader.stage2.util.KFFMerger;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.fml.loading.moddiscovery.ModFile;
-import net.minecraftforge.fml.loading.moddiscovery.ModValidator;
 import net.minecraftforge.forgespi.locating.IModFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -149,25 +147,7 @@ public class EssentialTransformationService implements ITransformationService {
      */
     private boolean injectMods() {
         try {
-            Field modValidatorField = FMLLoader.class.getDeclaredField("modValidator");
-            modValidatorField.setAccessible(true);
-            ModValidator modValidator = (ModValidator) modValidatorField.get(null);
-
-            if (modValidator == null) {
-                return false;
-            }
-
-            Field candidateModsField = ModValidator.class.getDeclaredField("candidateMods");
-            candidateModsField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            List<ModFile> modFiles = (List<ModFile>) candidateModsField.get(modValidator);
-
-            for (ModFile modFile : this.modLocator.scanMods(this.gameJars.stream().map(SecureJar::getPrimaryPath))) {
-                modFile.identifyMods();
-                modFiles.add(modFile);
-            }
-
-            return true;
+            return modLocator.injectMods(gameJars);
         } catch (Throwable e) {
             LOGGER.error("Error injecting into mod list:", e);
             return false;

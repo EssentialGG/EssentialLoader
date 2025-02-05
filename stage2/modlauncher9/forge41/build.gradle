@@ -4,6 +4,7 @@ repositories {
 
 dependencies {
     compileOnly(parent.project("compatibility"))
+    compileOnly(parent.project("forge37"))
 
     compileOnly("net.minecraftforge:fmlloader:1.19-41.0.64")
 }

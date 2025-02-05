@@ -11,7 +11,4 @@ dependencies {
     compileOnly("cpw.mods:securejarhandler:2.0.3")
     compileOnly("net.sf.jopt-simple:jopt-simple:5.0.4")
     compileOnly("org.jetbrains:annotations:23.0.0")
-
-    compileOnly("org.apache.logging.log4j:log4j-api:2.8.1")
-    compileOnly("net.minecraftforge:fmlloader:1.19-41.0.64")
 }

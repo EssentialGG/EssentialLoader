@@ -7,9 +7,10 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Stream;
 
-class Forge_37_0_0_ModLocator extends AbstractJarFileLocator implements EssentialModLocator {
+class Forge_37_0_0_ModLocator extends AbstractJarFileLocator implements EssentialModLocator_Forge {
     private Stream<Path> paths;
 
+    @Override
     public Iterable<ModFile> scanMods(Stream<Path> paths) {
         this.paths = paths;
         return scanMods().stream().map(it -> (ModFile) it)::iterator;

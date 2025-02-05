@@ -1,13 +1,9 @@
 package gg.essential.loader.stage2.modlauncher;
 
-import net.minecraftforge.fml.loading.moddiscovery.ModFile;
-import net.minecraftforge.forgespi.locating.IModFile;
-import net.minecraftforge.forgespi.locating.IModLocator;
+import cpw.mods.jarhandling.SecureJar;
 
-import java.nio.file.Path;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
+import java.util.List;
 
-public interface EssentialModLocator extends IModLocator {
-    Iterable<ModFile> scanMods(Stream<Path> paths);
+public interface EssentialModLocator {
+    boolean injectMods(List<SecureJar> modJars) throws ReflectiveOperationException;
 }
