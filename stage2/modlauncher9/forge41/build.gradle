@@ -1,0 +1,9 @@
+repositories {
+    maven { url "https://maven.minecraftforge.net/" }
+}
+
+dependencies {
+    compileOnly(parent.project("compatibility"))
+
+    compileOnly("net.minecraftforge:fmlloader:1.19-41.0.64")
+}

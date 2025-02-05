@@ -6,6 +6,7 @@ dependencies {
     bundle(implementation(project("compatibility")))
     bundle(project("forge37"))
     bundle(project("forge40"))
+    bundle(project("forge41"))
     bundle(project("forge49"))
     bundle(project("modlauncher10"))
 
