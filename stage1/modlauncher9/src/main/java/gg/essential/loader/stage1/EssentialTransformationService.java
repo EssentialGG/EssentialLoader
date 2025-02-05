@@ -4,7 +4,6 @@ import cpw.mods.modlauncher.api.ITransformationService;
 import cpw.mods.modlauncher.api.NamedPath;
 import gg.essential.loader.stage1.util.FallbackTransformationService;
 import gg.essential.loader.stage1.util.IDelegatingTransformationService;
-import net.minecraftforge.fml.loading.ModDirTransformerDiscoverer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -44,7 +43,18 @@ public class EssentialTransformationService extends EssentialTransformationServi
 
         // Forge will by default ignore a mod file if it contains an implementation of ITransformationService
         // So we need to remove ourselves from that exclusion list
-        Field foundField = ModDirTransformerDiscoverer.class.getDeclaredField("found");
+        Class<?> cls;
+        try {
+            cls = Class.forName("net.minecraftforge.fml.loading.ModDirTransformerDiscoverer");
+        } catch (ClassNotFoundException e1) {
+            try {
+                cls = Class.forName("net.neoforged.fml.loading.ModDirTransformerDiscoverer");
+            } catch (ClassNotFoundException e2) {
+                e2.addSuppressed(e1);
+                throw e2;
+            }
+        }
+        Field foundField = cls.getDeclaredField("found");
         foundField.setAccessible(true);
         ((List<NamedPath>) foundField.get(null)).removeIf(namedPath ->
             Arrays.stream(namedPath.paths()).anyMatch(path -> path.normalize().equals(normalizedSourceFile)));

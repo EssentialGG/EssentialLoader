@@ -9,5 +9,6 @@ dependencies {
     compileOnly("net.sf.jopt-simple:jopt-simple:5.0.4")
     compileOnly("org.jetbrains:annotations:21.0.1")
 
-    compileOnly("net.minecraftforge:fmlloader:1.17.1-37.0.82")
+    // provided by fmlloader (both forge and neoforge ones)
+    compileOnly("org.apache.logging.log4j:log4j-api:2.14.1")
 }
