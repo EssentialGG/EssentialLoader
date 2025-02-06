@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Stream;
 
-class Forge_41_0_34_ModLocator extends AbstractJarFileModLocator implements EssentialModLocator_Forge {
+public class Forge_41_0_34_ModLocator extends AbstractJarFileModLocator implements EssentialModLocator_Forge {
     private Stream<Path> paths;
 
     @Override

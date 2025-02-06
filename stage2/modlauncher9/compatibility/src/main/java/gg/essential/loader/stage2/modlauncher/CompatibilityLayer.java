@@ -9,6 +9,4 @@ import java.util.jar.Manifest;
  */
 public interface CompatibilityLayer {
     Manifest getManifest(SecureJar jar);
-
-    EssentialModLocator makeModLocator();
 }

@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static gg.essential.loader.stage2.Utils.hasClass;
+
 public class EssentialTransformationService implements ITransformationService {
     private static final Logger LOGGER = LogManager.getLogger(EssentialTransformationService.class);
     private static final Map<String, String> COMPATIBILITY_IMPLEMENTATIONS = Map.of(
@@ -71,7 +73,7 @@ public class EssentialTransformationService implements ITransformationService {
     public void initialize(IEnvironment environment) {
         String modLauncherVersion = environment.getProperty(IEnvironment.Keys.MLIMPL_VERSION.get()).orElseThrow();
         compatibilityLayer = findCompatibilityLayerImpl(modLauncherVersion);
-        modLocator = compatibilityLayer.makeModLocator();
+        modLocator = findModLocatorImpl();
     }
 
     @SuppressWarnings("unchecked")
@@ -90,6 +92,31 @@ public class EssentialTransformationService implements ITransformationService {
             Class<? extends CompatibilityLayer> clazz = (Class<? extends CompatibilityLayer>) Class.forName("gg.essential.loader.stage2.modlauncher." + implementation);
             return clazz.getConstructor().newInstance();
         } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static EssentialModLocator findModLocatorImpl() {
+        String version;
+        if (hasClass("net.minecraftforge.forgespi.locating.IModLocator$ModFileOrException")) {
+            if (!hasClass("net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileModLocator")) {
+                version = "49_0_38";
+            } else {
+                version = "41_0_34";
+            }
+        } else {
+            if (hasClass("net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileModLocator")) {
+                version = "40_1_60";
+            } else {
+                version = "37_0_0";
+            }
+        }
+        try {
+            String clsName = "gg.essential.loader.stage2.modlauncher.Forge_" + version + "_ModLocator";
+            return (EssentialModLocator) Class.forName(clsName)
+                .getDeclaredConstructor()
+                .newInstance();
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
