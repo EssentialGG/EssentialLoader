@@ -8,8 +8,6 @@ import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
 import gg.essential.loader.stage2.util.KFFMerger;
 import gg.essential.loader.stage2.util.Lazy;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
-import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.forgespi.locating.IModFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -62,7 +60,7 @@ public class EssentialTransformationService implements ITransformationService {
 
     private static IModuleLayerManager.Layer determineLayer(SecureJar jar) {
         final String modType = compatibilityLayer.getManifest(jar).getMainAttributes().getValue("FMLModType");
-        if (IModFile.Type.LANGPROVIDER.name().equals(modType) || IModFile.Type.LIBRARY.name().equals(modType)) {
+        if ("LANGPROVIDER".equals(modType) || "LIBRARY".equals(modType)) {
             return IModuleLayerManager.Layer.PLUGIN;
         } else {
             return IModuleLayerManager.Layer.GAME;
@@ -103,22 +101,33 @@ public class EssentialTransformationService implements ITransformationService {
     }
 
     private static EssentialModLocator findModLocatorImpl() {
+        String loader;
         String version;
-        if (hasClass("net.minecraftforge.forgespi.locating.IModLocator$ModFileOrException")) {
-            if (!hasClass("net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileModLocator")) {
-                version = "49_0_38";
+        if (hasClass("net.neoforged.fml.loading.FMLLoader")) {
+            loader = "NeoForge";
+            if (!hasClass("net.neoforged.fml.loading.moddiscovery.AbstractJarFileModProvider")) {
+                version = "4_0_0";
             } else {
-                version = "41_0_34";
+                version = "1_0_0";
             }
         } else {
-            if (hasClass("net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileModLocator")) {
-                version = "40_1_60";
+            loader = "Forge";
+            if (hasClass("net.minecraftforge.forgespi.locating.IModLocator$ModFileOrException")) {
+                if (!hasClass("net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileModLocator")) {
+                    version = "49_0_38";
+                } else {
+                    version = "41_0_34";
+                }
             } else {
-                version = "37_0_0";
+                if (hasClass("net.minecraftforge.fml.loading.moddiscovery.AbstractJarFileModLocator")) {
+                    version = "40_1_60";
+                } else {
+                    version = "37_0_0";
+                }
             }
         }
         try {
-            String clsName = "gg.essential.loader.stage2.modlauncher.Forge_" + version + "_ModLocator";
+            String clsName = "gg.essential.loader.stage2.modlauncher." + loader + "_" + version + "_ModLocator";
             return (EssentialModLocator) Class.forName(clsName)
                 .getDeclaredConstructor()
                 .newInstance();
@@ -192,8 +201,30 @@ public class EssentialTransformationService implements ITransformationService {
         // Forge makes available the MC version in its `initialize` method, the first of our methods which we can be
         // sure is called after Forge's method is this one, so this is the earliest point at which we can load essential
         // proper.
-        String mcVersion = "forge_" + FMLLoader.versionInfo().mcVersion();
-        ActualEssentialLoader essentialLoader = new ActualEssentialLoader(gameDir, mcVersion, this);
+        Class<?> FMLLoader;
+        String loader;
+        try {
+            FMLLoader = Class.forName("net.minecraftforge.fml.loading.FMLLoader");
+            loader = "forge";
+        } catch (ClassNotFoundException e1) {
+            try {
+                FMLLoader = Class.forName("net.neoforged.fml.loading.FMLLoader");
+                loader = "neoforge";
+            } catch (ClassNotFoundException e2) {
+                e2.addSuppressed(e1);
+                throw new RuntimeException(e2);
+            }
+        }
+        String mcVersion;
+        try {
+            Object versionInfo = FMLLoader.getMethod("versionInfo").invoke(null);
+            mcVersion = (String) versionInfo.getClass().getMethod("mcVersion").invoke(versionInfo);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+        String gameVersion = loader + "_" + mcVersion;
+
+        ActualEssentialLoader essentialLoader = new ActualEssentialLoader(gameDir, gameVersion, this);
         try {
             essentialLoader.load();
         } catch (IOException e) {

@@ -1,0 +1,11 @@
+repositories {
+    maven { url "https://maven.neoforged.net/releases" }
+}
+
+dependencies {
+    compileOnly(parent.project("compatibility"))
+    compileOnly(parent.project("neoforge1"))
+
+    compileOnly("net.neoforged.fancymodloader:loader:4.0.0")
+    compileOnly("cpw.mods:securejarhandler:3.0.4")
+}

@@ -13,6 +13,8 @@ subprojects {
             "forge40": 17,
             "forge41": 17,
             "forge49": 17,
+            "neoforge1": 17,
+            "neoforge4": 21,
             "modlauncher10": 17,
             "modlauncher11": 21,
     ]

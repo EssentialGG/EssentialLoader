@@ -8,6 +8,8 @@ dependencies {
     bundle(project("forge40"))
     bundle(project("forge41"))
     bundle(project("forge49"))
+    bundle(project("neoforge1"))
+    bundle(project("neoforge4"))
     bundle(project("modlauncher10"))
     bundle(project("modlauncher11"))
 
@@ -17,6 +19,7 @@ dependencies {
     compileOnly("net.sf.jopt-simple:jopt-simple:5.0.4")
     compileOnly("org.jetbrains:annotations:21.0.1")
 
+    // provided by fmlloader (both forge and neoforge ones)
     compileOnly("org.apache.logging.log4j:log4j-api:2.8.1")
-    compileOnly("net.minecraftforge:fmlloader:1.17.1-37.0.82")
+    compileOnly("org.apache.maven:maven-artifact:3.8.1")
 }
