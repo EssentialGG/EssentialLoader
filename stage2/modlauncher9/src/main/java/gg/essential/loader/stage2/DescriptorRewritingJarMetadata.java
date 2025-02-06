@@ -2,6 +2,8 @@ package gg.essential.loader.stage2;
 
 import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
+import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
+import gg.essential.loader.stage2.util.Lazy;
 
 import java.lang.module.ModuleDescriptor;
 
@@ -12,13 +14,13 @@ import java.lang.module.ModuleDescriptor;
  * a lookup table.
  */
 public class DescriptorRewritingJarMetadata implements JarMetadata {
-    private final SecureJar secureJar;
     private final JarMetadata delegate;
+    private final JarMetadata newPkgsMeta;
     private ModuleDescriptor descriptor;
 
-    public DescriptorRewritingJarMetadata(SecureJar secureJar, JarMetadata delegate) {
-        this.secureJar = secureJar;
+    public DescriptorRewritingJarMetadata(JarMetadata delegate, JarMetadata newPkgsMeta) {
         this.delegate = delegate;
+        this.newPkgsMeta = newPkgsMeta;
     }
 
     @Override
@@ -36,7 +38,7 @@ public class DescriptorRewritingJarMetadata implements JarMetadata {
         if (this.descriptor == null) {
             ModuleDescriptor org = delegate.descriptor();
             ModuleDescriptor.Builder builder = ModuleDescriptor.newModule(org.name(), org.modifiers());
-            builder.packages(secureJar.getPackages());
+            builder.packages(newPkgsMeta.descriptor().packages());
             if (!org.isAutomatic()) {
                 org.requires().forEach(builder::requires);
                 org.exports().forEach(builder::exports);

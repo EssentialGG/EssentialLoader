@@ -6,6 +6,7 @@ import cpw.mods.modlauncher.api.*;
 import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
 import gg.essential.loader.stage2.util.KFFMerger;
+import gg.essential.loader.stage2.util.Lazy;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.forgespi.locating.IModFile;
@@ -27,15 +28,16 @@ import static gg.essential.loader.stage2.Utils.hasClass;
 public class EssentialTransformationService implements ITransformationService {
     private static final Logger LOGGER = LogManager.getLogger(EssentialTransformationService.class);
     private static final Map<String, String> COMPATIBILITY_IMPLEMENTATIONS = Map.of(
-            "9.", "ML9CompatibilityLayer",
-            "10.", "ML10CompatibilityLayer"
+        "11.", "ML11CompatibilityLayer",
+        "10.", "ML10CompatibilityLayer",
+        "9.", "ML9CompatibilityLayer"
     );
     private static CompatibilityLayer compatibilityLayer;
 
     private final Path gameDir;
     private final List<SecureJar> pluginJars = new ArrayList<>();
     private final List<SecureJar> gameJars = new ArrayList<>();
-    private final KFFMerger kffMerger = new KFFMerger();
+    private KFFMerger kffMerger;
     private EssentialModLocator modLocator;
     private boolean modsInjected;
 
@@ -44,7 +46,10 @@ public class EssentialTransformationService implements ITransformationService {
     }
 
     public void addToClasspath(final Path path) {
-        final SecureJar jar = SecureJar.from(j -> new SelfRenamingJarMetadata(j, path, determineLayer(j)), path);
+        final SecureJar jar = compatibilityLayer.newSecureJarWithCustomMetadata(
+            (j, metadata) -> new SelfRenamingJarMetadata(compatibilityLayer, j, metadata, new Lazy<>(() -> determineLayer(j.get()))),
+            path
+        );
         if (this.kffMerger.addKotlinJar(path, jar)) {
             return;
         }
@@ -74,6 +79,7 @@ public class EssentialTransformationService implements ITransformationService {
         String modLauncherVersion = environment.getProperty(IEnvironment.Keys.MLIMPL_VERSION.get()).orElseThrow();
         compatibilityLayer = findCompatibilityLayerImpl(modLauncherVersion);
         modLocator = findModLocatorImpl();
+        kffMerger = new KFFMerger(compatibilityLayer);
     }
 
     @SuppressWarnings("unchecked")

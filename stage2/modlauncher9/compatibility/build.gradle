@@ -3,6 +3,8 @@ repositories {
 }
 
 dependencies {
+    compileOnly(project(":stage2:common"))
+
     compileOnly("cpw.mods:securejarhandler:0.9.50")
     compileOnly("cpw.mods:modlauncher:9.0.7")
 }

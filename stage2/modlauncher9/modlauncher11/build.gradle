@@ -1,0 +1,14 @@
+repositories {
+    maven { url "https://maven.neoforged.net/releases" }
+}
+
+dependencies {
+    compileOnly(project(":stage2:common"))
+    compileOnly(parent.project("compatibility"))
+
+    compileOnly("cpw.mods:modlauncher:11.0.2")
+    // modlauncher uses these in its api but does not declare them as such
+    compileOnly("cpw.mods:securejarhandler:3.0.4")
+    compileOnly("net.sf.jopt-simple:jopt-simple:5.0.4")
+    compileOnly("org.jetbrains:annotations:23.0.0")
+}

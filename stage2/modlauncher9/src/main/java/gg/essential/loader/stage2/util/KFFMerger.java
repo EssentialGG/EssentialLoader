@@ -3,6 +3,7 @@ package gg.essential.loader.stage2.util;
 import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
 import gg.essential.loader.stage2.DescriptorRewritingJarMetadata;
+import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -63,9 +64,14 @@ public class KFFMerger {
         }
     }
 
+    private final CompatibilityLayer compatibilityLayer;
     private final Libraries ourCoreJars = new Libraries("Kotlin core");
     private final Libraries ourCoroutinesJars = new Libraries("Kotlin Coroutines");
     private final Libraries ourSerializationJars = new Libraries("Kotlin Serialization");
+
+    public KFFMerger(CompatibilityLayer compatibilityLayer) {
+        this.compatibilityLayer = compatibilityLayer;
+    }
 
     public boolean addKotlinJar(Path sourceFile, SecureJar secureJar) {
         String fileName = sourceFile.getFileName().toString();
@@ -104,7 +110,7 @@ public class KFFMerger {
         }
 
         // Only care about a jar if it contains a Kotlin we can overwrite
-        if (!secureJar.getPackages().contains("kotlin")) {
+        if (!compatibilityLayer.getPackages(secureJar).contains("kotlin")) {
             return secureJar;
         }
 
@@ -131,7 +137,7 @@ public class KFFMerger {
         }
 
         try {
-            JarMetadata orgMeta = JarMetadata.from(secureJar, secureJar.getPrimaryPath());
+            JarMetadata orgMeta = compatibilityLayer.getJarMetadata(secureJar, secureJar.getPrimaryPath());
 
             Path tmpFile = Files.createTempFile("kff-updated-kotlin-", "-" + orgMeta.version() + ".jar");
             Files.write(tmpFile, EMPTY_ZIP);
@@ -169,7 +175,7 @@ public class KFFMerger {
                 }
             }
 
-            return SecureJar.from(j -> new DescriptorRewritingJarMetadata(j, orgMeta) {
+            return compatibilityLayer.newSecureJarWithCustomMetadata((__, newMeta) -> new DescriptorRewritingJarMetadata(orgMeta, newMeta) {
                 @Override
                 public String name() {
                     // Call the original name from the original SecureJar to allow SelfRenamingJarMetadata to function

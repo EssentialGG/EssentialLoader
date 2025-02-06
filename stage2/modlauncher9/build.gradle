@@ -9,6 +9,7 @@ dependencies {
     bundle(project("forge41"))
     bundle(project("forge49"))
     bundle(project("modlauncher10"))
+    bundle(project("modlauncher11"))
 
     compileOnly("cpw.mods:modlauncher:9.0.7")
     // modlauncher uses these in its api but does not declare them as such

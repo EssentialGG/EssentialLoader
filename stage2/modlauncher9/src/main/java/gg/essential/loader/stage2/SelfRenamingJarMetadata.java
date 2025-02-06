@@ -4,13 +4,14 @@ import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
 import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.IModuleLayerManager;
+import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.util.DelegatingJarMetadata;
+import gg.essential.loader.stage2.util.Lazy;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Field;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -30,11 +31,13 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
     private static final Logger LOGGER = LogManager.getLogger(SelfRenamingJarMetadata.class);
     private static final ThreadLocal<Boolean> RE_ENTRANCE_LOCK = ThreadLocal.withInitial(() -> false);
 
-    private final SecureJar secureJar;
-    private final IModuleLayerManager.Layer layer;
+    private final CompatibilityLayer compatibilityLayer;
+    private final Lazy<SecureJar> secureJar;
+    private final Lazy<IModuleLayerManager.Layer> layer;
 
-    public SelfRenamingJarMetadata(SecureJar secureJar, Path path, IModuleLayerManager.Layer layer) {
-        super(JarMetadata.from(secureJar, path));
+    public SelfRenamingJarMetadata(CompatibilityLayer compatibilityLayer, Lazy<SecureJar> secureJar, JarMetadata delegate, Lazy<IModuleLayerManager.Layer> layer) {
+        super(delegate);
+        this.compatibilityLayer = compatibilityLayer;
         this.secureJar = secureJar;
         this.layer = layer;
     }
@@ -47,7 +50,7 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
             RE_ENTRANCE_LOCK.set(true);
         }
         String defaultName = delegate.name();
-        Set<String> ourPackages = secureJar.getPackages();
+        Set<String> ourPackages = compatibilityLayer.getPackages(secureJar.get());
         try {
             for (SecureJar otherJar : getLayerJars()) {
                 String otherModuleName;
@@ -56,7 +59,7 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
                 } catch (SelfRenamingReEntranceException ignored) {
                     continue;
                 }
-                if (otherJar.getPackages().stream().anyMatch(ourPackages::contains)) {
+                if (compatibilityLayer.getPackages(otherJar).stream().anyMatch(ourPackages::contains)) {
                     LOGGER.debug("Found existing module with name {}, renaming {} to match.", otherModuleName, defaultName);
                     return otherModuleName;
                 }
@@ -75,7 +78,7 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
         IModuleLayerManager layerManager = Launcher.INSTANCE.findLayerManager().orElseThrow();
         Field layersField = layerManager.getClass().getDeclaredField("layers");
         layersField.setAccessible(true);
-        return ((EnumMap<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager)).get(this.layer);
+        return ((EnumMap<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager)).get(this.layer.get());
     }
 
     private List<SecureJar> getLayerJars() throws Throwable {
