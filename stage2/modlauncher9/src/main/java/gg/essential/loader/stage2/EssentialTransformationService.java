@@ -6,7 +6,6 @@ import cpw.mods.modlauncher.api.*;
 import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
 import gg.essential.loader.stage2.util.KFFMerger;
-import gg.essential.loader.stage2.util.Lazy;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,7 +44,7 @@ public class EssentialTransformationService implements ITransformationService {
 
     public void addToClasspath(final Path path) {
         final SecureJar jar = compatibilityLayer.newSecureJarWithCustomMetadata(
-            (j, metadata) -> new SelfRenamingJarMetadata(compatibilityLayer, j, metadata, new Lazy<>(() -> determineLayer(j.get()))),
+            (j, metadata) -> new SelfRenamingJarMetadata(compatibilityLayer, j, metadata),
             path
         );
         if (this.kffMerger.addKotlinJar(path, jar)) {

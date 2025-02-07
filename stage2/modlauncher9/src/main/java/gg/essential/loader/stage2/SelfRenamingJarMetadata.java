@@ -33,13 +33,11 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
 
     private final CompatibilityLayer compatibilityLayer;
     private final Lazy<SecureJar> secureJar;
-    private final Lazy<IModuleLayerManager.Layer> layer;
 
-    public SelfRenamingJarMetadata(CompatibilityLayer compatibilityLayer, Lazy<SecureJar> secureJar, JarMetadata delegate, Lazy<IModuleLayerManager.Layer> layer) {
+    public SelfRenamingJarMetadata(CompatibilityLayer compatibilityLayer, Lazy<SecureJar> secureJar, JarMetadata delegate) {
         super(delegate);
         this.compatibilityLayer = compatibilityLayer;
         this.secureJar = secureJar;
-        this.layer = layer;
     }
 
     @Override
@@ -78,7 +76,16 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
         IModuleLayerManager layerManager = Launcher.INSTANCE.findLayerManager().orElseThrow();
         Field layersField = layerManager.getClass().getDeclaredField("layers");
         layersField.setAccessible(true);
-        return ((EnumMap<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager)).get(this.layer.get());
+        EnumMap<IModuleLayerManager.Layer, List<Object>> map =
+            (EnumMap<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager);
+        IModuleLayerManager.Layer[] layers = IModuleLayerManager.Layer.values();
+        for (int i = layers.length - 1; i >= 0; i--) {
+            List<Object> elements = map.get(layers[i]);
+            if (elements != null) {
+                return elements;
+            }
+        }
+        throw new RuntimeException("Failed to find current layer?!");
     }
 
     private List<SecureJar> getLayerJars() throws Throwable {
