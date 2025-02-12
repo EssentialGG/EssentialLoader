@@ -164,7 +164,7 @@ public class EssentialTransformationService implements ITransformationService {
                 (Map<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager);
 
             layers.compute(layer, (__, list) -> {
-                SortedJarOrPathList sortedList = new SortedJarOrPathList(kffMerger::maybeMergeInto);
+                SortedJarOrPathList sortedList = new SortedJarOrPathList(compatibilityLayer, kffMerger::maybeMergeInto);
                 if (list != null) {
                     sortedList.addAll(list);
                 }

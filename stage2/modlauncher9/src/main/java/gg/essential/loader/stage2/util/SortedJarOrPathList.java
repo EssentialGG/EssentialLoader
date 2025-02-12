@@ -3,6 +3,7 @@ package gg.essential.loader.stage2.util;
 import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
 import cpw.mods.modlauncher.api.NamedPath;
+import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.jar.Manifest;
 
 /**
  * List which keeps its JarOrPath elements sorted by their module version, latest first.
@@ -36,12 +38,15 @@ public class SortedJarOrPathList extends ArrayList<Object> {
     private final Comparator<Object> COMPARATOR =
         Comparator.comparing(pathOrJar -> versionCache.computeIfAbsent(pathOrJar, this::getVersion)).reversed();
 
+    private final CompatibilityLayer compatibilityLayer;
+
     // This does not actually have anything to do with the original functionality of this class but we needed an entry
     // point for replacing one jar (KFF with old Kotlin) with another jar (same KFF but with newer Kotlin merged into
     // it) and this class is perfect for that.
     private final Function<SecureJar, List<SecureJar>> substitute;
 
-    public SortedJarOrPathList(Function<SecureJar, List<SecureJar>> substitute) {
+    public SortedJarOrPathList(CompatibilityLayer compatibilityLayer, Function<SecureJar, List<SecureJar>> substitute) {
+        this.compatibilityLayer = compatibilityLayer;
         this.substitute = substitute;
     }
 
@@ -52,6 +57,31 @@ public class SortedJarOrPathList extends ArrayList<Object> {
         if (metadata == null) return FALLBACK_VERSION;
         String version = metadata.version();
         if (version == null) return FALLBACK_VERSION;
+        // ModLauncher somehow manages to report the version of some jars (really unsure which ones, best guess
+        // right now is all those without a `FMLModType` manifest attribute? seemingly completely irregardless of
+        // whether they have an `Implementation-Version` attribute!)
+        // as "Optional.empty" (yes, that's a String, somewhere someone must have blindly `toString`ed).
+        // We'll just go fetch it ourselves then I guess.
+        if (version.equals("Optional.empty")) {
+            version = null;
+        }
+        if (version == null) {
+            Manifest manifest = compatibilityLayer.getManifest(jar);
+            if (manifest != null) {
+                version = manifest.getMainAttributes().getValue("Implementation-Version");
+            }
+        }
+        // and if that doesn't work (some of the Kotlin libs, e.g. kotlinx-serialization-json-jvm-1.7.3, don't have
+        // such an attribute), then we'll take a guess based on the file name
+        if (version == null) {
+            String name = jar.getPrimaryPath().getFileName().toString();
+            if (name.contains("-") && name.endsWith(".jar")) {
+                version = name.substring(name.lastIndexOf("-") + 1, name.length() - ".jar".length());
+            }
+        }
+        if (version == null) {
+            return FALLBACK_VERSION;
+        }
         return new DefaultArtifactVersion(version);
     }
 
