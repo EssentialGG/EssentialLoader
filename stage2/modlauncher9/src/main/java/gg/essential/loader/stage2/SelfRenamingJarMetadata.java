@@ -17,6 +17,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Set;
 
+import static gg.essential.loader.stage2.util.KFFMerger.isJarJarKff;
+
 /**
  * A jar metadata which takes the name of another jar with the same packages in the same layer.
  *
@@ -57,8 +59,17 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
                 } catch (SelfRenamingReEntranceException ignored) {
                     continue;
                 }
-                if (compatibilityLayer.getPackages(otherJar).stream().anyMatch(ourPackages::contains)) {
+                Set<String> otherPackages = compatibilityLayer.getPackages(otherJar);
+                if (otherPackages.stream().anyMatch(ourPackages::contains)) {
                     LOGGER.debug("Found existing module with name {}, renaming {} to match.", otherModuleName, defaultName);
+                    return otherModuleName;
+                }
+                // Special case for fully-JarJar-reliant KFF which no longer contains any code itself and doesn't
+                // declare its module name in its manifest either.
+                // We still need to make the KFF we ship to use the same module name though, because otherwise it'll
+                // be loaded and we'll end up with two modules exporting Kotlin.
+                if (defaultName.equals("thedarkcolour.kotlinforforge") && otherPackages.isEmpty() && isJarJarKff(otherJar)) {
+                    LOGGER.debug("Found existing JarJar KFF with name {}, renaming {} to match.", otherModuleName, defaultName);
                     return otherModuleName;
                 }
             }

@@ -109,6 +109,19 @@ public class KFFMerger {
             return null;
         }
 
+        // If this is a KotlinForForge version which uses JarJar to bundle Kotlin (KFF 5+, potentially 4.12),
+        // we no longer need to merge the Kotlin jars into it, we merely need to add our Kotlin jars to the to-be-loaded
+        // list too.
+        if (isJarJarKff(secureJar)) {
+            LOGGER.info("Looks like KotlinForForge is using JarJar now, all good to go: {}", secureJar);
+            List<SecureJar> allJars = new ArrayList<>();
+            allJars.add(secureJar); // keep user-installed jar
+            allJars.addAll(ourCoreJars.jars);
+            allJars.addAll(ourCoroutinesJars.jars);
+            allJars.addAll(ourSerializationJars.jars);
+            return allJars;
+        }
+
         // Only care about a jar if it contains a Kotlin we can overwrite
         if (!compatibilityLayer.getPackages(secureJar).contains("kotlin")) {
             return null;
@@ -125,6 +138,13 @@ public class KFFMerger {
         boolean updateCore = theirCoreVersion < ourCoreJars.version;
         boolean updateCoroutines = theirCoroutinesVersion < ourCoroutinesJars.version;
         int theirSerializationVersion = updateCore || updateCoroutines ? 0 : ourSerializationJars.version;
+
+        // If the jar contains only core but not coroutine libs, then it's not the fat KFF jar but rather KFF is
+        // using JarJar, and we should be able to find that one later.
+        if (theirCoreVersion != 0 && theirCoroutinesVersion == 0) {
+            LOGGER.info("Looks like a standalone Kotlin jar. Keeping as is, we should be finding a JarJar KFF jar.");
+            return null;
+        }
 
         List<Path> injectedJars = new ArrayList<>();
         ourCoreJars.maybeUpgrade(injectedJars, theirCoreVersion);
@@ -185,6 +205,26 @@ public class KFFMerger {
         } catch (Throwable t) {
             LOGGER.fatal("Failed to merge updated Kotlin into " + secureJar + ":", t);
             return null; // oh well, guess we'll give it a try as is
+        }
+    }
+
+    public static boolean isJarJarKff(SecureJar jar) {
+        try {
+            Path jarjarPath = jar.getRootPath().resolve("META-INF").resolve("jarjar");
+            if (!Files.exists(jarjarPath)) return false;
+            try (Stream<Path> stream = Files.list(jarjarPath)) {
+                List<String> files = stream
+                    .map(it -> it.getFileName().toString())
+                    .filter(it -> it.endsWith(".jar"))
+                    .toList();
+                // A JarJar-using KotlinForForge jar can be recognized by the fact that it bundles both the KFF mod as
+                // well as the Kotlin Standard Library
+                return files.stream().anyMatch(it -> it.startsWith("kffmod-"))
+                    && files.stream().anyMatch(it -> it.startsWith("kotlin-stdlib-"));
+            }
+        } catch (Throwable t) {
+            LOGGER.error("Failed to determine version of potential KFF jar at " + jar + ":", t);
+            return false;
         }
     }
 
