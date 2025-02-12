@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -38,9 +39,9 @@ public class SortedJarOrPathList extends ArrayList<Object> {
     // This does not actually have anything to do with the original functionality of this class but we needed an entry
     // point for replacing one jar (KFF with old Kotlin) with another jar (same KFF but with newer Kotlin merged into
     // it) and this class is perfect for that.
-    private final Function<SecureJar, SecureJar> substitute;
+    private final Function<SecureJar, List<SecureJar>> substitute;
 
-    public SortedJarOrPathList(Function<SecureJar, SecureJar> substitute) {
+    public SortedJarOrPathList(Function<SecureJar, List<SecureJar>> substitute) {
         this.substitute = substitute;
     }
 
@@ -93,31 +94,30 @@ public class SortedJarOrPathList extends ArrayList<Object> {
 
     @Override
     public boolean add(Object o) {
-        boolean changed = super.add(substitute(o));
-        sort(COMPARATOR);
-        return changed;
+        //noinspection RedundantCollectionOperation
+        return addAll(List.of(o));
     }
 
     @Override
     public boolean addAll(Collection<?> c) {
-        boolean changed = super.addAll(c.stream().map(this::substitute).toList());
+        boolean changed = super.addAll(c.stream().flatMap(it -> substitute(it).stream()).toList());
         sort(COMPARATOR);
         return changed;
     }
 
-    private Object substitute(Object orgPathOrJar) {
+    private List<?> substitute(Object orgPathOrJar) {
         SecureJar orgJar = getJar(orgPathOrJar);
         if (orgJar == null) {
-            return orgPathOrJar;
+            return List.of(orgPathOrJar);
         }
 
-        SecureJar newJar = substitute.apply(orgJar);
-        if (newJar == orgJar) {
-            return orgPathOrJar;
+        List<SecureJar> newJars = substitute.apply(orgJar);
+        if (newJars == null) {
+            return List.of(orgPathOrJar);
         }
 
         if (orgPathOrJar instanceof SecureJar) {
-            return newJar;
+            return newJars;
         }
 
         if (pathOrJarConstructor == null) {
@@ -137,11 +137,15 @@ public class SortedJarOrPathList extends ArrayList<Object> {
                 pathOrJarConstructor = (path, jar) -> null;
             }
         }
-        Object newPathOrJar = pathOrJarConstructor.apply(null, newJar);
-        if (newPathOrJar == null) {
-            return orgPathOrJar;
+        List<Object> newPathOrJars = new ArrayList<>(newJars.size());
+        for (SecureJar newJar : newJars) {
+            Object newPathOrJar = pathOrJarConstructor.apply(null, newJar);
+            if (newPathOrJar == null) {
+                return List.of(orgPathOrJar);
+            }
+            newPathOrJars.add(newPathOrJar);
         }
 
-        return newPathOrJar;
+        return newPathOrJars;
     }
 }

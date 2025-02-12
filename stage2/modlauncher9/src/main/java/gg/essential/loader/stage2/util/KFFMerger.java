@@ -103,15 +103,15 @@ public class KFFMerger {
         return true;
     }
 
-    public SecureJar maybeMergeInto(SecureJar secureJar) {
+    public List<SecureJar> maybeMergeInto(SecureJar secureJar) {
         // Nothing to merge (older Essential version), nothing to do
         if (ourCoreJars.jars.isEmpty()) {
-            return secureJar;
+            return null;
         }
 
         // Only care about a jar if it contains a Kotlin we can overwrite
         if (!compatibilityLayer.getPackages(secureJar).contains("kotlin")) {
-            return secureJar;
+            return null;
         }
 
         LOGGER.info("Found Kotlin-containing mod {}, checking whether we need to upgrade it..", secureJar);
@@ -133,7 +133,7 @@ public class KFFMerger {
 
         if (injectedJars.isEmpty()) {
             LOGGER.info("All good, no update needed: {}", secureJar);
-            return secureJar; // all up-to-date, nothing to do
+            return null; // all up-to-date, nothing to do
         }
 
         try {
@@ -175,16 +175,16 @@ public class KFFMerger {
                 }
             }
 
-            return compatibilityLayer.newSecureJarWithCustomMetadata((__, newMeta) -> new DescriptorRewritingJarMetadata(orgMeta, newMeta) {
+            return List.of(compatibilityLayer.newSecureJarWithCustomMetadata((__, newMeta) -> new DescriptorRewritingJarMetadata(orgMeta, newMeta) {
                 @Override
                 public String name() {
                     // Call the original name from the original SecureJar to allow SelfRenamingJarMetadata to function
                     return secureJar.name();
                 }
-            }, tmpFile);
+            }, tmpFile));
         } catch (Throwable t) {
             LOGGER.fatal("Failed to merge updated Kotlin into " + secureJar + ":", t);
-            return secureJar; // oh well, guess we'll give it a try as is
+            return null; // oh well, guess we'll give it a try as is
         }
     }
 
