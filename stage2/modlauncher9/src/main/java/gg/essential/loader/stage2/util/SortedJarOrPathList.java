@@ -56,15 +56,22 @@ public class SortedJarOrPathList extends ArrayList<Object> {
         JarMetadata metadata = getMetadata(jar);
         if (metadata == null) return FALLBACK_VERSION;
         String version = metadata.version();
-        if (version == null) return FALLBACK_VERSION;
-        // ModLauncher somehow manages to report the version of some jars (really unsure which ones, best guess
-        // right now is all those without a `FMLModType` manifest attribute? seemingly completely irregardless of
-        // whether they have an `Implementation-Version` attribute!)
-        // as "Optional.empty" (yes, that's a String, somewhere someone must have blindly `toString`ed).
-        // We'll just go fetch it ourselves then I guess.
-        if (version.equals("Optional.empty")) {
+
+        // Some revisions of ModLauncher have a bug where they simply call `toString` on `Optional<String>`, resulting
+        // in versions being reported as the string "Optional.empty" or "Optional[1.2.3]" instead of `null` or "1.2.3".
+        // See https://github.com/McModLauncher/securejarhandler/blob/7cd8481364d73bacecf2b608479c6b903bff7f6c/src/main/java/cpw/mods/jarhandling/impl/ModuleJarMetadata.java#L137
+        // We need to unwrap those to get at the real version.
+        if (version != null && version.equals("Optional.empty")) {
             version = null;
+        } else if (version != null && version.startsWith("Optional[")) {
+            version = version.substring("Optional[".length(), version.length() - 1);
         }
+
+        // Additionally, when ModuleJarMetadata is used (not entirely sure when that's the case, at the very least the
+        // jar must have a `module-info.class` but mods may also use ModJarMetadata instead), ModLauncher only looks at
+        // the version declared in the `module-info.class`. For most jars that version is `null` though because it
+        // requires extra setup in Gradle which most people don't do.
+        // We need a version for correct sorting though, so we'll try to find one ourselves.
         if (version == null) {
             Manifest manifest = compatibilityLayer.getManifest(jar);
             if (manifest != null) {
@@ -79,6 +86,7 @@ public class SortedJarOrPathList extends ArrayList<Object> {
                 version = name.substring(name.lastIndexOf("-") + 1, name.length() - ".jar".length());
             }
         }
+
         if (version == null) {
             return FALLBACK_VERSION;
         }
