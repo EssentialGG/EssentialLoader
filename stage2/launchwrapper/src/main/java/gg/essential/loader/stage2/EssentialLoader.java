@@ -3,41 +3,31 @@ package gg.essential.loader.stage2;
 import gg.essential.loader.stage2.data.ModJarMetadata;
 import gg.essential.loader.stage2.relaunch.Relaunch;
 import gg.essential.loader.stage2.util.Delete;
-import gg.essential.loader.stage2.utils.Versions;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
-import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
-import java.util.stream.Stream;
 
 import static gg.essential.loader.stage2.Utils.findMostRecentFile;
 import static gg.essential.loader.stage2.Utils.findNextMostRecentFile;
@@ -113,7 +103,9 @@ public class EssentialLoader extends EssentialLoaderBase {
             ourMixinUrl = ourEssentialUrl;
         }
 
-        preloadEssential(ourEssentialPath, ourEssentialUrl);
+        if (Relaunch.checkEnabled()) {
+            Relaunch.relaunch(ourMixinUrl);
+        }
 
         try {
             injectMixinTweaker();
@@ -206,173 +198,6 @@ public class EssentialLoader extends EssentialLoaderBase {
         ourMixinUrl = url;
     }
 
-    private void preloadEssential(Path path, URL url) {
-        if (System.getProperty(Relaunch.FORCE_PROPERTY, "").equals("early")) {
-            if (Relaunch.checkEnabled()) {
-                Relaunch.relaunch(ourMixinUrl);
-            }
-        }
-
-        String outdatedAsm = isAsmOutdated(url);
-        if (outdatedAsm != null) {
-            LOGGER.warn("Found an old version of ASM ({}). This may cause issues.", outdatedAsm);
-            if (Relaunch.checkEnabled()) {
-                Relaunch.relaunch(url);
-            }
-        }
-
-        // Pre-load the resource cache of the launch class loader with the class files of some of our libraries.
-        // Doing so will allow us to load our version, even if there is an older version already on the classpath
-        // before our jar. This will of course only work if they have not already been loaded but in that case
-        // there's really not much we can do about it anyway.
-        try {
-            Field classLoaderExceptionsField = LaunchClassLoader.class.getDeclaredField("classLoaderExceptions");
-            classLoaderExceptionsField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Set<String> classLoaderExceptions = (Set<String>) classLoaderExceptionsField.get(Launch.classLoader);
-
-            Field transformerExceptionsField = LaunchClassLoader.class.getDeclaredField("transformerExceptions");
-            transformerExceptionsField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Set<String> transformerExceptions = (Set<String>) transformerExceptionsField.get(Launch.classLoader);
-
-            // Some mods (BetterFoliage) will exclude kotlin from transformations, thereby voiding our pre-loading.
-            boolean kotlinExcluded = Stream.concat(classLoaderExceptions.stream(), transformerExceptions.stream())
-                .anyMatch(prefix -> prefix.startsWith("kotlin"));
-            if (kotlinExcluded && !Relaunch.HAPPENED) {
-                LOGGER.warn("Found Kotlin to be excluded from LaunchClassLoader transformations. This may cause issues.");
-                LOGGER.debug("classLoaderExceptions:");
-                for (String classLoaderException : classLoaderExceptions) {
-                    LOGGER.debug("  - {}", classLoaderException);
-                }
-                LOGGER.debug("transformerExceptions:");
-                for (String transformerException : transformerExceptions) {
-                    LOGGER.debug("  - {}", transformerException);
-                }
-                if (Relaunch.checkEnabled()) {
-                    throw new RelaunchRequest();
-                }
-            }
-
-            // Some mods include signatures for all the classes in their jar, including Mixin. As a result, if any other
-            // mod ships a Mixin version different from theirs (we likely do), it'll explode because of mis-matching
-            // signatures.
-            String signedMixinMod = findSignedMixin();
-            if (signedMixinMod != null && !Relaunch.HAPPENED) {
-                // To work around that, we'll re-launch. That works because our relaunch class loader does not implement
-                // signature loading.
-                LOGGER.warn("Found {}. This mod includes signatures for its bundled Mixin and will explode if " +
-                    "a different Mixin version (even a more recent one) is loaded.", signedMixinMod);
-                if (Relaunch.ENABLED) {
-                    LOGGER.warn("Trying to work around the issue by re-launching which will ignore signatures.");
-                } else {
-                    LOGGER.warn("Cannot apply workaround because re-launching is disabled.");
-                }
-                if (Relaunch.checkEnabled()) {
-                    throw new RelaunchRequest();
-                }
-            }
-
-            Field resourceCacheField = LaunchClassLoader.class.getDeclaredField("resourceCache");
-            resourceCacheField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Map<String, byte[]> resourceCache = (Map<String, byte[]>) resourceCacheField.get(Launch.classLoader);
-
-            Field negativeResourceCacheField = LaunchClassLoader.class.getDeclaredField("negativeResourceCache");
-            negativeResourceCacheField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Set<String> negativeResourceCache = (Set<String>) negativeResourceCacheField.get(Launch.classLoader);
-
-            try (FileSystem fileSystem = FileSystems.newFileSystem(path, null)) {
-                Path[] libs = {
-                    fileSystem.getPath("kotlin"),
-                    fileSystem.getPath("kotlinx", "coroutines"),
-                    fileSystem.getPath("gg", "essential", "universal"),
-                    fileSystem.getPath("gg", "essential", "elementa"),
-                    fileSystem.getPath("gg", "essential", "vigilance"),
-                    fileSystem.getPath("codes", "som", "anthony", "koffee"),
-                    fileSystem.getPath("org", "kodein"),
-                };
-                for (Path libPath : libs) {
-                    preloadLibrary(path, libPath, resourceCache, negativeResourceCache);
-                }
-
-                // Mixin is primarily a tweaker lib, so the chances of it having already been loaded by this point
-                // are not nearly as small as non-tweaker libs. So, to reduce the chance of instability caused by
-                // incompatible implementation classes, we only force our version if it is not already initialized.
-                if (Launch.blackboard.get("mixin.initialised") == null) {
-                    preloadLibrary(path, fileSystem.getPath("org", "spongepowered"), resourceCache, negativeResourceCache);
-                }
-            }
-
-            if (Launch.classLoader.getClassBytes("pl.asie.foamfix.coremod.FoamFixCore") != null) {
-                // FoamFix will by default replace the resource cache map with a weak one, thereby negating our hack.
-                // To work around that, we preempt its replacement and put in a map which will throw an exception when
-                // iterated.
-                LOGGER.info("Detected FoamFix, locking LaunchClassLoader.resourceCache");
-                resourceCacheField.set(Launch.classLoader, new ConcurrentHashMap<String,byte[]>(resourceCache) {
-                    // FoamFix will call this before overwriting the resourceCache field
-                    @Override
-                    public Set<Entry<String, byte[]>> entrySet() {
-                        throw new RuntimeException("Suppressing FoamFix LaunchWrapper weak resource cache.") {
-                            // It'll then catch the exception and print it, which we can make less noisy.
-                            @Override
-                            public void printStackTrace() {
-                                LOGGER.info(this.getMessage());
-                            }
-                        };
-                    }
-                });
-            }
-        } catch (RelaunchRequest relaunchRequest) {
-            Relaunch.relaunch(url);
-        } catch (Exception e) {
-            LOGGER.error("Failed to pre-load dependencies: ", e);
-        }
-    }
-
-    private void preloadLibrary(Path jarPath, Path libPath, Map<String, byte[]> resourceCache, Set<String> negativeResourceCache) throws IOException {
-        if (Files.notExists(libPath)) {
-            LOGGER.debug("Not pre-loading {} because it does not exist.", libPath);
-            return;
-        }
-
-        LOGGER.debug("Pre-loading {} from {}..", libPath, jarPath);
-        long start = System.nanoTime();
-
-        Files.walkFileTree(libPath, new SimpleFileVisitor<Path>() {
-            private static final String SUFFIX = ".class";
-            private boolean warned;
-
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-                if (path.getFileName().toString().endsWith(SUFFIX)) {
-                    String file = path.toString().substring(1);
-                    String name = file.substring(0, file.length() - SUFFIX.length()).replace('/', '.');
-                    byte[] bytes = Files.readAllBytes(path);
-                    byte[] oldBytes = resourceCache.put(name, bytes);
-                    if (oldBytes != null && !Arrays.equals(oldBytes, bytes) && !warned) {
-                        warned = true;
-                        LOGGER.warn("Found potentially conflicting version of {} already loaded. This may cause issues.", libPath);
-                        LOGGER.warn("First conflicting class: {}", name);
-                        try {
-                            LOGGER.warn("Likely source: {}", Launch.classLoader.findResource(file));
-                        } catch (Throwable t) {
-                            LOGGER.warn("Unable to determine likely source:", t);
-                        }
-                        if (Relaunch.checkEnabled()) {
-                            throw new RelaunchRequest();
-                        }
-                    }
-                    negativeResourceCache.remove(name);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-
-        LOGGER.debug("Done after {}ns.", System.nanoTime() - start);
-    }
-
     // Production requires usage of the MixinTweaker. Simply calling MixinBootstrap.init() will not always work, even
     // if it appears to work most of the time.
     // This code is a intentional duplicate of the one in stage1. The one over there is in case the third-party mod
@@ -407,20 +232,6 @@ public class EssentialLoader extends EssentialLoaderBase {
     protected void doInitialize() {
         detectStage0Tweaker();
 
-        String outdatedMixin = isMixinOutdated();
-        if (outdatedMixin != null) {
-            LOGGER.warn("Found an old version of Mixin ({}). This may cause issues.", outdatedMixin);
-            if (Relaunch.checkEnabled()) {
-                Relaunch.relaunch(ourMixinUrl);
-            }
-        }
-
-        if (System.getProperty(Relaunch.FORCE_PROPERTY, "").equals("late")) {
-            if (Relaunch.checkEnabled()) {
-                Relaunch.relaunch(ourMixinUrl);
-            }
-        }
-
         super.doInitialize();
     }
 
@@ -436,38 +247,4 @@ public class EssentialLoader extends EssentialLoaderBase {
             }
         }
     }
-
-    private String isMixinOutdated() {
-        String loadedVersion = String.valueOf(Launch.blackboard.get("mixin.initialised"));
-        String bundledVersion = Versions.getMixinVersion(ourMixinUrl);
-        LOGGER.debug("Found Mixin {} loaded, we bundle {}", loadedVersion, bundledVersion);
-        if (Versions.compare("mixin", loadedVersion, bundledVersion) < 0) {
-            return loadedVersion;
-        } else {
-            return null;
-        }
-    }
-
-    private String isAsmOutdated(URL ourUrl) {
-        String loadedVersion = org.objectweb.asm.ClassWriter.class.getPackage().getImplementationVersion();
-        String bundledVersion = Versions.getAsmVersion(ourUrl);
-        LOGGER.debug("Found ASM {} loaded, we bundle {}", loadedVersion, bundledVersion);
-        if (Versions.compare("ASM", loadedVersion, bundledVersion) < 0) {
-            return loadedVersion;
-        } else {
-            return null;
-        }
-    }
-
-    private String findSignedMixin() throws IOException {
-        if (hasClass("net.darkhax.surge.Surge")) return "Surge";
-        if (hasClass("me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin")) return "Phosphor";
-        return null;
-    }
-
-    private static boolean hasClass(String name) throws IOException {
-        return Launch.classLoader.getClassBytes(name) != null;
-    }
-
-    private static class RelaunchRequest extends RuntimeException {}
 }
