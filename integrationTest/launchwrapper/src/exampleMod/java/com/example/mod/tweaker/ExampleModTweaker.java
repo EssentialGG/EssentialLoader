@@ -12,12 +12,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class ExampleModTweaker extends EssentialSetupTweaker {
-    static {
-        if (Boolean.parseBoolean(System.getProperty("examplemod.exclude_kotlin_from_transformers", "false"))) {
-            Launch.classLoader.addTransformerExclusion("kotlin.something.");
-        }
-    }
-
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
         super.acceptOptions(args, gameDir, assetsDir, profile);
