@@ -256,4 +256,15 @@ public class RelaunchTests {
         }
         return result;
     }
+
+    @Test
+    public void testRelaunchWithNewerStage1Available(Installation installation) throws Exception {
+        installation.addExampleMod();
+
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.setProperty("essential.branch", "with-dummy-stage1");
+        isolatedLaunch.launch();
+
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
+    }
 }
