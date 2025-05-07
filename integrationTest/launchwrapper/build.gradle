@@ -271,6 +271,16 @@ tasks.register("essentialWithAsm52Jar", Jar) {
     from({ configurations.asm52.collect { zipTree(it) } })
 }
 
+tasks.register("essentialWithDummyStage1", Jar) {
+    archiveBaseName.set("essential-with-dummy-stage1")
+    from(sourceSets.essential.output)
+    includeMixin(it, configurations.mixin07)
+
+    from(tasks.named("dummyStage1Jar").map { it.outputs }) {
+        rename { "gg/essential/loader/stage0/stage1.jar" }
+    }
+}
+
 tasks.register("dummyStage1Jar", Jar) {
     archiveBaseName.set("dummyStage1")
     from(sourceSets.dummyStage1.output)
@@ -443,6 +453,7 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.essentialJar.archiveFile, "essential:essential", "stable")
     mod(tasks.essentialWithMixin08Jar.archiveFile, "essential:essential", "mixin-08")
     mod(tasks.essentialWithAsm52Jar.archiveFile, "essential:essential", "asm-52")
+    mod(tasks.essentialWithDummyStage1.archiveFile, "essential:essential", "with-dummy-stage1")
     mod(provider { configurations.mixin07.singleFile }, "essential:mixin", "07")
     mod(evaluationDependsOn(':stage0:launchwrapper').tasks.jar.archiveFile, "essential:loader-stage0", "stable")
     mod(tasks.dummyStage1Jar.archiveFile, "essential:loader-stage1", "dummy")
