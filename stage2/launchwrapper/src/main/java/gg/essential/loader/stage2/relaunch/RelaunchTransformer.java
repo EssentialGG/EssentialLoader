@@ -14,13 +14,7 @@ import java.util.function.BiFunction;
 
 import static gg.essential.loader.stage2.relaunch.Relaunch.FML_TWEAKER;
 
-/**
- * For when we do not have access to Mixin 0.8 (old Essential version on 1.8.9).
- *
- * If we do have Mixin 0.8, we spin up an isolated instance of that instead and then a mixin takes care of this:
- * {@link gg.essential.loader.stage2.relaunch.mixins.forge.Mixin_SkipFMLSecurityManager}
- */
-public class LegacyRelaunchTransformer implements BiFunction<String, byte[], byte[]> {
+public class RelaunchTransformer implements BiFunction<String, byte[], byte[]> {
     @Override
     public byte[] apply(String name, byte[] bytes) {
         // It installs a SecurityManager which locks itself down by rejecting any future managers and forge
