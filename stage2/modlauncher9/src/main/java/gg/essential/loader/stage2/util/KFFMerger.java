@@ -1,5 +1,8 @@
 package gg.essential.loader.stage2.util;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
 import gg.essential.loader.stage2.DescriptorRewritingJarMetadata;
@@ -21,7 +24,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * We need to inject our bundled Kotlin library files into the existing KotlinForForge jar instead of injecting
@@ -210,18 +215,17 @@ public class KFFMerger {
 
     public static boolean isJarJarKff(SecureJar jar) {
         try {
-            Path jarjarPath = jar.getRootPath().resolve("META-INF").resolve("jarjar");
+            Path jarjarPath = jar.getRootPath().resolve("META-INF").resolve("jarjar").resolve("metadata.json");
             if (!Files.exists(jarjarPath)) return false;
-            try (Stream<Path> stream = Files.list(jarjarPath)) {
-                List<String> files = stream
-                    .map(it -> it.getFileName().toString())
-                    .filter(it -> it.endsWith(".jar"))
-                    .toList();
-                // A JarJar-using KotlinForForge jar can be recognized by the fact that it bundles both the KFF mod as
-                // well as the Kotlin Standard Library
-                return files.stream().anyMatch(it -> it.startsWith("kffmod-"))
-                    && files.stream().anyMatch(it -> it.startsWith("kotlin-stdlib-"));
-            }
+            JsonObject root = new Gson().fromJson(Files.readString(jarjarPath), JsonObject.class);
+            JsonArray jars = root.getAsJsonArray("jars");
+            Set<String> artifactIds = StreamSupport.stream(jars.spliterator(), false)
+                .map(it -> it.getAsJsonObject().getAsJsonObject("identifier"))
+                .map(it -> it.getAsJsonPrimitive("group").getAsString() + ":" + it.getAsJsonPrimitive("artifact").getAsString())
+                .collect(Collectors.toSet());
+            // A JarJar-using KotlinForForge jar can be recognized by the fact that it bundles both the KFF mod as
+            // well as the Kotlin Standard Library
+            return artifactIds.contains("thedarkcolour:kffmod") && artifactIds.contains("org.jetbrains.kotlin:kotlin-stdlib");
         } catch (Throwable t) {
             LOGGER.error("Failed to determine version of potential KFF jar at " + jar + ":", t);
             return false;

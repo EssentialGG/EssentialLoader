@@ -22,4 +22,5 @@ dependencies {
     // provided by fmlloader (both forge and neoforge ones)
     compileOnly("org.apache.logging.log4j:log4j-api:2.8.1")
     compileOnly("org.apache.maven:maven-artifact:3.8.1")
+    compileOnly("com.google.code.gson:gson:2.8.0")
 }
