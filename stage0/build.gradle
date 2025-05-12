@@ -1,4 +1,4 @@
-version = "1.2.4"
+version = "1.2.5"
 
 configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
     apply plugin: 'maven-publish'
