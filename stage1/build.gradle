@@ -8,7 +8,9 @@ configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" 
     }
 
     dependencies {
-        bundle(implementation(parent.project("common")))
+        if (project.name != "launchwrapper") {
+            bundle(implementation(parent.project("common")))
+        }
         if (project.name.startsWith("modlauncher")) {
             bundle(compileOnly(parent.project("modlauncher")))
         }

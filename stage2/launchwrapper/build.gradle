@@ -1,8 +1,23 @@
+repositories {
+    maven { url "https://maven.minecraftforge.net/" }
+}
+
 dependencies {
+    compileOnly("net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9:universal")
     compileOnly("net.minecraft:launchwrapper:1.12")
 
     // Versions based on the one which MC include by default in 1.8.9 (minimal supported version)
     // See https://github.com/MultiMC/meta-multimc/blob/master/net.minecraft/1.8.9.json
     compileOnly("com.google.guava:guava:17.0")
     compileOnly("org.apache.commons:commons-lang3:3.3.2")
+    compileOnly("com.google.code.gson:gson:2.2.4")
+}
+
+jar {
+    def version = provider { project.version }
+    inputs.property("project.version", version)
+    manifest {
+        attributes("Name": "gg/essential/loader/stage2/")
+        attributes("Implementation-Version": version)
+    }
 }

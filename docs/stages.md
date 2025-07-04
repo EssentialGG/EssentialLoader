@@ -74,18 +74,10 @@ download fails (assuming the host mod has no hard dependency on Essential).
 
 ### LaunchWrapper
 
-On LaunchWrapper, it additionally:
-- instructs Forge to scan the host mod jar for regular mods (ordinarily Forge would not check for mods in a jar that
-  already contained a Tweaker).
-- if the jar declares a CoreMod, loads it (Forge will not load CoreMods from jars that already contained a Tweaker)
-- chain load the Mixin Tweaker if the host mod declares a `MixinConfigs` attribute and the Mixin Tweaker is not yet
-  loaded or scheduled (you can only have one Tweaker declared, you can't have Mixin and Essential Tweaker, so we load
-  the Mixin one for you if you need it)
-- load the host mod's declared mixin configs (Mixin only automatically loads these for mods declaring the Mixin Tweaker)
+On LaunchWrapper, it is even simpler: The stage2 jar file is embedded in the stage1 jar file, so stage1 simply extracts
+that (no update checks, downloads, or anything), and then jumps to it like stage0 did.
 
-Stage1 on LaunchWrapper currently does not need to ensure that only a single instance of stage2 is loaded because stage0
-actually puts it in the Launch class loader rather than its own isolated class loader for legacy reasons.
-So all stage0 instances are talking to the same stage1 class and a simple static field is enough to ensure uniqueness.
+Stage1 used to do a lot more on LaunchWrapper, but all this functionality has since been moved to stage2.
 
 ### Fabric
 

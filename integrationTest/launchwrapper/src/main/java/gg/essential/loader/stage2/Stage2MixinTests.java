@@ -1,4 +1,4 @@
-package gg.essential.loader.stage1;
+package gg.essential.loader.stage2;
 
 import gg.essential.loader.fixtures.Installation;
 import gg.essential.loader.fixtures.IsolatedLaunch;
@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class Stage1MixinTests {
+public class Stage2MixinTests {
     @Test
     public void testMultipleCustomTweakerModsWithMixin07(Installation installation) throws Exception {
         testMultipleCustomTweakerModsWithMixin(installation, "07");

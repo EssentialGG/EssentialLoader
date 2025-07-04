@@ -133,11 +133,15 @@ def includeMixin(AbstractArchiveTask task, Configuration mixin) {
     }
 }
 
-def configureExampleModJar = { String tweaker, Configuration mixin = null -> return { AbstractArchiveTask task ->
+def configureExampleModJar = { String tweaker, Configuration mixin = null, excludes = null -> return { AbstractArchiveTask task ->
     archiveBaseName.set(task.name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
-    from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } })
+    from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } }) {
+        if (excludes != null) {
+            excludes()
+        }
+    }
 
     manifest {
         attributes "FMLCorePlugin": "com.example.mod.ExampleCoreMod",
@@ -203,38 +207,48 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
     def stage2Task = tasks.register("stage2V${i}Jar", Jar) {
         archiveBaseName.set(name)
         from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) })
-        // Dummy attribute so they all have different hashes
         manifest {
+            attributes "Name": "gg/essential/loader/stage2/"
             attributes "Implementation-Version": "$i"
+        }
+    }
+    def stage1Task = tasks.register("stage1V${i}Jar", Jar) {
+        archiveBaseName.set(name)
+        from(evaluationDependsOn(':stage1:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) }) {
+            exclude("gg/essential/loader/stage1/stage2.jar")
+        }
+        from(stage2Task.flatMap { it.archiveFile }) {
+            into("gg/essential/loader/stage1")
+            rename { "stage2.jar" }
+        }
+        manifest {
+            attributes("Name": "gg/essential/loader/stage1/")
+            attributes "Implementation-Version": "${i}"
         }
     }
     def stage3Task = tasks.register("stage3V${i}Jar", Jar) {
         archiveBaseName.set(name)
         from(tasks.essentialJar.archiveFile.map { zipTree(it) })
-        manifest {
-            // Dummy attribute so they all have different hashes
-            attributes "Implementation-Version": "$i"
-            // For stage3 version 4+, we add an explicit requirement on stage2 version 4
-            if (i >= 4) {
-                attributes "Requires-Essential-Stage2-Version": "4"
-            }
+        from(stage1Task.flatMap { it.archiveFile }) {
+            into("gg/essential/loader/stage0")
+            rename { "stage1.jar" }
         }
     }
     tasks.register("exampleBundledModJar$i", Jar) {
-        def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+        def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker", null, {
+            exclude("gg/essential/loader/stage0/stage1.jar")
+        })
         configure.delegate = delegate
         configure(it)
 
-        def stage2Jar = stage2Task.get().archiveFile
-        def stage3Jar = stage3Task.get().archiveFile
-        from(stage2Jar) {
-            rename { "bundled-stage2-${i}.jar" }
+        from(stage1Task.flatMap { it.archiveFile }) {
+            into("gg/essential/loader/stage0")
+            rename { "stage1.jar" }
         }
+
+        def stage3Jar = stage3Task.get().archiveFile
         from(stage3Jar) {
             rename { "bundled-essential-${i}.jar" }
-        }
-        from(file("../essential-loader-stage2.properties")) {
-            expand(["pinnedFileMd5": { stage2Jar.get().asFile.bytes.md5() }, version: i])
         }
         from(file("../essential-loader.properties")) {
             expand(["pinnedFileMd5": { stage3Jar.get().asFile.bytes.md5() }, "version": i])

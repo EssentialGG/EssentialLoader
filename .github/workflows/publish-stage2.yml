@@ -20,7 +20,7 @@ jobs:
             17
 
       - name: Build
-        run: ./gradlew :stage2:{launchwrapper,fabric,modlauncher{8,9}}:build --stacktrace
+        run: ./gradlew :stage2:{launchwrapper-legacy,fabric,modlauncher{8,9}}:build --stacktrace
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
