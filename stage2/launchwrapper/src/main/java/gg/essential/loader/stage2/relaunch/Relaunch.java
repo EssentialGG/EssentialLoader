@@ -17,66 +17,33 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+@SuppressWarnings("UrlHashCode") // all our urls are local files
 public class Relaunch {
     private static final Logger LOGGER = LogManager.getLogger(Relaunch.class);
 
     static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
 
     private static final String HAPPENED_PROPERTY = "essential.loader.relaunched";
-    private static final String ENABLED_PROPERTY = "essential.loader.relaunch";
 
-    /** Whether we are currently inside a re-launch due to classpath complications. */
-    public static final boolean HAPPENED = Boolean.parseBoolean(System.getProperty(HAPPENED_PROPERTY, "false"));
-    /** Whether we should try to re-launch in case of classpath complications. */
-    public static final boolean ENABLED = !HAPPENED && Boolean.parseBoolean(System.getProperty(ENABLED_PROPERTY, "true"));
-
-    public static boolean checkEnabled() {
-        if (HAPPENED) {
-            return false;
-        }
-        if (ENABLED) {
-            return true;
-        }
+    public static void relaunch(Set<URL> prioritizedUrls, Consumer<List<String>> modifyArgs) {
         LOGGER.warn("");
         LOGGER.warn("");
         LOGGER.warn("");
         LOGGER.warn("==================================================================================");
-        LOGGER.warn("Essential can automatically attempt to fix this but this feature has been disabled");
-        LOGGER.warn("because \"" + ENABLED_PROPERTY + "\" is set to false.");
-        LOGGER.warn("");
-        LOGGER.warn("THIS WILL CAUSE ISSUES, PROCEED AT YOUR OWN RISK!");
-        LOGGER.warn("");
-        LOGGER.warn("Remove \"-D" + ENABLED_PROPERTY + "=false\" from JVM args to enable re-launching.");
-        LOGGER.warn("==================================================================================");
-        LOGGER.warn("");
-        LOGGER.warn("");
-        LOGGER.warn("");
-        return false;
-    }
-
-    public static void relaunch(URL essentialUrl) {
-        LOGGER.warn("");
-        LOGGER.warn("");
-        LOGGER.warn("");
-        LOGGER.warn("==================================================================================");
-        LOGGER.warn("Attempting re-launch to load the newer version instead.");
-        LOGGER.warn("");
-        LOGGER.warn("If AND ONLY IF you know what you are doing, have fixed the issue manually and need");
-        LOGGER.warn("to suppress this behavior (did you really fix it then?), you can set the");
-        LOGGER.warn("\"" + ENABLED_PROPERTY + "\" system property to false.");
+        LOGGER.warn("Re-launching to load the newer versions of mods/libraries.");
         LOGGER.warn("==================================================================================");
         LOGGER.warn("");
         LOGGER.warn("");
         LOGGER.warn("");
 
-        // Set marker so we do not end up in a loop
+        // Set marker for our tests
         System.setProperty(HAPPENED_PROPERTY, "true");
 
         // Clean up certain global state
@@ -89,10 +56,6 @@ public class Relaunch {
             // Get the classpath from the system class loader, this will have had various tweaker mods appended to it.
             List<URL> urls = new ArrayList<>(Arrays.asList(systemClassLoader.getURLs()));
 
-            // So we need to make sure Essential is on the classpath before any other mod
-            urls.remove(essentialUrl);
-            urls.add(0, essentialUrl);
-
             // And because LaunchClassLoader.getSources is buggy and returns a List rather than a Set, we need to try
             // to remove the tweaker jars from the classpath, so we do not end up with duplicate entries in that List.
             // We cannot just remove everything after the first mod jar, cause there are mods like "performant" which
@@ -100,14 +63,11 @@ public class Relaunch {
             // So instead, we remove anything which declares a TweakClass which has in been loaded by the
             // CoreModManager.
             Set<String> tweakClasses = getTweakClasses();
-            Iterator<URL> iterator = urls.iterator();
-            iterator.next(); // skip Essential
-            while (iterator.hasNext()) {
-                URL url = iterator.next();
-                if (isTweaker(url, tweakClasses)) {
-                    iterator.remove();
-                }
-            }
+            urls.removeIf(url -> isTweaker(url, tweakClasses));
+
+            // Finally make sure our urls are on the classpath and before any other mod
+            urls.removeIf(prioritizedUrls::contains);
+            urls.addAll(0, prioritizedUrls);
 
             LOGGER.debug("Re-launching with classpath:");
             for (URL url : urls) {
@@ -119,6 +79,7 @@ public class Relaunch {
             Launch.blackboard.put("gg.essential.loader.stage2.relaunchClassLoader", relaunchClassLoader);
 
             List<String> args = new ArrayList<>(LaunchArgs.guessLaunchArgs());
+            modifyArgs.accept(args);
             String main = args.remove(0);
 
             Class<?> innerLaunch = Class.forName(main, false, relaunchClassLoader);

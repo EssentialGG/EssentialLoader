@@ -14,8 +14,6 @@ import static gg.essential.loader.util.Props.writeProps;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Stage2Tests {
@@ -118,17 +116,7 @@ public class Stage2Tests {
         Files.copy(withBranch(installation.stage3Meta, "4"), installation.stage3Meta, REPLACE_EXISTING);
         writeProps(installation.stage2ConfigFile, props("pendingUpdateVersion=4", "pendingUpdateResolution=true"));
         IsolatedLaunch secondLaunch = installation.launchFML();
-        assertEquals("2", secondLaunch.getProperty("essential.stage2.version"));
-        assertNull(secondLaunch.getProperty("essential.version"));
-        assertThrows(ClassNotFoundException.class, () -> secondLaunch.getClass("sun.gg.essential.LoadState"));
-
-        // Make available a newer stage2 version
-        // We make available version 5 even though stage3 only requires version 4; we expect it to upgrade straight to 5
-        Files.copy(withBranch(installation.stage2Meta, "5"), installation.stage2Meta, REPLACE_EXISTING);
-
-        // Restart to complete upgrade
-        IsolatedLaunch thirdLaunch = installation.launchFML();
-        assertEquals("5", thirdLaunch.getProperty("essential.stage2.version"));
-        assertEquals("4", thirdLaunch.getProperty("essential.version"));
+        assertEquals("4", secondLaunch.getProperty("essential.stage2.version"));
+        assertEquals("4", secondLaunch.getProperty("essential.version"));
     }
 }

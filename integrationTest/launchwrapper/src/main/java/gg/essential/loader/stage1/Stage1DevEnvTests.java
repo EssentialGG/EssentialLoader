@@ -16,6 +16,7 @@ public class Stage1DevEnvTests {
         isolatedLaunch.addToClasspath(Paths.get("build", "classes", "java", "exampleMod").toUri().toURL());
         isolatedLaunch.addArg("--tweakClass", "gg.essential.loader.stage0.EssentialSetupTweaker");
         isolatedLaunch.setProperty("fml.coreMods.load", "com.example.mod.ExampleCoreMod");
+        isolatedLaunch.setProperty("essential.loader.installEssentialMod", "true");
         return isolatedLaunch;
     }
 

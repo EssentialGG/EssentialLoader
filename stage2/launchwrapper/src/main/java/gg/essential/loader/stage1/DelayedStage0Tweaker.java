@@ -1,5 +1,5 @@
 //
-// This file has a copy in the :stage2:launchwrapper project. Keep in sync.
+// This file is a copy of the one in the :stage1:launchwrapper project. Keep in sync.
 //
 package gg.essential.loader.stage1;
 

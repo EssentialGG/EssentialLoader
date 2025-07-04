@@ -53,7 +53,6 @@ public class RelaunchTests {
         assertTrue(isolatedLaunch.getModLoadState("mixin"), "Example mixin plugin ran");
         assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
         assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     private IsolatedLaunch newDevLaunch(Installation installation, String...javaArgs) throws IOException {
@@ -113,7 +112,6 @@ public class RelaunchTests {
         IsolatedLaunch isolatedLaunch = newDevLaunch(installation, "some.unknown.launcher.Main");
         isolatedLaunch.launch();
 
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
         assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
@@ -132,7 +130,6 @@ public class RelaunchTests {
         isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
 
         // For LaunchWrapper we should be able to fully recover everything
@@ -149,7 +146,6 @@ public class RelaunchTests {
         isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
 
         // For GradleStart we should be able to effectively recover everything but not cleanly
@@ -175,7 +171,6 @@ public class RelaunchTests {
         isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
 
         // For DLI we should be able to fully recover everything
