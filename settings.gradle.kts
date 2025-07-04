@@ -1,3 +1,14 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        maven("https://maven.fabricmc.net")
+        maven("https://maven.architectury.dev/")
+        maven("https://repo.essential.gg/repository/maven-public")
+        maven("https://maven.minecraftforge.net")
+    }
+}
+
 includeBuild("build-logic")
 
 include(":container:fabric")
@@ -32,6 +43,7 @@ include(":stage2:modlauncher9:neoforge1")
 include(":stage2:modlauncher9:neoforge4")
 include(":stage2:modlauncher9:modlauncher10")
 include(":stage2:modlauncher9:modlauncher11")
+include(":mixin")
 include(":integrationTest:common")
 include(":integrationTest:fabric")
 include(":integrationTest:launchwrapper")

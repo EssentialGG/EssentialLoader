@@ -1,0 +1,26 @@
+name: Publish mixin
+
+on:
+  push:
+    tags:
+      - mixin/v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            8
+            16
+            17
+
+      - name: Publish
+        run: ./gradlew :mixin:publish --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_nexus_user: ${{ secrets.NEXUS_USER }}
+          ORG_GRADLE_PROJECT_nexus_password: ${{ secrets.NEXUS_PASSWORD }}
