@@ -41,6 +41,26 @@ public class RelaunchedLoader {
         if (injected) return;
         injected = true;
 
+        if (relaunchInfo.loadedIds.contains("io.github.llamalad7:mixinextras-common")) {
+            try {
+                Class.forName("com.llamalad7.mixinextras.MixinExtrasBootstrap", false, classLoader)
+                    .getMethod("init")
+                    .invoke(null);
+            } catch (Throwable e) {
+                LOGGER.error("Failed to initialize MixinExtras", e);
+            }
+        }
+
+        if (relaunchInfo.loadedIds.contains("gg.essential.lib:mixinextras")) {
+            try {
+                Class.forName("gg.essential.lib.mixinextras.MixinExtrasBootstrap", false, classLoader)
+                    .getMethod("init")
+                    .invoke(null);
+            } catch (Throwable e) {
+                LOGGER.error("Failed to initialize MixinExtras", e);
+            }
+        }
+
         if (relaunchInfo.loadedIds.contains("essential")) {
             try {
                 Class.forName("gg.essential.api.tweaker.EssentialTweaker", false, classLoader)
