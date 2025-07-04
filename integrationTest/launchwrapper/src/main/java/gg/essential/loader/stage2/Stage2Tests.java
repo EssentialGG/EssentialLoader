@@ -119,4 +119,15 @@ public class Stage2Tests {
         assertEquals("4", secondLaunch.getProperty("essential.stage2.version"));
         assertEquals("4", secondLaunch.getProperty("essential.version"));
     }
+
+    @Test
+    public void testOurMixin(Installation installation) throws Exception {
+        installation.addExampleMod("stable-with-our-mixin");
+
+        IsolatedLaunch isolatedLaunch = installation.launchFML();
+
+        installation.assertModLaunched(isolatedLaunch);
+        assertTrue(isolatedLaunch.getModLoadState("mixin"), "Example mixin plugin ran");
+        assertTrue(isolatedLaunch.getModLoadState("mixinInitPhase"), "Example INIT-phase mixin applied");
+    }
 }

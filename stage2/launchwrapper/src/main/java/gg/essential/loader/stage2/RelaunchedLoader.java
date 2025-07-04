@@ -32,7 +32,7 @@ public class RelaunchedLoader {
 
         sourceFiles = SourceFile.readInfos(Launch.classLoader.getSources());
 
-        if (relaunchInfo.loadedIds.contains("essential")) {
+        if (relaunchInfo.loadedIds.contains("mixin") || /* older versions of */ relaunchInfo.loadedIds.contains("essential")) {
             MixinTweakerInjector.injectMixinTweaker(true);
         }
     }

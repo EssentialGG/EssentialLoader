@@ -196,6 +196,42 @@ tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExampl
 tasks.register("exampleModMixinTweakerWithMixin08Jar", Jar, configureExampleModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 tasks.register("example2ModMixinTweakerWithMixin08Jar", Jar, configureExample2ModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 
+tasks.register("exampleModWithOurMixinJar", Jar) {
+    def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+    configure.delegate = delegate
+    configure(it)
+
+    def jij = configurations.detachedConfiguration(
+        dependencies.create(project(":mixin")),
+    )
+    dependsOn(jij)
+    from(jij.files) {
+        into("META-INF/jars")
+    }
+    def expansions = [
+        "id": "examplemod",
+        "version": "1.0.0",
+        "jars": provider {
+            jij.resolvedConfiguration.resolvedArtifacts.collect { artifact ->
+                def id = artifact.moduleVersion.id
+                """
+                {
+                    "id": "${id.group}:${id.name}",
+                    "version": "${id.version}",
+                    "file": "META-INF/jars/${artifact.file.name}"
+                }
+            """.stripIndent()
+            }.join(",\n")
+        },
+    ]
+    inputs.property("expansions", expansions)
+    from(file("../essential.mod.json")) {
+        expand(expansions)
+    }
+
+    manifest.attributes "MixinConfigs": "examplemod.mixins.json,examplemod.init.mixins.json"
+}
+
 tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
     configure.delegate = delegate
@@ -453,6 +489,8 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.example2ModEssentialTweakerWithMixin08Jar.archiveFile, "example:mod2", "essential-tweaker-with-mixin-08")
     mod(tasks.exampleModMixinTweakerWithMixin08Jar.archiveFile, "example:mod", "mixin-tweaker-with-mixin-08")
     mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
+
+    mod(tasks.exampleModWithOurMixinJar.archiveFile, "example:mod", "stable-with-our-mixin")
 
     mod(tasks.exampleRelocatedModJar.archiveFile, "example:mod", "relocated")
     (1..5).each { i ->

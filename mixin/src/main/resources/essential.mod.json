@@ -1,0 +1,11 @@
+{
+  "id": "mixin",
+  "version": "${mixinVersion}-essential.${patchesVersion}",
+  "jars": [
+    {
+      "id": "org.ow2.asm:asm-debug-all",
+      "version": "${asmVersion}",
+      "file": "META-INF/jars/asm-debug-all-${asmVersion}.jar"
+    }
+  ]
+}
