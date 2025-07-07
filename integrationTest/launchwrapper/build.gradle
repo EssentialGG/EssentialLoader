@@ -107,10 +107,12 @@ dependencies {
 
     essentialCompileOnly(launchwrapper)
     essentialCompileOnly(forge)
+    essentialCompileOnly(sourceSets.minecraft10808.output)
 
     dummyStage1CompileOnly(launchwrapper)
     dummyStage2CompileOnly(launchwrapper)
     dummyStage3CompileOnly(launchwrapper)
+    dummyStage3CompileOnly(sourceSets.minecraft10808.output)
 }
 
 def integrationTest = tasks.register("integrationTest", Test) {
