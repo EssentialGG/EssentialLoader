@@ -48,9 +48,9 @@ public class Stage2Tests {
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker").getDeclaredField("dummyInitialized").getBoolean(null));
+        assertTrue(isolatedLaunch.getClass("sun.gg.essential.LoadState").getDeclaredField("dummyTweaker").getBoolean(null));
 
-        String expectedHash = "694929e3f553445861cf55ba7f9b3be7";
+        String expectedHash = "bff7d3997b96b24f618ea906371bae01";
         assertEquals(expectedHash, md5Hex(Files.readAllBytes(installation.stage3DummyJarFile)));
         assertEquals(expectedHash, md5Hex(Files.readAllBytes(installation.essentialDir.resolve("Essential (forge_1.8.8).jar"))));
     }
@@ -102,7 +102,7 @@ public class Stage2Tests {
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker").getDeclaredField("dummyInitialized").getBoolean(null));
+        assertTrue(isolatedLaunch.getClass("sun.gg.essential.LoadState").getDeclaredField("dummyTweaker").getBoolean(null));
     }
 
     @Test
@@ -120,7 +120,7 @@ public class Stage2Tests {
         IsolatedLaunch secondLaunch = installation.launchFML();
         assertEquals("2", secondLaunch.getProperty("essential.stage2.version"));
         assertNull(secondLaunch.getProperty("essential.version"));
-        assertThrows(ClassNotFoundException.class, () -> secondLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker"));
+        assertThrows(ClassNotFoundException.class, () -> secondLaunch.getClass("sun.gg.essential.LoadState"));
 
         // Make available a newer stage2 version
         // We make available version 5 even though stage3 only requires version 4; we expect it to upgrade straight to 5

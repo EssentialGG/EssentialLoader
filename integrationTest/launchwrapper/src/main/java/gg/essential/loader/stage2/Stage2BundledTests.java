@@ -36,7 +36,7 @@ public class Stage2BundledTests {
         IsolatedLaunch isolatedLaunch = installation.launchFML();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.getClass("gg.essential.api.tweaker.EssentialTweaker").getDeclaredField("dummyInitialized").getBoolean(null));
+        assertTrue(isolatedLaunch.getEssentialLoadState("dummyTweaker"));
     }
 
     @Test
