@@ -11,6 +11,9 @@ dependencies {
     compileOnly("com.google.guava:guava:17.0")
     compileOnly("org.apache.commons:commons-lang3:3.3.2")
     compileOnly("com.google.code.gson:gson:2.2.4")
+
+    // For compatibility patches, only accessed when mixin is actually loaded
+    compileOnly(project(":mixin"))
 }
 
 jar {
