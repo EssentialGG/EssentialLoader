@@ -171,9 +171,19 @@ public class IsolatedLaunch {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> getBlackboard() throws Exception {
-        return (Map<String, Object>) getClass(LAUNCH_CLASS_NAME)
-            .getDeclaredField("blackboard")
-            .get(null);
+        ClassLoader classLoader = loader;
+        while (true) {
+            Map<String, Object> blackboard = (Map<String, Object>) Class.forName(LAUNCH_CLASS_NAME, false, classLoader)
+                .getDeclaredField("blackboard")
+                .get(null);
+
+            classLoader = (ClassLoader) blackboard.get("gg.essential.loader.stage2.relaunchClassLoader");
+            if (classLoader != null) {
+                continue;
+            }
+
+            return blackboard;
+        }
     }
 
     public Class<?> getClass(String name) throws ClassNotFoundException {

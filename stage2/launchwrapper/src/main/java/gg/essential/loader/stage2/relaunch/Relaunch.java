@@ -115,6 +115,8 @@ public class Relaunch {
             }
 
             RelaunchClassLoader relaunchClassLoader = new RelaunchClassLoader(urls.toArray(new URL[0]), systemClassLoader);
+            // Make it available for introspection in our tests
+            Launch.blackboard.put("gg.essential.loader.stage2.relaunchClassLoader", relaunchClassLoader);
 
             List<String> args = new ArrayList<>(LaunchArgs.guessLaunchArgs());
             String main = args.remove(0);
