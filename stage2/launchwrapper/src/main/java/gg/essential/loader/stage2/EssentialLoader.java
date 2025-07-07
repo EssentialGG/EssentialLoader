@@ -49,7 +49,7 @@ public class EssentialLoader extends EssentialLoaderBase {
             Relaunch.relaunch(ourMixinUrl);
         }
 
-        MixinTweakerInjector.injectMixinTweaker();
+        MixinTweakerInjector.injectMixinTweaker(true);
     }
 
     @Override
