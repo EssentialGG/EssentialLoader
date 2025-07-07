@@ -84,7 +84,7 @@ tasks.register("exampleModJar", Jar) {
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
     from({ configurations.exampleModRuntimeClasspath.files }) {
-        rename { "META-INF/jars/loader-launchwrapper-1.0.0.jar" }
+        rename { "META-INF/jars/loader-fabric-1.0.0.jar" }
     }
 }
 
