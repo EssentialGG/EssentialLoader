@@ -13,20 +13,27 @@ import java.util.List;
 public class MixinTweakerInjector {
     private static final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
 
-    public static void injectMixinTweaker() {
+    public static void injectMixinTweaker(boolean canWait) {
         try {
-            doInjectMixinTweaker();
+            doInjectMixinTweaker(canWait);
         } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void doInjectMixinTweaker() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    private static void doInjectMixinTweaker(boolean canWait) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         @SuppressWarnings("unchecked")
         List<String> tweakClasses = (List<String>) Launch.blackboard.get("TweakClasses");
 
         // If the MixinTweaker is already queued (because of another mod), then there's nothing we need to to
         if (tweakClasses.contains(MIXIN_TWEAKER)) {
+            if (!canWait) {
+                // Except we do need to initialize the MixinTweaker immediately so we can add containers
+                // for our mods.
+                // This is idempotent, so we can call it without adding to the tweaks list (and we must not add to
+                // it because the queued tweaker will already get added and there is nothing we can do about that).
+                newMixinTweaker();
+            }
             return;
         }
 
@@ -40,9 +47,13 @@ public class MixinTweakerInjector {
         // Otherwise, we need to take things into our own hands because the normal way to chainload a tweaker
         // (by adding it to the TweakClasses list during injectIntoClassLoader) is too late for Mixin.
         // Instead we instantiate the MixinTweaker on our own and add it to the current Tweaks list immediately.
-        Launch.classLoader.addClassLoaderExclusion(MIXIN_TWEAKER.substring(0, MIXIN_TWEAKER.lastIndexOf('.')));
         @SuppressWarnings("unchecked")
         List<ITweaker> tweaks = (List<ITweaker>) Launch.blackboard.get("Tweaks");
-        tweaks.add((ITweaker) Class.forName(MIXIN_TWEAKER, true, Launch.classLoader).newInstance());
+        tweaks.add(newMixinTweaker());
+    }
+
+    private static ITweaker newMixinTweaker() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+        Launch.classLoader.addClassLoaderExclusion(MIXIN_TWEAKER.substring(0, MIXIN_TWEAKER.lastIndexOf('.')));
+        return (ITweaker) Class.forName(MIXIN_TWEAKER, true, Launch.classLoader).newInstance();
     }
 }
