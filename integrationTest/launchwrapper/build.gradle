@@ -306,6 +306,7 @@ tasks.register("forge10808Jar", Jar) {
     dependsOn(configurations.forge10808Runtime)
     from({ configurations.forge10808Runtime.collect { zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        exclude 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
     }
 }
@@ -317,6 +318,7 @@ tasks.register("forge11202Jar", Jar) {
     dependsOn(configurations.forge11202Runtime)
     from({ configurations.forge11202Runtime.collect { zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        exclude 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
     }
 }
