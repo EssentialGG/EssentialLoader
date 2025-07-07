@@ -1,5 +1,9 @@
 package gg.essential.loader.stage2;
 
+import gg.essential.loader.stage2.compat.BetterFpsTransformerWrapper;
+import gg.essential.loader.stage2.compat.PhosphorTransformer;
+import gg.essential.loader.stage2.compat.ThreadUnsafeTransformersListWorkaround;
+import gg.essential.loader.stage2.compat.tweaker.BetterFpsWrappingTweaker;
 import gg.essential.loader.stage2.util.MixinTweakerInjector;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
@@ -7,6 +11,8 @@ import net.minecraft.launchwrapper.LaunchClassLoader;
 import net.minecraftforge.fml.relauncher.CoreModManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.spongepowered.asm.service.ITransformerProvider;
+import org.spongepowered.asm.service.MixinService;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,6 +76,27 @@ public class RelaunchedLoader {
                 LOGGER.error("Failed to initialize Essential mod", e);
             }
         }
+
+
+        //
+        // Compatibility patches for various third-party mods
+        //
+
+        ThreadUnsafeTransformersListWorkaround.apply();
+
+        if (relaunchInfo.loadedIds.contains("mixin")) {
+            addMixinTransformerExclusion("bre.smoothfont.asm.Transformer"); // fails silently if called more than once
+            addMixinTransformerExclusion("com.therandomlabs.randompatches.core.RPTransformer");
+            addMixinTransformerExclusion("lakmoore.sel.common.Transformer");
+            addMixinTransformerExclusion("openmods.core.OpenModsClassTransformer");
+            addMixinTransformerExclusion("net.creeperhost.launchertray.transformer.MinecraftTransformer");
+            addMixinTransformerExclusion("vazkii.quark.base.asm.ClassTransformer");
+            addMixinTransformerExclusion(BetterFpsTransformerWrapper.class.getName());
+        }
+
+        BetterFpsWrappingTweaker.inject();
+
+        Launch.classLoader.registerTransformer(PhosphorTransformer.class.getName());
     }
 
     public void initialize(ITweaker stage0Tweaker) {
@@ -143,6 +170,20 @@ public class RelaunchedLoader {
         loadCoreMod.setAccessible(true);
         ITweaker tweaker = (ITweaker) loadCoreMod.invoke(null, Launch.classLoader, coreMod, file);
         ((List<ITweaker>) Launch.blackboard.get("Tweaks")).add(tweaker);
+    }
+
+    private void addMixinTransformerExclusion(String name) {
+        if (relaunchInfo.loadedIds.contains("mixin")) {
+            addMixinTransformerExclusionImpl(name);
+        }
+    }
+
+    // Separate method because mixin classes are only available if mixin is loaded
+    private static void addMixinTransformerExclusionImpl(String name) {
+        ITransformerProvider transformers = MixinService.getService().getTransformerProvider();
+        if (transformers != null) {
+            transformers.addTransformerExclusion(name);
+        }
     }
 
     private static class SourceFile {
