@@ -231,10 +231,10 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
         from(stage3Jar) {
             rename { "bundled-essential-${i}.jar" }
         }
-        from(file("essential-loader-stage2.properties")) {
+        from(file("../essential-loader-stage2.properties")) {
             expand(["pinnedFileMd5": { stage2Jar.get().asFile.bytes.md5() }, version: i])
         }
-        from(file("essential-loader.properties")) {
+        from(file("../essential-loader.properties")) {
             expand(["pinnedFileMd5": { stage3Jar.get().asFile.bytes.md5() }, "version": i])
         }
     }

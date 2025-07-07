@@ -6,4 +6,7 @@ package sun.gg.essential;
 public class LoadState {
     public static boolean tweaker = false;
     public static boolean mod = false;
+
+    public static boolean dummyStage2Loaded = false;
+    public static boolean dummyStage2Initialized = false;
 }

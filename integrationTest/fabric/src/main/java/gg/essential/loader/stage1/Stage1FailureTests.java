@@ -28,12 +28,12 @@ public class Stage1FailureTests {
         installation.addExampleMod();
 
         if (secondLaunch) {
-            installation.launchFML();
+            installation.launchFabric();
         }
 
         Files.write(installation.stage2Meta, "{ oh no }".getBytes(StandardCharsets.UTF_8));
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -53,12 +53,12 @@ public class Stage1FailureTests {
         installation.addExampleMod();
 
         if (secondLaunch) {
-            installation.launchFML();
+            installation.launchFabric();
         }
 
         Files.write(installation.stage2Meta, "{ \"url\": 42 }".getBytes(StandardCharsets.UTF_8));
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -78,12 +78,12 @@ public class Stage1FailureTests {
         installation.addExampleMod();
 
         if (secondLaunch) {
-            installation.launchFML();
+            installation.launchFabric();
         }
 
         Files.delete(installation.stage2Meta);
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -103,7 +103,7 @@ public class Stage1FailureTests {
         installation.addExampleMod();
 
         if (secondLaunch) {
-            installation.launchFML();
+            installation.launchFabric();
         }
 
         Gson gson = new Gson();
@@ -111,7 +111,7 @@ public class Stage1FailureTests {
         meta.addProperty("checksum", "00000000000000000000000000000000");
         Files.write(installation.stage2Meta, gson.toJson(meta).getBytes(StandardCharsets.UTF_8));
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -131,7 +131,7 @@ public class Stage1FailureTests {
         installation.addExampleMod();
 
         if (secondLaunch) {
-            installation.launchFML();
+            installation.launchFabric();
         }
 
         Gson gson = new Gson();
@@ -140,7 +140,7 @@ public class Stage1FailureTests {
         meta.addProperty("checksum", "00000000000000000000000000000000"); // to get it to update on second launch
         Files.write(installation.stage2Meta, gson.toJson(meta).getBytes(StandardCharsets.UTF_8));
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
