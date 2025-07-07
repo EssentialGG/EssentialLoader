@@ -13,9 +13,9 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 import static gg.essential.loader.fixtures.BaseInstallation.withBranch;
-import static gg.essential.loader.stage1.Stage1BundledTests.props;
-import static gg.essential.loader.stage1.Stage1BundledTests.readProps;
-import static gg.essential.loader.stage1.Stage1BundledTests.writeProps;
+import static gg.essential.loader.util.Props.props;
+import static gg.essential.loader.util.Props.readProps;
+import static gg.essential.loader.util.Props.writeProps;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
