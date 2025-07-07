@@ -9,8 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static gg.essential.loader.fixtures.BaseInstallation.withBranch;
-import static gg.essential.loader.stage1.Stage1BundledTests.props;
-import static gg.essential.loader.stage1.Stage1BundledTests.writeProps;
+import static gg.essential.loader.util.Props.props;
+import static gg.essential.loader.util.Props.writeProps;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
 import static org.junit.jupiter.api.Assertions.assertEquals;

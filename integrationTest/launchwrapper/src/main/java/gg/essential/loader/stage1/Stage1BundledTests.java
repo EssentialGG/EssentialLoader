@@ -13,6 +13,9 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 import static gg.essential.loader.fixtures.BaseInstallation.withBranch;
+import static gg.essential.loader.util.Props.props;
+import static gg.essential.loader.util.Props.readProps;
+import static gg.essential.loader.util.Props.writeProps;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -201,29 +204,5 @@ public class Stage1BundledTests {
         // we should follow the downgrade, despite our local version being more up-to-date
         assertEquals("1", launch.getProperty("essential.stage2.version"));
         assertEquals(props("pendingUpdateVersion=2"), readProps(installation.stage1ConfigFile));
-    }
-
-    public static Properties readProps(Path path) throws IOException {
-        try (InputStream in = Files.newInputStream(path)) {
-            Properties props = new Properties();
-            props.load(in);
-            return props;
-        }
-    }
-
-    public static void writeProps(Path path, Properties props) throws IOException {
-        Files.createDirectories(path.getParent());
-        try (Writer out = Files.newBufferedWriter(path)) {
-            props.store(out, null);
-        }
-    }
-
-    public static Properties props(String...args) {
-        Properties props = new Properties();
-        for (String arg : args) {
-            String[] split = arg.split("=", 2);
-            props.put(split[0], split[1]);
-        }
-        return props;
     }
 }
