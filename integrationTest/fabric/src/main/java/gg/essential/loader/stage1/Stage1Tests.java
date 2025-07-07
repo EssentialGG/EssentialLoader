@@ -16,17 +16,17 @@ public class Stage1Tests {
     public void testUpdate(Installation installation) throws Exception {
         installation.addExampleMod();
 
-        installation.launchFML();
+        installation.launchFabric();
 
         Files.delete(installation.stage2Meta);
         Files.copy(installation.stage2DummyMeta, installation.stage2Meta);
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("loaded").getBoolean(null));
-        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("initialized").getBoolean(null));
+        assertTrue(isolatedLaunch.getEssentialLoadState("dummyStage2Loaded"));
+        assertTrue(isolatedLaunch.getEssentialLoadState("dummyStage2Initialized"));
     }
 
     @Test
@@ -43,12 +43,12 @@ public class Stage1Tests {
         installation.addExampleMod();
 
         if (secondLaunch) {
-            installation.launchFML();
+            installation.launchFabric();
         }
 
         Files.write(installation.stage2Meta, new byte[0]);
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertEquals(secondLaunch, isolatedLaunch.isEssentialLoaded(), "Essential loaded");
@@ -61,11 +61,11 @@ public class Stage1Tests {
         Files.createDirectories(installation.stage1ConfigFile.getParent());
         Files.write(installation.stage1ConfigFile, "branch=dummy".getBytes(StandardCharsets.UTF_8));
 
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
+        IsolatedLaunch isolatedLaunch = installation.launchFabric();
 
         installation.assertModLaunched(isolatedLaunch);
         assertFalse(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("loaded").getBoolean(null));
-        assertTrue(isolatedLaunch.getClass("gg.essential.loader.stage2.EssentialLoader").getDeclaredField("initialized").getBoolean(null));
+        assertTrue(isolatedLaunch.getEssentialLoadState("dummyStage2Loaded"));
+        assertTrue(isolatedLaunch.getEssentialLoadState("dummyStage2Initialized"));
     }
 }

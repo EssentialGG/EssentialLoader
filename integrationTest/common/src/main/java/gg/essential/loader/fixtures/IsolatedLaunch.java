@@ -149,11 +149,15 @@ public class IsolatedLaunch {
             .getBoolean(null);
     }
 
+    public boolean getEssentialLoadState(String field) throws Exception {
+        return getClass("sun.gg.essential.LoadState")
+            .getDeclaredField(field)
+            .getBoolean(null);
+    }
+
     public boolean isEssentialLoaded() throws Exception {
         try {
-            return getClass("sun.gg.essential.LoadState")
-                .getDeclaredField("mod")
-                .getBoolean(null);
+            return getEssentialLoadState("mod");
         } catch (ClassNotFoundException ignored) {
             return false;
         }
