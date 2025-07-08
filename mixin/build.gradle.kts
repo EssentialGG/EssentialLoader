@@ -9,7 +9,7 @@ plugins {
     id("essential.build-logic")
 }
 
-val patchesVersion = "0.0.0"
+val patchesVersion = "0.1.0"
 val mixinVersion = "0.8.4"
 val asmVersion = "5.2"
 
