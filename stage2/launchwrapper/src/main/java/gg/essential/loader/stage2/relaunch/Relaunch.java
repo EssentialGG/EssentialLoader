@@ -5,6 +5,7 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.spi.LoggerContext;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -151,8 +152,12 @@ public class Relaunch {
     // into the INIT phase, skipping all mixins registered for that phase.
     // See MixinPlatformAgentFMLLegacy.MixinAppender
     // To fix that, we remove the outer mixin's appender before relaunching.
-    private static void cleanupMixinAppender() {
-        org.apache.logging.log4j.Logger fmlLogger = LogManager.getLogger("FML");
+    private static void cleanupMixinAppender() throws ReflectiveOperationException {
+        // Note: Need to get a logger context by class loader here, otherwise this won't work if the Relaunch class is
+        //       loaded in a different ClassLoader (even if it's a child) than the above mixin class
+        LoggerContext context = LogManager.getContext(Launch.class.getClassLoader(), false);
+        // Using reflection to call this method because its exact return type differs between beta9 and release log4j2
+        Logger fmlLogger = (Logger) LoggerContext.class.getMethod("getLogger", String.class).invoke(context, "FML");
         if (fmlLogger instanceof org.apache.logging.log4j.core.Logger) {
             org.apache.logging.log4j.core.Logger fmlLoggerImpl = (org.apache.logging.log4j.core.Logger) fmlLogger;
             Appender mixinAppender = fmlLoggerImpl.getAppenders().get("MixinLogWatcherAppender");
