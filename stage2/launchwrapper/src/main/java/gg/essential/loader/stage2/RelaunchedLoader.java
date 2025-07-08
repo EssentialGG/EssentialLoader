@@ -1,6 +1,7 @@
 package gg.essential.loader.stage2;
 
 import gg.essential.loader.stage2.compat.BetterFpsTransformerWrapper;
+import gg.essential.loader.stage2.compat.ForgeJarDiscovererTransformer;
 import gg.essential.loader.stage2.compat.PhosphorTransformer;
 import gg.essential.loader.stage2.compat.ThreadUnsafeTransformersListWorkaround;
 import gg.essential.loader.stage2.compat.tweaker.BetterFpsWrappingTweaker;
@@ -97,6 +98,7 @@ public class RelaunchedLoader {
         BetterFpsWrappingTweaker.inject();
 
         Launch.classLoader.registerTransformer(PhosphorTransformer.class.getName());
+        Launch.classLoader.registerTransformer(ForgeJarDiscovererTransformer.class.getName());
     }
 
     public void initialize(ITweaker stage0Tweaker) {
