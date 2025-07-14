@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import gg.essential.loader.stage2.relaunch.Relaunch;
+import gg.essential.loader.stage2.util.MixinExtrasExtractor;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
@@ -217,6 +218,7 @@ public class Loader {
         assert(jar.isAbsolute());
 
         boolean hasStage1 = false;
+        String embeddedMixinExtrasVersion;
 
         try (FileSystem fileSystem = FileSystems.newFileSystem(jar, (ClassLoader) null)) {
             Path modJsonPath = fileSystem.getPath(ESSENTIAL_MOD_JSON);
@@ -231,6 +233,8 @@ public class Loader {
                 hasStage1 = true;
                 checkForNewerLoaderInStage1(stage1Path);
             }
+
+            embeddedMixinExtrasVersion = MixinExtrasExtractor.readMixinExtrasVersion(jar, fileSystem);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -256,6 +260,35 @@ public class Loader {
 
         if (descriptor == null) {
             // This mod doesn't appear to be using Essential Loader
+
+            // If it ships a MixinExtras though, we'll extract that and add it to our mods so we don't overwrite newer
+            // MixinExtras versions with an old version shipped by another Essential Loader-using mod.
+            if (embeddedMixinExtrasVersion != null) {
+                try {
+                    // We're adding a suffix to the version so that
+                    // 1. it is clearer where it came from
+                    // 2. if we have the same version as a proper Jar-in-Jar, we'll prefer using that
+                    String version = embeddedMixinExtrasVersion
+                        + ".from."
+                        + jar.getFileName().toString().replaceAll("[^A-Za-z0-9]", "_");
+
+                    Path extractedPath = Files.createTempFile("mixinextras-" + version + "-", ".jar");
+                    extractedPath.toFile().deleteOnExit();
+
+                    LOGGER.debug("Extracting MixinExtras from {} to {}", jar, extractedPath);
+                    MixinExtrasExtractor.extractMixinExtras(jar, extractedPath, embeddedMixinExtrasVersion);
+
+                    JarInfo info = new JarInfo();
+                    info.path = extractedPath;
+                    info.id = "io.github.llamalad7:mixinextras-common";
+                    info.version = version;
+                    if (parent != null) parent.children.add(info);
+                    allVersions.put(info.id + ":" + version, info);
+                    return info;
+                } catch (Exception e) {
+                    LOGGER.error("Failed to extract MixinExtras from {}", jar, e);
+                }
+            }
             return null;
         }
 
