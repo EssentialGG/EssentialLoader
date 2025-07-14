@@ -43,7 +43,7 @@ abstract class CompatMixinTask : DefaultTask() {
             CompatAccessTransformer,
         )
 
-        val mixins = mutableMapOf<String, Mixin>()
+        val mixins = mutableMapOf<String, MutableList<Mixin>>()
         for (classFile in this.mixinClasses.asFileTree.files) {
             if (classFile.extension != "class") {
                 continue
@@ -56,14 +56,13 @@ abstract class CompatMixinTask : DefaultTask() {
                 ?: args["target"]?.toString()
                 ?: throw IllegalArgumentException("`@CompatMixin` annotation in $classFile is invalid.")
 
-            if (target in mixins) {
-                throw IllegalArgumentException("Multiple `@CompatMixin`s for \"$target\".")
-            }
-            mixins[target] = Mixin(classFile.toPath(), cls)
+            mixins.getOrPut(target, ::mutableListOf).add(Mixin(classFile.toPath(), cls))
             excludedClasses += cls.name.replace('/', '.')
         }
 
-        val mixinToTargetMapping = mixins.entries.associate { (target, mixin) ->
+        val mixinToTargetMapping = mixins.entries.flatMap { (target, mixins) ->
+            mixins.map { target to it }
+        }.associate { (target, mixin) ->
             mixin.node.name to target.replace('.', '/')
         }
         val mixinRemapper = SimpleRemapper(mixinToTargetMapping)
@@ -80,11 +79,13 @@ abstract class CompatMixinTask : DefaultTask() {
                     outputEntry.time = CONSTANT_TIME_FOR_ZIP_ENTRIES
                     zipOut.putNextEntry(outputEntry)
 
-                    val mixin = mixins.remove(classForFile(inputEntry.name))
-                    if (mixin != null) {
+                    val targetMixins = mixins.remove(classForFile(inputEntry.name))
+                    if (targetMixins != null) {
                         val cls = ClassNode().apply { ClassReader(zipIn).accept(this, 0) }
 
-                        merge(mixin.node, cls, mixinRemapper)
+                        for (targetMixin in targetMixins) {
+                            merge(targetMixin.node, cls, mixinRemapper)
+                        }
 
                         zipOut.write(ClassWriter(0).apply {
                             cls.accept(ClassRemapper(this, mixinRemapper))
@@ -99,8 +100,8 @@ abstract class CompatMixinTask : DefaultTask() {
         }
 
         if (mixins.isNotEmpty()) {
-            throw IllegalArgumentException(mixins.map { (cls, mixin) ->
-                "Failed to find target \"$cls\" for \"${mixin.source}\""
+            throw IllegalArgumentException(mixins.map { (cls, mixins) ->
+                "Failed to find target `$cls` for ${mixins.joinToString { "`${it.source}`" }}"
             }.joinToString("\n"))
         }
     }
