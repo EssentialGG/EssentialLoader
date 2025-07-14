@@ -127,8 +127,17 @@ abstract class CompatMixinTask : DefaultTask() {
             }
             true
         }
+        mixin.fields.removeIf { field ->
+            val shadow = field.invisibleAnnotations?.find { it.desc == CompatShadow.desc }
+                ?: return@removeIf false
+            val originalName = shadow.args["original"]
+            if (originalName != null) {
+                throw UnsupportedOperationException("Renaming fields is not supported")
+            }
+            true
+        }
 
-        // Then merge the remaining methods into the target class
+        // Then merge the remaining methods and fields into the target class
         for (method in mixin.methods) {
             if (method.name == "<init>") {
                 continue
@@ -148,6 +157,10 @@ abstract class CompatMixinTask : DefaultTask() {
             }
 
             cls.methods.add(method)
+        }
+        for (field in mixin.fields) {
+            if (field.name == "this$0") continue // synthetic accessor for outer class in inner class
+            cls.fields.add(field)
         }
 
         // Apply access transformations
