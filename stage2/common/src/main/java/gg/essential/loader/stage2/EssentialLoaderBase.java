@@ -660,7 +660,7 @@ public abstract class EssentialLoaderBase {
         return urlConnection;
     }
 
-    private String getRequiredStage2VersionIfOutdated(Path modFile) {
+    protected String getRequiredStage2VersionIfOutdated(Path modFile) {
         // If we don't know our own version, then stage1 predates pinning, so it'll always auto-update and we're always
         // up-to-date enough for all mods (assuming the stage2 update is released before mods that require it).
         if (currentStage2Version == null) {

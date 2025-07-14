@@ -1,12 +1,12 @@
 package gg.essential.api.tweaker;
 
+import sun.gg.essential.LoadState;
+
 import java.io.File;
 
 @SuppressWarnings("unused")
 public class EssentialTweaker {
-    public static boolean dummyInitialized;
-
     public static void initialize(File gameDir) {
-        dummyInitialized = true;
+        LoadState.dummyTweaker = true;
     }
 }

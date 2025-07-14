@@ -1,0 +1,13 @@
+repositories {
+    maven { url "https://maven.minecraftforge.net/" }
+}
+
+dependencies {
+    compileOnly("net.minecraft:launchwrapper:1.12")
+}
+
+jar {
+    from(evaluationDependsOn(":stage2:launchwrapper").tasks.named("jar").map { it.outputs }) {
+        rename { "gg/essential/loader/stage2/real-stage2.jar" }
+    }
+}

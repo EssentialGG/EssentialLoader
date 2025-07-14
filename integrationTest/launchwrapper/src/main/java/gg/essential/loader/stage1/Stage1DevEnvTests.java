@@ -16,6 +16,7 @@ public class Stage1DevEnvTests {
         isolatedLaunch.addToClasspath(Paths.get("build", "classes", "java", "exampleMod").toUri().toURL());
         isolatedLaunch.addArg("--tweakClass", "gg.essential.loader.stage0.EssentialSetupTweaker");
         isolatedLaunch.setProperty("fml.coreMods.load", "com.example.mod.ExampleCoreMod");
+        isolatedLaunch.setProperty("essential.loader.installEssentialMod", "true");
         return isolatedLaunch;
     }
 
@@ -34,32 +35,6 @@ public class Stage1DevEnvTests {
         installation.addExample2Mod("essential-tweaker");
 
         IsolatedLaunch isolatedLaunch = newDevLaunch(installation);
-        isolatedLaunch.launch();
-
-        assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
-        assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
-        assertTrue(isolatedLaunch.getMod2LoadState("coreMod"), "Example2 CoreMod ran");
-        assertTrue(isolatedLaunch.getMod2LoadState("mod"), "Example2 Mod ran");
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testInDevWithRelaunch(Installation installation) throws Exception {
-        IsolatedLaunch isolatedLaunch = newDevLaunch(installation);
-        isolatedLaunch.setProperty("essential.branch", "asm-52");
-        isolatedLaunch.launch();
-
-        assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
-        assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testEssentialTweakerModsInDevWithRelaunch(Installation installation) throws Exception {
-        installation.addExample2Mod("essential-tweaker");
-
-        IsolatedLaunch isolatedLaunch = newDevLaunch(installation);
-        isolatedLaunch.setProperty("essential.branch", "asm-52");
         isolatedLaunch.launch();
 
         assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");

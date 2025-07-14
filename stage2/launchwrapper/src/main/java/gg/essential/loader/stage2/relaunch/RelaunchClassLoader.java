@@ -19,7 +19,7 @@ class RelaunchClassLoader extends IsolatedClassLoader {
     public RelaunchClassLoader(URL[] urls, ClassLoader parent) {
         super(urls, parent);
 
-        this.transformer = new LegacyRelaunchTransformer();
+        this.transformer = new RelaunchTransformer();
     }
 
     @Override

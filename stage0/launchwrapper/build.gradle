@@ -1,3 +1,10 @@
 dependencies {
     compileOnly("net.minecraft:launchwrapper:1.12")
 }
+
+jar {
+    manifest {
+        // See Loader#isRawStage0
+        attributes("ImplicitlyDependsOnEssential": "false")
+    }
+}

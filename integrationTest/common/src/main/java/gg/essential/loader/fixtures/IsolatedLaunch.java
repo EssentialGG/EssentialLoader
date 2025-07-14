@@ -149,11 +149,15 @@ public class IsolatedLaunch {
             .getBoolean(null);
     }
 
+    public boolean getEssentialLoadState(String field) throws Exception {
+        return getClass("sun.gg.essential.LoadState")
+            .getDeclaredField(field)
+            .getBoolean(null);
+    }
+
     public boolean isEssentialLoaded() throws Exception {
         try {
-            return getClass("sun.gg.essential.LoadState")
-                .getDeclaredField("mod")
-                .getBoolean(null);
+            return getEssentialLoadState("mod");
         } catch (ClassNotFoundException ignored) {
             return false;
         }
@@ -167,9 +171,19 @@ public class IsolatedLaunch {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> getBlackboard() throws Exception {
-        return (Map<String, Object>) getClass(LAUNCH_CLASS_NAME)
-            .getDeclaredField("blackboard")
-            .get(null);
+        ClassLoader classLoader = loader;
+        while (true) {
+            Map<String, Object> blackboard = (Map<String, Object>) Class.forName(LAUNCH_CLASS_NAME, false, classLoader)
+                .getDeclaredField("blackboard")
+                .get(null);
+
+            classLoader = (ClassLoader) blackboard.get("gg.essential.loader.stage2.relaunchClassLoader");
+            if (classLoader != null) {
+                continue;
+            }
+
+            return blackboard;
+        }
     }
 
     public Class<?> getClass(String name) throws ClassNotFoundException {

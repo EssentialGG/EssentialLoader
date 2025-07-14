@@ -12,7 +12,7 @@
   "depends": {},
   "jars": [
     {
-      "file": "META-INF/jars/loader-launchwrapper-1.0.0.jar"
+      "file": "META-INF/jars/loader-fabric-1.0.0.jar"
     }
   ]
 }
