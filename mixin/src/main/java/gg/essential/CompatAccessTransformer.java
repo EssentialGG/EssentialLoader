@@ -3,7 +3,7 @@ package gg.essential;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.METHOD, ElementType.FIELD})
 public @interface CompatAccessTransformer {
     /**
      * Access flags to be added to the target

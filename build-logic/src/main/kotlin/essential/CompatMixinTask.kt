@@ -120,20 +120,34 @@ abstract class CompatMixinTask : DefaultTask() {
                 ?: return@removeIf false
 
             val originalName = shadow.args["original"]
+            val targetName = originalName ?: method.name
+
+            val targetMethod = cls.methods.find { it.name == targetName && it.desc == method.desc }
+                ?: throw IllegalArgumentException("Could not find target method \"$targetName\" in ${cls.name}")
+
             if (originalName != null) {
-                val originalMethod = cls.methods.find { it.name == originalName && it.desc == method.desc }
-                    ?: throw IllegalArgumentException("Could not find original method \"$originalName\" in ${cls.name}")
-                originalMethod.name = method.name
+                targetMethod.name = method.name
             }
+
+            targetMethod.access = applyAccessTransformer(targetMethod.access, method.invisibleAnnotations)
+
             true
         }
         mixin.fields.removeIf { field ->
             val shadow = field.invisibleAnnotations?.find { it.desc == CompatShadow.desc }
                 ?: return@removeIf false
             val originalName = shadow.args["original"]
+            val targetName = originalName ?: field.name
+
+            val targetField = cls.fields.find { it.name == targetName && it.desc == field.desc }
+                ?: throw IllegalArgumentException("Could not find target field \"$targetName\" in ${cls.name}")
+
             if (originalName != null) {
                 throw UnsupportedOperationException("Renaming fields is not supported")
             }
+
+            targetField.access = applyAccessTransformer(targetField.access, field.invisibleAnnotations)
+
             true
         }
 
@@ -164,15 +178,7 @@ abstract class CompatMixinTask : DefaultTask() {
         }
 
         // Apply access transformations
-        val accessTransformer = mixin.invisibleAnnotations?.find { it.desc == CompatAccessTransformer.desc }
-        if (accessTransformer != null) {
-            (accessTransformer.args["add"] as? List<*>)?.forEach {
-                cls.access = cls.access or it as Int
-            }
-            (accessTransformer.args["remove"] as? List<*>)?.forEach {
-                cls.access = cls.access and (it as Int).inv()
-            }
-        }
+        cls.access = applyAccessTransformer(cls.access, mixin.invisibleAnnotations)
 
         // Merge interfaces
         for (itf in mixin.interfaces) {
@@ -180,6 +186,22 @@ abstract class CompatMixinTask : DefaultTask() {
                 cls.interfaces.add(itf)
             }
         }
+    }
+
+    private fun applyAccessTransformer(orgAccess: Int, annotations: List<AnnotationNode>?): Int {
+        val annotation = annotations?.find { it.desc == CompatAccessTransformer.desc }
+        return if (annotation != null) applyAccessTransformer(orgAccess, annotation) else orgAccess
+    }
+
+    private fun applyAccessTransformer(orgAccess: Int, accessTransformer: AnnotationNode): Int {
+        var access = orgAccess
+        (accessTransformer.args["add"] as? List<*>)?.forEach {
+            access = access or it as Int
+        }
+        (accessTransformer.args["remove"] as? List<*>)?.forEach {
+            access = access and (it as Int).inv()
+        }
+        return access
     }
 
     private val AnnotationNode.args get() = (values ?: emptyList()).chunked(2) { (k, v) -> k to v }.toMap()
