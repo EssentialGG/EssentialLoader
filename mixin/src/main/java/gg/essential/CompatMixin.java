@@ -13,4 +13,6 @@ public @interface CompatMixin {
     Class<?> value() default Void.class;
 
     String target() default "";
+
+    boolean createTarget() default false;
 }

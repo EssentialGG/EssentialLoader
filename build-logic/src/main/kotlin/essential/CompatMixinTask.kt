@@ -55,8 +55,9 @@ abstract class CompatMixinTask : DefaultTask() {
             val target = args["value"]?.toString()?.removeSurrounding("L", ";")?.replace('/', '.')
                 ?: args["target"]?.toString()
                 ?: throw IllegalArgumentException("`@CompatMixin` annotation in $classFile is invalid.")
+            val createTarget = (args["createTarget"] as Boolean?) ?: false
 
-            mixins.getOrPut(target, ::mutableListOf).add(Mixin(classFile.toPath(), cls))
+            mixins.getOrPut(target, ::mutableListOf).add(Mixin(classFile.toPath(), cls, createTarget))
             excludedClasses += cls.name.replace('/', '.')
         }
 
@@ -96,6 +97,35 @@ abstract class CompatMixinTask : DefaultTask() {
 
                     zipOut.closeEntry()
                 }
+            }
+
+            mixins.entries.removeIf { (target, targetMixins) ->
+                val source = targetMixins.find { it.createTarget }
+                if (source == null) return@removeIf false
+
+                val outputEntry = ZipEntry(target.replace(".", "/") + ".class")
+                outputEntry.time = CONSTANT_TIME_FOR_ZIP_ENTRIES
+                zipOut.putNextEntry(outputEntry)
+
+                val cls = ClassNode()
+                cls.name = target.replace(".", "/")
+                cls.version = source.node.version
+                cls.access = source.node.access
+                cls.superName = mixinRemapper.mapType(source.node.superName)
+                cls.outerClass = mixinRemapper.mapType(source.node.outerClass)
+                cls.sourceFile = source.node.sourceFile
+                cls.sourceDebug = source.node.sourceDebug
+
+                for (targetMixin in targetMixins) {
+                    merge(targetMixin.node, cls, mixinRemapper)
+                }
+
+                zipOut.write(ClassWriter(0).apply {
+                    cls.accept(ClassRemapper(this, mixinRemapper))
+                }.toByteArray())
+
+                zipOut.closeEntry()
+                true
             }
         }
 
@@ -214,6 +244,7 @@ abstract class CompatMixinTask : DefaultTask() {
     private data class Mixin(
         val source: Path,
         val node: ClassNode,
+        val createTarget: Boolean,
     )
 
     companion object {
