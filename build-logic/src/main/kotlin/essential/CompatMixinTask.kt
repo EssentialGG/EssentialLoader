@@ -84,7 +84,7 @@ abstract class CompatMixinTask : DefaultTask() {
                     if (mixin != null) {
                         val cls = ClassNode().apply { ClassReader(zipIn).accept(this, 0) }
 
-                        merge(mixin.node, cls)
+                        merge(mixin.node, cls, mixinRemapper)
 
                         zipOut.write(ClassWriter(0).apply {
                             cls.accept(ClassRemapper(this, mixinRemapper))
@@ -110,7 +110,7 @@ abstract class CompatMixinTask : DefaultTask() {
         .replace('/', '.')
         .replace('\\', '.')
 
-    private fun merge(mixin: ClassNode, cls: ClassNode) {
+    private fun merge(mixin: ClassNode, cls: ClassNode, remapper: SimpleRemapper) {
         // Mixin targets Java 6, but we don't want to be as limited in terms of language features
         cls.version = Opcodes.V1_8
 
@@ -122,7 +122,8 @@ abstract class CompatMixinTask : DefaultTask() {
             val originalName = shadow.args["original"]
             val targetName = originalName ?: method.name
 
-            val targetMethod = cls.methods.find { it.name == targetName && it.desc == method.desc }
+            val mappedDesc = remapper.mapMethodDesc(method.desc)
+            val targetMethod = cls.methods.find { it.name == targetName && it.desc == mappedDesc }
                 ?: throw IllegalArgumentException("Could not find target method \"$targetName\" in ${cls.name}")
 
             if (originalName != null) {
@@ -139,7 +140,8 @@ abstract class CompatMixinTask : DefaultTask() {
             val originalName = shadow.args["original"]
             val targetName = originalName ?: field.name
 
-            val targetField = cls.fields.find { it.name == targetName && it.desc == field.desc }
+            val mappedDesc = remapper.mapDesc(field.desc)
+            val targetField = cls.fields.find { it.name == targetName && it.desc == mappedDesc }
                 ?: throw IllegalArgumentException("Could not find target field \"$targetName\" in ${cls.name}")
 
             if (originalName != null) {
