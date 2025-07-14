@@ -21,6 +21,7 @@ import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import kotlin.math.max
 
 abstract class CompatMixinTask : DefaultTask() {
 
@@ -134,7 +135,16 @@ abstract class CompatMixinTask : DefaultTask() {
             }
 
             if (method.name == "<clinit>") {
-                throw UnsupportedOperationException("Class initializer merging is not implemented.")
+                val existingMethod = cls.methods.find { it.name == "<clinit>" }
+                if (existingMethod != null) {
+                    existingMethod.maxLocals = max(existingMethod.maxLocals, method.maxLocals)
+                    existingMethod.maxStack = max(existingMethod.maxStack, method.maxStack)
+                    existingMethod.instructions.remove(existingMethod.instructions.last.also { assert(it.opcode == Opcodes.RETURN) })
+                    existingMethod.instructions.add(method.instructions)
+                } else {
+                    cls.methods.add(method)
+                }
+                continue
             }
 
             cls.methods.add(method)
