@@ -24,10 +24,15 @@ import static gg.essential.loader.stage2.Utils.hasClass;
 
 public class EssentialTransformationService implements ITransformationService {
     private static final Logger LOGGER = LogManager.getLogger(EssentialTransformationService.class);
-    private static final Map<String, String> COMPATIBILITY_IMPLEMENTATIONS = Map.of(
+    private static final Map<String, String> ML_COMPATIBILITY_IMPLEMENTATIONS = Map.of(
         "11.", "ML11CompatibilityLayer",
         "10.", "ML10CompatibilityLayer",
         "9.", "ML9CompatibilityLayer"
+    );
+    // NeoForge as of 1.21.7 has merged ModLauncher into FancyModLoader and reports the version of that instead of
+    // ModLauncher.
+    private static final Map<String, String> FMLML_COMPATIBILITY_IMPLEMENTATIONS = Map.of(
+        "9.", "ML11CompatibilityLayer"
     );
     private static CompatibilityLayer compatibilityLayer;
 
@@ -82,7 +87,13 @@ public class EssentialTransformationService implements ITransformationService {
     @SuppressWarnings("unchecked")
     private CompatibilityLayer findCompatibilityLayerImpl(String mlVersion) {
         String implementation = null;
-        for (Map.Entry<String, String> entry : COMPATIBILITY_IMPLEMENTATIONS.entrySet()) {
+        Map<String, String> impls;
+        if ("fml_loader".equals(ITransformationService.class.getModule().getName())) {
+            impls = FMLML_COMPATIBILITY_IMPLEMENTATIONS;
+        } else {
+            impls = ML_COMPATIBILITY_IMPLEMENTATIONS;
+        }
+        for (Map.Entry<String, String> entry : impls.entrySet()) {
             if (mlVersion.startsWith(entry.getKey())) {
                 implementation = entry.getValue();
                 break;
