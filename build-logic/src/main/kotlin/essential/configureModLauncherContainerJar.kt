@@ -2,10 +2,13 @@ package essential
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.file.ArchiveOperations
+import org.gradle.kotlin.dsl.support.serviceOf
 
 fun ShadowJar.configureModLauncherContainerJar(configuration: Configuration) {
     dependsOn(configuration)
-    from({ project.zipTree(configuration.singleFile) })
+    val archiveOps = project.serviceOf<ArchiveOperations>()
+    from({ archiveOps.zipTree(configuration.singleFile) })
     preserveJars()
 
     // We cannot relocate the whole package cause the stage1.jar must remain in the same place

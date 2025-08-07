@@ -7,10 +7,18 @@ import java.util.function.Supplier
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import javax.inject.Inject
 
 plugins {
     id "com.gradleup.shadow" version "8.3.9" apply false
 }
+
+interface Injected {
+    @Inject ArchiveOperations getArchiveOps()
+}
+
+def injected = objects.newInstance(Injected.class)
+def archiveOps = injected.getArchiveOps()
 
 sourceSets {
     exampleMod
@@ -121,9 +129,9 @@ def integrationTest = tasks.register("integrationTest", Test) {
 }
 check.dependsOn(integrationTest)
 
-def includeMixin(AbstractArchiveTask task, Configuration mixin) {
+def includeMixin = { AbstractArchiveTask task, Configuration mixin ->
     task.dependsOn(mixin)
-    task.from({ mixin.collect { zipTree(it) } }) {
+    task.from({ mixin.collect { archiveOps.zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
     }
 }
@@ -132,7 +140,7 @@ def configureExampleModJar = { String tweaker, Configuration mixin = null, exclu
     archiveBaseName.set(task.name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
-    from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } }) {
+    from({ configurations.exampleModRuntimeClasspath.collect { archiveOps.zipTree(it) } }) {
         if (excludes != null) {
             excludes()
         }
@@ -156,7 +164,7 @@ def configureExample2ModJar = { String tweaker, Configuration mixin = null -> re
     archiveBaseName.set(name)
     from(sourceSets.example2Mod.output)
     dependsOn(configurations.example2ModRuntimeClasspath)
-    from({ configurations.example2ModRuntimeClasspath.collect { zipTree(it) } })
+    from({ configurations.example2ModRuntimeClasspath.collect { archiveOps.zipTree(it) } })
 
     manifest {
         attributes "FMLCorePlugin": "com.example.mod2.ExampleCoreMod",
@@ -237,7 +245,7 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
 (1..5).each { i ->
     def stage2Task = tasks.register("stage2V${i}Jar", Jar) {
         archiveBaseName.set(name)
-        from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) })
+        from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile.map { archiveOps.zipTree(it) })
         manifest {
             attributes "Name": "gg/essential/loader/stage2/"
             attributes "Implementation-Version": "$i"
@@ -245,7 +253,7 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
     }
     def stage1Task = tasks.register("stage1V${i}Jar", Jar) {
         archiveBaseName.set(name)
-        from(evaluationDependsOn(':stage1:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) }) {
+        from(evaluationDependsOn(':stage1:launchwrapper').tasks.jar.archiveFile.map { archiveOps.zipTree(it) }) {
             exclude("gg/essential/loader/stage1/stage2.jar")
         }
         from(stage2Task.flatMap { it.archiveFile }) {
@@ -259,7 +267,7 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
     }
     def stage3Task = tasks.register("stage3V${i}Jar", Jar) {
         archiveBaseName.set(name)
-        from(tasks.essentialJar.archiveFile.map { zipTree(it) })
+        from(tasks.essentialJar.archiveFile.map { archiveOps.zipTree(it) })
         from(stage1Task.flatMap { it.archiveFile }) {
             into("gg/essential/loader/stage0")
             rename { "stage1.jar" }
@@ -313,7 +321,7 @@ tasks.register("essentialWithAsm52Jar", Jar) {
     includeMixin(it, configurations.mixin07)
 
     dependsOn(configurations.asm52)
-    from({ configurations.asm52.collect { zipTree(it) } })
+    from({ configurations.asm52.collect { archiveOps.zipTree(it) } })
 }
 
 tasks.register("essentialWithDummyStage1", Jar) {
@@ -348,10 +356,10 @@ tasks.register("dummyStage3Jar", Jar) {
 
 tasks.register("dummyStage3DiffJar", Jar) {
     archiveBaseName.set("dummyStage3Diff")
-    from(essentialJar.archiveFile.map { zipTree(it) }) {
+    from(essentialJar.archiveFile.map { archiveOps.zipTree(it) }) {
         into("-")
     }
-    from(dummyStage3Jar.archiveFile.map { zipTree(it) }) {
+    from(dummyStage3Jar.archiveFile.map { archiveOps.zipTree(it) }) {
         into("~")
     }
 }
@@ -361,7 +369,7 @@ tasks.register("forge10808Jar", Jar) {
 
     from(sourceSets.minecraft10808.output)
     dependsOn(configurations.forge10808Runtime)
-    from({ configurations.forge10808Runtime.collect { zipTree(it) } }) {
+    from({ configurations.forge10808Runtime.collect { archiveOps.zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
         exclude 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
@@ -373,7 +381,7 @@ tasks.register("forge11202Jar", Jar) {
 
     from(sourceSets.minecraft11202.output)
     dependsOn(configurations.forge11202Runtime)
-    from({ configurations.forge11202Runtime.collect { zipTree(it) } }) {
+    from({ configurations.forge11202Runtime.collect { archiveOps.zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
         exclude 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'

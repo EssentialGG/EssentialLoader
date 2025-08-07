@@ -1,5 +1,9 @@
 version = "1.3.0"
 
+interface Injected {
+    @javax.inject.Inject ArchiveOperations getArchiveOps()
+}
+
 configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
     apply plugin: 'maven-publish'
 
@@ -18,9 +22,12 @@ configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" 
         }
     }
 
+    def injected = objects.newInstance(Injected.class)
+    def archiveOps = injected.getArchiveOps()
+
     jar {
         dependsOn configurations.bundle
-        from { configurations.bundle.collect { zipTree(it) } }
+        from { configurations.bundle.collect { archiveOps.zipTree(it) } }
 
         from(evaluationDependsOn(":stage1:$variant").tasks.named("jar").map { it.outputs }) {
             rename { "gg/essential/loader/stage0/stage1.jar" }
