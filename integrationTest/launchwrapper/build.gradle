@@ -329,7 +329,7 @@ tasks.register("essentialWithDummyStage1", Jar) {
     from(sourceSets.essential.output)
     includeMixin(it, configurations.mixin07)
 
-    from(tasks.named("dummyStage1Jar").map { it.outputs }) {
+    from(tasks.named("dummyStage1Jar").map { it.archiveFile }) {
         rename { "gg/essential/loader/stage0/stage1.jar" }
     }
 }
