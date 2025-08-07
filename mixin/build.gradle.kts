@@ -59,7 +59,7 @@ tasks.processResources {
 val patchedJar by tasks.registering(CompatMixinTask::class) {
     mixinClasses.from(sourceSets.main.map { it.output })
     input.set(fatMixin.files.single())
-    output.set(buildDir.resolve("patched.jar"))
+    output.set(layout.buildDirectory.file("patched.jar"))
 }
 
 tasks.jar {
