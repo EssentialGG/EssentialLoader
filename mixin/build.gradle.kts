@@ -16,12 +16,6 @@ val asmVersion = "5.2"
 version = "$patchesVersion+mixin.$mixinVersion"
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(8))
 
-repositories {
-    mavenCentral()
-    maven("https://repo.spongepowered.org/repository/maven-releases/")
-    maven("https://libraries.minecraft.net")
-}
-
 val relocated = registerRelocationAttribute("essential-guava21-relocated") {
     relocate("com.google.common", "gg.essential.lib.guava21")
     relocate("com.google.thirdparty.publicsuffix", "gg.essential.lib.guava21.publicsuffix")

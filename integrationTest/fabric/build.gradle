@@ -1,9 +1,5 @@
 import java.util.function.Supplier
 
-repositories {
-    maven { url "https://maven.fabricmc.net/" }
-}
-
 sourceSets {
     exampleMod
     essential

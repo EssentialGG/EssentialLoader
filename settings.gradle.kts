@@ -9,6 +9,18 @@ pluginManagement {
     }
 }
 
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.PREFER_SETTINGS
+    repositories {
+        mavenCentral()
+        maven(url = "https://maven.fabricmc.net/")
+        maven(url = "https://repo.spongepowered.org/maven")
+        maven(url = "https://maven.neoforged.net/releases")
+        maven(url = "https://maven.minecraftforge.net/")
+        maven(url = "https://libraries.minecraft.net/")
+    }
+}
+
 includeBuild("build-logic")
 
 include(":container:fabric")

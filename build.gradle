@@ -19,11 +19,6 @@ subprojects {
             "modlauncher11": 21,
     ]
     java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersions.getOrDefault(project.name, 8)))
-
-    repositories {
-        mavenCentral()
-        maven { url "https://libraries.minecraft.net/" }
-    }
 }
 
 allprojects {

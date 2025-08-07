@@ -12,11 +12,6 @@ plugins {
     id "com.gradleup.shadow" version "8.3.9" apply false
 }
 
-repositories {
-    maven { url "https://maven.minecraftforge.net/" }
-    maven { url "https://repo.spongepowered.org/maven" }
-}
-
 sourceSets {
     exampleMod
     example2Mod

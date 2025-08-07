@@ -1,7 +1,3 @@
-repositories {
-    maven { url "https://maven.minecraftforge.net/" }
-}
-
 dependencies {
     compileOnly(parent.project("compatibility"))
 

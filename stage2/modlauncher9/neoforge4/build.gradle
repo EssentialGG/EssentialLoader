@@ -1,7 +1,3 @@
-repositories {
-    maven { url "https://maven.neoforged.net/releases" }
-}
-
 dependencies {
     compileOnly(parent.project("compatibility"))
     compileOnly(parent.project("neoforge1"))

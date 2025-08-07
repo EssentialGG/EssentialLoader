@@ -1,7 +1,3 @@
-repositories {
-    maven { url "https://maven.fabricmc.net/" }
-}
-
 dependencies {
     compileOnly("net.fabricmc:fabric-loader:0.11.6")
     compileOnly("net.fabricmc:sponge-mixin:0.9.4+mixin.0.8.2")
