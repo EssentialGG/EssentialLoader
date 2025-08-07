@@ -38,12 +38,12 @@ configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" 
         repositories {
             if (project.hasProperty("nexus_user")) {
                 maven {
-                    name 'nexus'
-                    url "https://repo.essential.gg/repository/maven-releases/"
+                    name = "nexus"
+                    url = "https://repo.essential.gg/repository/maven-releases/"
 
                     credentials {
-                        username project.nexus_user
-                        password project.nexus_password
+                        username = project.nexus_user
+                        password = project.nexus_password
                     }
                 }
             }
