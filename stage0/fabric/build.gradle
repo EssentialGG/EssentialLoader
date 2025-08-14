@@ -5,6 +5,7 @@ dependencies {
 }
 
 tasks.named("processResources") {
+    def version = version
     inputs.property("version", version)
     filesMatching("fabric.mod.json") {
         expand("version": version)
