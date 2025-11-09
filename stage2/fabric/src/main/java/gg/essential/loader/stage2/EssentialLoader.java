@@ -347,10 +347,26 @@ public class EssentialLoader extends EssentialLoaderBase {
             }
         }
 
+        private Class<?> findFabricLoaderClass(FabricLoader fabricLoader) throws ClassNotFoundException {
+            Class<?> clazz = fabricLoader.getClass();
+            while (clazz != null) {
+                try {
+                    clazz.getDeclaredField("modMap");
+                    clazz.getDeclaredField("mods");
+                    clazz.getDeclaredField("entrypointStorage");
+                    clazz.getDeclaredField("adapterMap");
+                    return clazz;
+                } catch (NoSuchFieldException ignored) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            throw new ClassNotFoundException("Could not find the required fields [modMap, mods, entrypointStorage, adapterMap] anywhere in the class hierarchy of FabricLoader.getInstance()");
+        }
+
         @SuppressWarnings("unchecked")
         private void injectFakeMod(final Path path, final URL url, final ModMetadata metadata) throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException, ClassNotFoundException, InstantiationException {
             FabricLoader fabricLoader = FabricLoader.getInstance();
-            Class<? extends FabricLoader> fabricLoaderClass = fabricLoader.getClass();
+            Class<?> fabricLoaderClass = findFabricLoaderClass(fabricLoader);
             Class<?> ModContainerImpl;
             try {
                 // fabric-loader 0.12
