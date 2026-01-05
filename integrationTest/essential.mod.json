@@ -1,0 +1,7 @@
+{
+  "id": "${id}",
+  "version": "${version}",
+  "jars": [
+    ${jars.get()}
+  ]
+}

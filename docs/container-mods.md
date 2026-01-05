@@ -109,6 +109,8 @@ overridePinnedVersion=1.2.0.12
 ## Pinning stage2
 
 Stage2 can be pinned as well.
+(But only on Fabric and ModLauncher. On LaunchWrapper the stage2 jar is already included in the stage1 jar and cannot
+be updated independently.)
 
 Instead of an `essential-loader.properties` file at the root of the container mod, the file must be placed at
 `gg/essential/loader/stage1/stage2.properties`.

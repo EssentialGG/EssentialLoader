@@ -107,10 +107,12 @@ dependencies {
 
     essentialCompileOnly(launchwrapper)
     essentialCompileOnly(forge)
+    essentialCompileOnly(sourceSets.minecraft10808.output)
 
     dummyStage1CompileOnly(launchwrapper)
     dummyStage2CompileOnly(launchwrapper)
     dummyStage3CompileOnly(launchwrapper)
+    dummyStage3CompileOnly(sourceSets.minecraft10808.output)
 }
 
 def integrationTest = tasks.register("integrationTest", Test) {
@@ -131,11 +133,15 @@ def includeMixin(AbstractArchiveTask task, Configuration mixin) {
     }
 }
 
-def configureExampleModJar = { String tweaker, Configuration mixin = null -> return { AbstractArchiveTask task ->
+def configureExampleModJar = { String tweaker, Configuration mixin = null, excludes = null -> return { AbstractArchiveTask task ->
     archiveBaseName.set(task.name)
     from(sourceSets.exampleMod.output)
     dependsOn(configurations.exampleModRuntimeClasspath)
-    from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } })
+    from({ configurations.exampleModRuntimeClasspath.collect { zipTree(it) } }) {
+        if (excludes != null) {
+            excludes()
+        }
+    }
 
     manifest {
         attributes "FMLCorePlugin": "com.example.mod.ExampleCoreMod",
@@ -190,6 +196,42 @@ tasks.register("example2ModEssentialTweakerWithMixin08Jar", Jar, configureExampl
 tasks.register("exampleModMixinTweakerWithMixin08Jar", Jar, configureExampleModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 tasks.register("example2ModMixinTweakerWithMixin08Jar", Jar, configureExample2ModJar("org.spongepowered.asm.launch.MixinTweaker", configurations.mixin08))
 
+tasks.register("exampleModWithOurMixinJar", Jar) {
+    def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+    configure.delegate = delegate
+    configure(it)
+
+    def jij = configurations.detachedConfiguration(
+        dependencies.create(project(":mixin")),
+    )
+    dependsOn(jij)
+    from(jij.files) {
+        into("META-INF/jars")
+    }
+    def expansions = [
+        "id": "examplemod",
+        "version": "1.0.0",
+        "jars": provider {
+            jij.resolvedConfiguration.resolvedArtifacts.collect { artifact ->
+                def id = artifact.moduleVersion.id
+                """
+                {
+                    "id": "${id.group}:${id.name}",
+                    "version": "${id.version}",
+                    "file": "META-INF/jars/${artifact.file.name}"
+                }
+            """.stripIndent()
+            }.join(",\n")
+        },
+    ]
+    inputs.property("expansions", expansions)
+    from(file("../essential.mod.json")) {
+        expand(expansions)
+    }
+
+    manifest.attributes "MixinConfigs": "examplemod.mixins.json,examplemod.init.mixins.json"
+}
+
 tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
     configure.delegate = delegate
@@ -201,40 +243,50 @@ tasks.register("exampleRelocatedModJar", com.github.jengelman.gradle.plugins.sha
     def stage2Task = tasks.register("stage2V${i}Jar", Jar) {
         archiveBaseName.set(name)
         from(evaluationDependsOn(':stage2:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) })
-        // Dummy attribute so they all have different hashes
         manifest {
+            attributes "Name": "gg/essential/loader/stage2/"
             attributes "Implementation-Version": "$i"
+        }
+    }
+    def stage1Task = tasks.register("stage1V${i}Jar", Jar) {
+        archiveBaseName.set(name)
+        from(evaluationDependsOn(':stage1:launchwrapper').tasks.jar.archiveFile.map { zipTree(it) }) {
+            exclude("gg/essential/loader/stage1/stage2.jar")
+        }
+        from(stage2Task.flatMap { it.archiveFile }) {
+            into("gg/essential/loader/stage1")
+            rename { "stage2.jar" }
+        }
+        manifest {
+            attributes("Name": "gg/essential/loader/stage1/")
+            attributes "Implementation-Version": "${i}"
         }
     }
     def stage3Task = tasks.register("stage3V${i}Jar", Jar) {
         archiveBaseName.set(name)
         from(tasks.essentialJar.archiveFile.map { zipTree(it) })
-        manifest {
-            // Dummy attribute so they all have different hashes
-            attributes "Implementation-Version": "$i"
-            // For stage3 version 4+, we add an explicit requirement on stage2 version 4
-            if (i >= 4) {
-                attributes "Requires-Essential-Stage2-Version": "4"
-            }
+        from(stage1Task.flatMap { it.archiveFile }) {
+            into("gg/essential/loader/stage0")
+            rename { "stage1.jar" }
         }
     }
     tasks.register("exampleBundledModJar$i", Jar) {
-        def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker")
+        def configure = configureExampleModJar("com.example.mod.tweaker.ExampleModTweaker", null, {
+            exclude("gg/essential/loader/stage0/stage1.jar")
+        })
         configure.delegate = delegate
         configure(it)
 
-        def stage2Jar = stage2Task.get().archiveFile
-        def stage3Jar = stage3Task.get().archiveFile
-        from(stage2Jar) {
-            rename { "bundled-stage2-${i}.jar" }
+        from(stage1Task.flatMap { it.archiveFile }) {
+            into("gg/essential/loader/stage0")
+            rename { "stage1.jar" }
         }
+
+        def stage3Jar = stage3Task.get().archiveFile
         from(stage3Jar) {
             rename { "bundled-essential-${i}.jar" }
         }
-        from(file("essential-loader-stage2.properties")) {
-            expand(["pinnedFileMd5": { stage2Jar.get().asFile.bytes.md5() }, version: i])
-        }
-        from(file("essential-loader.properties")) {
+        from(file("../essential-loader.properties")) {
             expand(["pinnedFileMd5": { stage3Jar.get().asFile.bytes.md5() }, "version": i])
         }
     }
@@ -267,6 +319,16 @@ tasks.register("essentialWithAsm52Jar", Jar) {
 
     dependsOn(configurations.asm52)
     from({ configurations.asm52.collect { zipTree(it) } })
+}
+
+tasks.register("essentialWithDummyStage1", Jar) {
+    archiveBaseName.set("essential-with-dummy-stage1")
+    from(sourceSets.essential.output)
+    includeMixin(it, configurations.mixin07)
+
+    from(tasks.named("dummyStage1Jar").map { it.outputs }) {
+        rename { "gg/essential/loader/stage0/stage1.jar" }
+    }
 }
 
 tasks.register("dummyStage1Jar", Jar) {
@@ -306,6 +368,7 @@ tasks.register("forge10808Jar", Jar) {
     dependsOn(configurations.forge10808Runtime)
     from({ configurations.forge10808Runtime.collect { zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        exclude 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
     }
 }
@@ -317,6 +380,7 @@ tasks.register("forge11202Jar", Jar) {
     dependsOn(configurations.forge11202Runtime)
     from({ configurations.forge11202Runtime.collect { zipTree(it) } }) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+        exclude 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat'
         exclude 'net/minecraftforge/fml/common/launcher/TerminalTweaker.class'
     }
 }
@@ -426,6 +490,8 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.exampleModMixinTweakerWithMixin08Jar.archiveFile, "example:mod", "mixin-tweaker-with-mixin-08")
     mod(tasks.example2ModMixinTweakerWithMixin08Jar.archiveFile, "example:mod2", "mixin-tweaker-with-mixin-08")
 
+    mod(tasks.exampleModWithOurMixinJar.archiveFile, "example:mod", "stable-with-our-mixin")
+
     mod(tasks.exampleRelocatedModJar.archiveFile, "example:mod", "relocated")
     (1..5).each { i ->
         mod(tasks.named("exampleBundledModJar$i").map { it.archiveFile }, "example:mod", "bundled-$i")
@@ -439,6 +505,7 @@ tasks.register("setupDownloadsApi", Sync) {
     mod(tasks.essentialJar.archiveFile, "essential:essential", "stable")
     mod(tasks.essentialWithMixin08Jar.archiveFile, "essential:essential", "mixin-08")
     mod(tasks.essentialWithAsm52Jar.archiveFile, "essential:essential", "asm-52")
+    mod(tasks.essentialWithDummyStage1.archiveFile, "essential:essential", "with-dummy-stage1")
     mod(provider { configurations.mixin07.singleFile }, "essential:mixin", "07")
     mod(evaluationDependsOn(':stage0:launchwrapper').tasks.jar.archiveFile, "essential:loader-stage0", "stable")
     mod(tasks.dummyStage1Jar.archiveFile, "essential:loader-stage1", "dummy")

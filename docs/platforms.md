@@ -61,8 +61,8 @@ and re-launch Minecraft in there, this time with more recent versions of certain
 the inner LaunchWrapper that would otherwise not be possible to make.
 
 Relaunching is always required on 1.8.9 because the default ASM library is too old for what Mixin 0.8 needs.
-On 1.12.2 we can get away without relaunching as long as there is no other mod that pulls in an older version of one of
-our libs (Kotlin being a frequent example).
+On 1.12.2 we could get away without relaunching as long as there is no other mod that pulls in an older version of one
+of our libs (Kotlin being a frequent example), but for simplicity we'll simply always relaunch there as well.
 
 #### Others
 There are numerous other hacks used on this platform. For now, refer to the code.

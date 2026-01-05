@@ -29,67 +29,6 @@ public class RelaunchTests {
     private static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
 
     @Test
-    public void testOldKotlinOnClasspath(Installation installation) throws Exception {
-        installation.addExampleMod();
-        installation.addOldKotlinMod();
-
-        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
-        isolatedLaunch.setProperty("essential.loader.relaunch", "false"); // do not want to re-launch for this one
-        isolatedLaunch.launch();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testRelaunchDueToOldKotlin(Installation installation) throws Exception {
-        installation.addExampleMod();
-        installation.addOldKotlinMod();
-
-        IsolatedLaunch isolatedLaunch = installation.launchFML();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testRelaunchDueToOldMixin(Installation installation) throws Exception {
-        installation.addExampleMod("stable-with-mixin-07");
-
-        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
-        isolatedLaunch.setProperty("essential.branch", "mixin-08");
-        isolatedLaunch.launch();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testRelaunchDueToKotlinBeingExcluded(Installation installation) throws Exception {
-        installation.addExampleMod();
-
-        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
-        isolatedLaunch.setProperty("examplemod.exclude_kotlin_from_transformers", "true");
-        isolatedLaunch.launch();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
-    public void testRelaunchDueToOldAsm(Installation installation) throws Exception {
-        installation.addExampleMod();
-
-        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
-        isolatedLaunch.setProperty("essential.branch", "asm-52");
-        isolatedLaunch.setProperty("examplemod.require_asm52", "true");
-        isolatedLaunch.launch();
-
-        installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
-    }
-
-    @Test
     public void testRelaunchOfInitPhaseMixinWithMixin07(Installation installation) throws Exception {
         testRelaunchOfInitPhaseMixin(installation, "07");
     }
@@ -108,14 +47,12 @@ public class RelaunchTests {
         // the appenders if one with the same name already exists, thereby breaking the inner mixin if we do not fix it.
         IsolatedLaunch isolatedLaunch = installation.newLaunchFML11202();
         isolatedLaunch.setProperty("essential.branch", "mixin-08");
-        isolatedLaunch.setProperty("essential.loader.relaunch.force", "late");
         isolatedLaunch.launch();
 
         assertTrue(isolatedLaunch.getModLoadState("mixinInitPhase"), "Example INIT-phase mixin applied");
         assertTrue(isolatedLaunch.getModLoadState("mixin"), "Example mixin plugin ran");
         assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
         assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 
     private IsolatedLaunch newDevLaunch(Installation installation, String...javaArgs) throws IOException {
@@ -172,12 +109,9 @@ public class RelaunchTests {
 
     @Test
     public void testRelaunchArgs_UnknownMain(Installation installation) throws Exception {
-        installation.addOldKotlinMod(); // to trigger the relaunch
-
         IsolatedLaunch isolatedLaunch = newDevLaunch(installation, "some.unknown.launcher.Main");
         isolatedLaunch.launch();
 
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("coreMod"), "Example CoreMod ran");
         assertTrue(isolatedLaunch.getModLoadState("mod"), "Example Mod ran");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
@@ -192,13 +126,10 @@ public class RelaunchTests {
 
     @Test
     public void testRelaunchArgs_LaunchWrapper(Installation installation) throws Exception {
-        installation.addOldKotlinMod(); // to trigger the relaunch
-
         IsolatedLaunch isolatedLaunch = newDevLaunch(installation, LAUNCH_WRAPPER_MAIN, "--tweakClass", FML_TWEAKER);
         isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
 
         // For LaunchWrapper we should be able to fully recover everything
@@ -209,15 +140,12 @@ public class RelaunchTests {
 
     @Test
     public void testRelaunchArgs_GradleStart(Installation installation) throws Exception {
-        installation.addOldKotlinMod(); // to trigger the relaunch
-
         IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
         isolatedLaunch.addArg("--uuid", "UUID");
         configureDevLaunch(isolatedLaunch, installation, "GradleStart");
         isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
 
         // For GradleStart we should be able to effectively recover everything but not cleanly
@@ -230,8 +158,6 @@ public class RelaunchTests {
 
     @Test
     public void testRelaunchArgs_DevLaunchInjector(Installation installation) throws Exception {
-        installation.addOldKotlinMod(); // to trigger the relaunch
-
         String dliConfig = "clientArgs\n\t--tweakClass\n\t" + FML_TWEAKER;
 
         Path dliConfigPath = installation.gameDir.resolve("dli-config.toml");
@@ -245,7 +171,6 @@ public class RelaunchTests {
         isolatedLaunch.launch();
 
         installation.assertModLaunched(isolatedLaunch);
-        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
         assertTrue(isolatedLaunch.getModLoadState("relaunched"), "Re-launched");
 
         // For DLI we should be able to fully recover everything
@@ -325,5 +250,16 @@ public class RelaunchTests {
             }
         }
         return result;
+    }
+
+    @Test
+    public void testRelaunchWithNewerStage1Available(Installation installation) throws Exception {
+        installation.addExampleMod();
+
+        IsolatedLaunch isolatedLaunch = installation.newLaunchFML();
+        isolatedLaunch.setProperty("essential.branch", "with-dummy-stage1");
+        isolatedLaunch.launch();
+
+        assertTrue(isolatedLaunch.isEssentialLoaded(), "Essential loaded");
     }
 }

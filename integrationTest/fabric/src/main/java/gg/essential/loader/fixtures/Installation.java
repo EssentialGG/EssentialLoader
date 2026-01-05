@@ -24,6 +24,10 @@ public class Installation extends BaseInstallation {
         }
     }
 
+    public final Path stage1Folder = essentialDir.resolve("loader").resolve("stage1").resolve("fabric");
+    public final Path stage1ConfigFile = stage1Folder.resolve("stage2.fabric_1.14.4.properties");
+    public final Path stage2ConfigFile = essentialDir.resolve("essential-loader.properties");
+
     public Installation() throws IOException {
         // Current fabric-loader breaks on LegacyLauncher if there is a JiJ mod and MC needs to be decompiled, so we
         // launch once without any mods to get the decompiled MC and can the proceed as usual.
