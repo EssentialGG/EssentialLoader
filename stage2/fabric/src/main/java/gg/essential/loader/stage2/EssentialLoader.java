@@ -349,6 +349,7 @@ public class EssentialLoader extends EssentialLoaderBase {
 
         private Class<?> findFabricLoaderClass(FabricLoader fabricLoader) throws ClassNotFoundException {
             Class<?> clazz = fabricLoader.getClass();
+            Exception ex = null;
             while (clazz != null) {
                 try {
                     clazz.getDeclaredField("modMap");
@@ -356,11 +357,14 @@ public class EssentialLoader extends EssentialLoaderBase {
                     clazz.getDeclaredField("entrypointStorage");
                     clazz.getDeclaredField("adapterMap");
                     return clazz;
-                } catch (NoSuchFieldException ignored) {
+                } catch (NoSuchFieldException e) {
+                    if (ex == null) ex = e;
+                    else ex.addSuppressed(e); // Accumulate exceptions to provide more context
+
                     clazz = clazz.getSuperclass();
                 }
             }
-            throw new ClassNotFoundException("Could not find the required fields [modMap, mods, entrypointStorage, adapterMap] anywhere in the class hierarchy of FabricLoader.getInstance()");
+            throw new ClassNotFoundException("Could not find the required fields [modMap, mods, entrypointStorage, adapterMap] anywhere in the class hierarchy of FabricLoader.getInstance()", ex);
         }
 
         @SuppressWarnings("unchecked")
