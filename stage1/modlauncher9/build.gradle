@@ -1,7 +1,3 @@
-repositories {
-    maven { url "https://maven.minecraftforge.net/" }
-}
-
 dependencies {
     compileOnly("cpw.mods:modlauncher:9.0.7")
     // modlauncher uses these in its api but does not declare them as such

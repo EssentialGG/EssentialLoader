@@ -1,7 +1,3 @@
-repositories {
-    maven { url "https://maven.minecraftforge.net/" }
-}
-
 dependencies {
     bundle(implementation(project("compatibility")))
     bundle(project("forge37"))

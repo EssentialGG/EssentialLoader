@@ -1,6 +1,8 @@
 import essential.CompatMixinTask
 import gg.essential.gradle.util.prebundle
 import gg.essential.gradle.util.RelocationTransform.Companion.registerRelocationAttribute
+import org.gradle.api.file.ArchiveOperations
+import org.gradle.kotlin.dsl.support.serviceOf
 
 plugins {
     id("java-library")
@@ -15,12 +17,6 @@ val asmVersion = "5.2"
 
 version = "$patchesVersion+mixin.$mixinVersion"
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(8))
-
-repositories {
-    mavenCentral()
-    maven("https://repo.spongepowered.org/repository/maven-releases/")
-    maven("https://libraries.minecraft.net")
-}
 
 val relocated = registerRelocationAttribute("essential-guava21-relocated") {
     relocate("com.google.common", "gg.essential.lib.guava21")
@@ -63,11 +59,12 @@ tasks.processResources {
 val patchedJar by tasks.registering(CompatMixinTask::class) {
     mixinClasses.from(sourceSets.main.map { it.output })
     input.set(fatMixin.files.single())
-    output.set(buildDir.resolve("patched.jar"))
+    output.set(layout.buildDirectory.file("patched.jar"))
 }
 
 tasks.jar {
-    from(patchedJar.flatMap { it.output }.map { zipTree(it) }) {
+    val archiveOps = project.serviceOf<ArchiveOperations>()
+    from(patchedJar.flatMap { it.output }.map { archiveOps.zipTree(it) }) {
         // Signatures were invalidated by patching
         exclude("META-INF/*.RSA", "META-INF/*.SF", "META-INF/*.DSA")
         // Legacy Forge chokes on these (and they are useless for it anyway cause it only supports Java 8)

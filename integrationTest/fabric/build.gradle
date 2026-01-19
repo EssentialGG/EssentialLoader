@@ -1,8 +1,12 @@
 import java.util.function.Supplier
+import javax.inject.Inject
 
-repositories {
-    maven { url "https://maven.fabricmc.net/" }
+interface Injected {
+    @Inject ArchiveOperations getArchiveOps()
 }
+
+def injected = objects.newInstance(Injected.class)
+def archiveOps = injected.getArchiveOps()
 
 sourceSets {
     exampleMod
@@ -151,7 +155,7 @@ tasks.register("essentialJijijJar", Jar) {
 (1..5).each { i ->
     def stage2Task = tasks.register("stage2V${i}Jar", Jar) {
         archiveBaseName.set(name)
-        from(evaluationDependsOn(':stage2:fabric').tasks.jar.archiveFile.map { zipTree(it) })
+        from(evaluationDependsOn(':stage2:fabric').tasks.jar.archiveFile.map { archiveOps.zipTree(it) })
         // Dummy attribute so they all have different hashes
         manifest {
             attributes "Implementation-Version": "$i"
@@ -159,7 +163,7 @@ tasks.register("essentialJijijJar", Jar) {
     }
     def stage3Task = tasks.register("stage3V${i}Jar", Jar) {
         archiveBaseName.set(name)
-        from(tasks.essentialJar.archiveFile.map { zipTree(it) })
+        from(tasks.essentialJar.archiveFile.map { archiveOps.zipTree(it) })
         manifest {
             // Dummy attribute so they all have different hashes
             attributes "Implementation-Version": "$i"
@@ -171,7 +175,7 @@ tasks.register("essentialJijijJar", Jar) {
     }
     tasks.register("exampleBundledModJar$i", Jar) {
         archiveBaseName.set(name)
-        from(tasks.exampleModJar.archiveFile.map { zipTree(it) })
+        from(tasks.exampleModJar.archiveFile.map { archiveOps.zipTree(it) })
 
         def stage2Jar = stage2Task.get().archiveFile
         def stage3Jar = stage3Task.get().archiveFile

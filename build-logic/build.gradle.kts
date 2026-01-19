@@ -7,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    api("gradle.plugin.com.github.johnrengelman:shadow:7.1.2")
+    api("com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:8.3.9")
 
     implementation("org.ow2.asm:asm-commons:9.3")
 }

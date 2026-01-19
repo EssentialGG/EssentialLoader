@@ -10,7 +10,7 @@ dependencies {
 }
 
 val jar by tasks.registering(Jar::class) {
-    destinationDirectory.set(project.buildDir.resolve("libs"))
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
     archiveBaseName.set("container-${project.name}")
 
     dependsOn(stage0)
