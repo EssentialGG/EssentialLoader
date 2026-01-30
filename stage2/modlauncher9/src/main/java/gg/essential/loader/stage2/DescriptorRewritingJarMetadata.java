@@ -6,12 +6,17 @@ import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.util.Lazy;
 
 import java.lang.module.ModuleDescriptor;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Re-creates the {@link #descriptor()} with an updated {@link SecureJar#getPackages() package list}.
  * This is needed when one adds classes (even internal ones) to a {@link SecureJar} in previously non-existent packages
  * because the module system needs to know about all packages because ModLauncher will use that package list to build
  * a lookup table.
+ * Also updates the provided services with the ones from the new meta.
  */
 public class DescriptorRewritingJarMetadata implements JarMetadata {
     private final JarMetadata delegate;
@@ -47,7 +52,13 @@ public class DescriptorRewritingJarMetadata implements JarMetadata {
                 }
                 org.uses().forEach(builder::uses);
             }
-            org.provides().forEach(builder::provides);
+            Map<String, List<String>> orgProvides = org.provides()
+                .stream().collect(Collectors.toMap(ModuleDescriptor.Provides::service, ModuleDescriptor.Provides::providers));
+            Map<String, List<String>> newProvides = newPkgsMeta.descriptor().provides()
+                .stream().collect(Collectors.toMap(ModuleDescriptor.Provides::service, ModuleDescriptor.Provides::providers));
+            Map<String, List<String>> mergedProvides = new HashMap<>(orgProvides);
+            mergedProvides.putAll(newProvides);
+            mergedProvides.forEach(builder::provides);
             org.mainClass().ifPresent(builder::mainClass);
             this.descriptor = builder.build();
         }
