@@ -1,4 +1,4 @@
-version = "11"
+version = "12"
 
 configure(subprojects.findAll { it.name != "common" && it.name != "modlauncher" }) {
     version = parent.version
