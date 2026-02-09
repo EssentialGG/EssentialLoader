@@ -24,6 +24,7 @@ import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -369,9 +370,15 @@ public class Loader {
         if (spec.has("file")) {
             String file = spec.getAsJsonPrimitive("file").getAsString();
             Path path;
-            if (file.startsWith("/")) {
+            try {
                 path = FileSystems.getDefault().getPath(file);
-            } else {
+                if (!path.isAbsolute()) {
+                    path = null;
+                }
+            } catch (InvalidPathException e) {
+                path = null;
+            }
+            if (path == null) {
                 try (FileSystem fileSystem = FileSystems.newFileSystem(outerJar.path, (ClassLoader) null)) {
                     Path innerJar = fileSystem.getPath(file);
                     String name = innerJar.getFileName().toString();
