@@ -44,7 +44,10 @@ abstract class CompatMixinTask : DefaultTask() {
         )
 
         val mixins = mutableMapOf<String, MutableList<Mixin>>()
-        for (classFile in this.mixinClasses.asFileTree.files) {
+        val mixinClassFiles = this.mixinClasses.asFileTree.files
+            // Sort to get reproducible results (otherwise it depends on file-system iteration order)
+            .sortedBy { it.toString() }
+        for (classFile in mixinClassFiles) {
             if (classFile.extension != "class") {
                 continue
             }
