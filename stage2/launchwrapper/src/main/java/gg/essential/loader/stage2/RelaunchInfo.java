@@ -2,10 +2,12 @@ package gg.essential.loader.stage2;
 
 import com.google.gson.Gson;
 
+import java.util.List;
 import java.util.Set;
 
 class RelaunchInfo {
     public Set<String> loadedIds;
+    public List<String> extraMods;
 
     private static String PROPERTY = "gg.essential.loader.stage2.relaunch-info";
 
