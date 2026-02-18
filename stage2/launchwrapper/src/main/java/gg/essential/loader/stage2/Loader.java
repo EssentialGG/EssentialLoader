@@ -117,10 +117,16 @@ public class Loader {
     }
 
     private void relaunch(List<JarInfo> jars) {
+        List<URL> loadedByForge = Launch.classLoader.getSources();
+
         RelaunchInfo relaunchInfo = new RelaunchInfo();
         relaunchInfo.loadedIds = jars.stream()
             .map(it -> it.id)
             .collect(Collectors.toSet());
+        relaunchInfo.extraMods = jars.stream()
+            .filter(it -> !loadedByForge.contains(it.url()))
+            .map(it -> it.path.toAbsolutePath().toString())
+            .collect(Collectors.toList());
         RelaunchInfo.put(relaunchInfo);
 
         Set<URL> priorityClassPath = new LinkedHashSet<>();
@@ -132,23 +138,7 @@ public class Loader {
             priorityClassPath.add(jarInfo.url());
         }
 
-        List<URL> loadedByForge = Launch.classLoader.getSources();
-        String extraMods = jars.stream()
-            .filter(it -> !loadedByForge.contains(it.url()))
-            .map(it -> minecraftHome.relativize(it.path).toString())
-            .collect(Collectors.joining(","));
-
-        Consumer<List<String>> modifyArgsForExtraMods = extraMods.isEmpty() ? arg -> {} : args -> {
-            int index = args.indexOf("--mods");
-            if (index == -1) {
-                args.add("--mods");
-                args.add(extraMods);
-            } else {
-                args.set(index + 1, extraMods + "," + args.get(index + 1));
-            }
-        };
-
-        Relaunch.relaunch(priorityClassPath, modifyArgsForExtraMods);
+        Relaunch.relaunch(priorityClassPath);
         throw new AssertionError("relaunch should not return");
     }
 

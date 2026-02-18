@@ -24,6 +24,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 
@@ -185,6 +186,24 @@ public class RelaunchedLoader {
         ITransformerProvider transformers = MixinService.getService().getTransformerProvider();
         if (transformers != null) {
             transformers.addTransformerExclusion(name);
+        }
+    }
+
+    @SuppressWarnings("unused") // called via ASM, see RelaunchTransformer
+    public static void injectExtraMods(Map<String, File> forgeExtraModsMap) {
+        RelaunchInfo relaunchInfo = RelaunchInfo.get();
+        assert(relaunchInfo != null);
+        for (String extraMod : relaunchInfo.extraMods) {
+            forgeExtraModsMap.put(extraMod, new File(extraMod));
+        }
+    }
+
+    @SuppressWarnings("unused") // called via ASM, see RelaunchTransformer
+    public static void injectExtraMods(List<File> forgeExtraModsList) {
+        RelaunchInfo relaunchInfo = RelaunchInfo.get();
+        assert(relaunchInfo != null);
+        for (String extraMod : relaunchInfo.extraMods) {
+            forgeExtraModsList.add(new File(extraMod));
         }
     }
 

@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
@@ -32,7 +31,7 @@ public class Relaunch {
 
     private static final String HAPPENED_PROPERTY = "essential.loader.relaunched";
 
-    public static void relaunch(Set<URL> prioritizedUrls, Consumer<List<String>> modifyArgs) {
+    public static void relaunch(Set<URL> prioritizedUrls) {
         LOGGER.warn("");
         LOGGER.warn("");
         LOGGER.warn("");
@@ -79,7 +78,6 @@ public class Relaunch {
             Launch.blackboard.put("gg.essential.loader.stage2.relaunchClassLoader", relaunchClassLoader);
 
             List<String> args = new ArrayList<>(LaunchArgs.guessLaunchArgs());
-            modifyArgs.accept(args);
             String main = args.remove(0);
 
             Class<?> innerLaunch = Class.forName(main, false, relaunchClassLoader);

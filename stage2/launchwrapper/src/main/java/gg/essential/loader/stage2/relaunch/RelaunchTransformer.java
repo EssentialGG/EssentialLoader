@@ -5,6 +5,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -59,6 +60,51 @@ public class RelaunchTransformer implements BiFunction<String, byte[], byte[]> {
                     method.maxStack = 3;
                     method.localVariables.clear();
                     method.tryCatchBlocks.clear();
+                }
+            }
+            ClassWriter classWriter = new ClassWriter(Opcodes.ASM5);
+            classNode.accept(classWriter);
+            return classWriter.toByteArray();
+        }
+
+        // Inject extra mods which EssentialLoader has discovered outside the mod directory (e.g. Loader extracts
+        // nested jars into the temporary files folder). If such jars contain mods/tweakers, Forge needs to explicitly
+        // be told about them so it can load those mods/tweakers.
+        // This should behave exactly like the `--mods` program argument which Forge adds (except that one is limited
+        // to paths relative to the game directory, and such relative paths cannot be created on Windows when temp files
+        // and game folder are on different drives).
+        // ModListHelper is used on 1.8.9 and older 1.12.2 versions
+        // LibraryManager is used on newer 1.12.2 versions
+        if (name.equals("net.minecraftforge.fml.relauncher.ModListHelper")) {
+            ClassNode classNode = new ClassNode(Opcodes.ASM5);
+            new ClassReader(bytes).accept(classNode, 0);
+            for (MethodNode method : classNode.methods) {
+                if ("parseModList".equals(method.name)) {
+                    InsnList instructions = method.instructions;
+                    AbstractInsnNode ret = instructions.getLast();
+                    while (ret.getOpcode() != Opcodes.RETURN) {
+                        ret = ret.getPrevious();
+                    }
+                    instructions.insertBefore(ret, new FieldInsnNode(Opcodes.GETSTATIC, classNode.name, "additionalMods", "Ljava/util/Map;"));
+                    instructions.insertBefore(ret, new MethodInsnNode(Opcodes.INVOKESTATIC, "gg/essential/loader/stage2/RelaunchedLoader", "injectExtraMods", "(Ljava/util/Map;)V", false));
+                }
+            }
+            ClassWriter classWriter = new ClassWriter(Opcodes.ASM5);
+            classNode.accept(classWriter);
+            return classWriter.toByteArray();
+        }
+        if (name.equals("net.minecraftforge.fml.relauncher.libraries.LibraryManager")) {
+            ClassNode classNode = new ClassNode(Opcodes.ASM5);
+            new ClassReader(bytes).accept(classNode, 0);
+            for (MethodNode method : classNode.methods) {
+                if ("gatherLegacyCanidates"/*sic*/.equals(method.name)) {
+                    InsnList instructions = method.instructions;
+                    AbstractInsnNode ret = instructions.getLast();
+                    while (ret.getOpcode() != Opcodes.ARETURN) {
+                        ret = ret.getPrevious();
+                    }
+                    instructions.insertBefore(ret, new InsnNode(Opcodes.DUP));
+                    instructions.insertBefore(ret, new MethodInsnNode(Opcodes.INVOKESTATIC, "gg/essential/loader/stage2/RelaunchedLoader", "injectExtraMods", "(Ljava/util/List;)V", false));
                 }
             }
             ClassWriter classWriter = new ClassWriter(Opcodes.ASM5);
