@@ -18,7 +18,7 @@ val embed by configurations.creating
 configurations.implementation.get().extendsFrom(embed)
 
 dependencies {
-    embed("gg.essential:loader-launchwrapper:1.3.0")
+    embed("gg.essential:loader-launchwrapper:1.3.2")
 }
 
 tasks.jar {
@@ -106,7 +106,7 @@ it would be done with stock Mixin 0.8.x or 0.7.10, Essential Loader only affects
 add it as a jar-in-jar dependency:
 ```kotlin
 dependencies {
-    jij("gg.essential:mixin:0.1.0+mixin.0.8.4")
+    jij("gg.essential:mixin:0.2.0+mixin.0.8.7")
 
     // MixinExtras may be added in the same way:
     // Essential Loader will automatically initialize it for you, no need to call `MixinExtrasBootstrap`.
