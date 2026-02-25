@@ -11,8 +11,8 @@ plugins {
     id("essential.build-logic")
 }
 
-val patchesVersion = "0.1.0"
-val mixinVersion = "0.8.4"
+val patchesVersion = "0.2.0"
+val mixinVersion = "0.8.7"
 val asmVersion = "5.2"
 
 version = "$patchesVersion+mixin.$mixinVersion"
