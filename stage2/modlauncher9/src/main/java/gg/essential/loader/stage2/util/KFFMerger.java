@@ -289,6 +289,13 @@ public class KFFMerger {
         try {
             Path versionFile = root.resolve("META-INF").resolve("kotlinx_coroutines_core.version");
             if (Files.notExists(versionFile)) {
+                // Coroutines prior to 1.6.0 (e.g. as in KFF 2.2.0) did not yet have the version file:
+                // https://github.com/Kotlin/kotlinx.coroutines/commit/5c75e7ad58337dcce68b00f5f7e40bfc0108dce7
+                // There's no way to know their exact version, but we don't really need to either because it'll always
+                // be older than what we ship, so any old non-zero version will do.
+                if (Files.exists(root.resolve("kotlinx").resolve("coroutines").resolve("Job.class"))) {
+                    return version(1, 0, 0);
+                }
                 return 0; // this is one of our slim jars, always consider it outdated
             }
             return version(Files.readString(versionFile));
