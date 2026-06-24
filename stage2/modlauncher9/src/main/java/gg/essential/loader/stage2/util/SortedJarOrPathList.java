@@ -6,21 +6,14 @@ import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.Consumer;
 import java.util.jar.Manifest;
 
-/**
- * List which keeps its JarOrPath elements sorted by their module version, latest first.
- *
- * See [EssentialTransformationService.configureLayerToBeSortedByVersion].
- */
-public class SortedJarOrPathList extends ArrayList<Object> {
+public class SortedJarOrPathList implements Consumer<List<Object>> {
     private static final ArtifactVersion FALLBACK_VERSION = new DefaultArtifactVersion("1");
 
     private final Map<Object, ArtifactVersion> versionCache = new IdentityHashMap<>();
@@ -30,14 +23,13 @@ public class SortedJarOrPathList extends ArrayList<Object> {
 
     private final CompatibilityLayer compatibilityLayer;
 
-    // This does not actually have anything to do with the original functionality of this class but we needed an entry
-    // point for replacing one jar (KFF with old Kotlin) with another jar (same KFF but with newer Kotlin merged into
-    // it) and this class is perfect for that.
-    private final Function<SecureJar, List<SecureJar>> substitute;
-
-    public SortedJarOrPathList(CompatibilityLayer compatibilityLayer, Function<SecureJar, List<SecureJar>> substitute) {
+    public SortedJarOrPathList(CompatibilityLayer compatibilityLayer) {
         this.compatibilityLayer = compatibilityLayer;
-        this.substitute = substitute;
+    }
+
+    @Override
+    public void accept(List<Object> pathOrJarList) {
+        pathOrJarList.sort(COMPARATOR);
     }
 
     private ArtifactVersion getVersion(Object pathOrJar) {
@@ -85,45 +77,5 @@ public class SortedJarOrPathList extends ArrayList<Object> {
             return FALLBACK_VERSION;
         }
         return new DefaultArtifactVersion(version);
-    }
-
-    @Override
-    public boolean add(Object o) {
-        //noinspection RedundantCollectionOperation
-        return addAll(List.of(o));
-    }
-
-    @Override
-    public boolean addAll(Collection<?> c) {
-        boolean changed = super.addAll(c.stream().flatMap(it -> substitute(it).stream()).toList());
-        sort(COMPARATOR);
-        return changed;
-    }
-
-    private List<?> substitute(Object orgPathOrJar) {
-        SecureJar orgJar = PathOrJarAccessor.getJar(orgPathOrJar);
-        if (orgJar == null) {
-            return List.of(orgPathOrJar);
-        }
-
-        List<SecureJar> newJars = substitute.apply(orgJar);
-        if (newJars == null) {
-            return List.of(orgPathOrJar);
-        }
-
-        if (orgPathOrJar instanceof SecureJar) {
-            return newJars;
-        }
-
-        List<Object> newPathOrJars = new ArrayList<>(newJars.size());
-        for (SecureJar newJar : newJars) {
-            Object newPathOrJar = PathOrJarAccessor.from(newJar);
-            if (newPathOrJar == null) {
-                return List.of(orgPathOrJar);
-            }
-            newPathOrJars.add(newPathOrJar);
-        }
-
-        return newPathOrJars;
     }
 }

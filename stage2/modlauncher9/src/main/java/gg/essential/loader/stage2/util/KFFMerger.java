@@ -21,6 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -108,12 +109,26 @@ public class KFFMerger {
         return true;
     }
 
-    public List<SecureJar> maybeMergeInto(SecureJar secureJar) {
+    public void apply(List<Object> pathOrJarList) {
         // Nothing to merge (older Essential version), nothing to do
         if (ourCoreJars.jars.isEmpty()) {
-            return null;
+            return;
         }
 
+        ListIterator<Object> iter = pathOrJarList.listIterator();
+        while (iter.hasNext()) {
+            SecureJar jar = PathOrJarAccessor.getJar(iter.next());
+            if (jar == null) continue;
+
+            List<SecureJar> newJars = maybeMergeInto(jar);
+            if (newJars != null) {
+                iter.remove();
+                newJars.forEach(it -> iter.add(PathOrJarAccessor.from(it)));
+            }
+        }
+    }
+
+    public List<SecureJar> maybeMergeInto(SecureJar secureJar) {
         // If this is a KotlinForForge version which uses JarJar to bundle Kotlin (KFF 5+, potentially 4.12),
         // we no longer need to merge the Kotlin jars into it, we merely need to add our Kotlin jars to the to-be-loaded
         // list too.
