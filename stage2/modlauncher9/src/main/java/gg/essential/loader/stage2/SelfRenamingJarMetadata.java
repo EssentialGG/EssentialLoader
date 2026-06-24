@@ -7,7 +7,7 @@ import cpw.mods.modlauncher.api.IModuleLayerManager;
 import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.util.DelegatingJarMetadata;
 import gg.essential.loader.stage2.util.Lazy;
-import gg.essential.loader.stage2.util.SortedJarOrPathList;
+import gg.essential.loader.stage2.util.PathOrJarAccessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -102,7 +102,7 @@ public class SelfRenamingJarMetadata extends DelegatingJarMetadata {
     private List<SecureJar> getLayerJars() throws Throwable {
         List<SecureJar> jars = new ArrayList<>();
         for (Object pathOrJar : getLayerElements()) {
-            SecureJar jar = SortedJarOrPathList.getJar(pathOrJar);
+            SecureJar jar = PathOrJarAccessor.getJar(pathOrJar);
             if (jar != null) {
                 jars.add(jar);
             }

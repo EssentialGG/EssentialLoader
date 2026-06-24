@@ -2,15 +2,12 @@ package gg.essential.loader.stage2.util;
 
 import cpw.mods.jarhandling.JarMetadata;
 import cpw.mods.jarhandling.SecureJar;
-import cpw.mods.modlauncher.api.NamedPath;
 import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -18,7 +15,6 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.jar.Manifest;
 
@@ -30,9 +26,7 @@ import java.util.jar.Manifest;
 public class SortedJarOrPathList extends ArrayList<Object> {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ArtifactVersion FALLBACK_VERSION = new DefaultArtifactVersion("1");
-    private static Function<Object, SecureJar> jarGetter;
     private final Map<Class<?>, Function<SecureJar, JarMetadata>> metadataGetters = new HashMap<>();
-    private BiFunction<NamedPath, SecureJar, Object> pathOrJarConstructor;
 
     private final Map<Object, ArtifactVersion> versionCache = new IdentityHashMap<>();
 
@@ -52,7 +46,7 @@ public class SortedJarOrPathList extends ArrayList<Object> {
     }
 
     private ArtifactVersion getVersion(Object pathOrJar) {
-        SecureJar jar = getJar(pathOrJar);
+        SecureJar jar = PathOrJarAccessor.getJar(pathOrJar);
         if (jar == null) return FALLBACK_VERSION;
 
         String version = null;
@@ -98,31 +92,6 @@ public class SortedJarOrPathList extends ArrayList<Object> {
         return new DefaultArtifactVersion(version);
     }
 
-    public static SecureJar getJar(Object pathOrJar) {
-        if (pathOrJar instanceof SecureJar secureJar) {
-            return secureJar;
-        }
-
-        if (jarGetter == null) {
-            try {
-                Field jarField = pathOrJar.getClass().getDeclaredField("jar");
-                jarField.setAccessible(true);
-                jarGetter = wrapper -> {
-                    try {
-                        return (SecureJar) jarField.get(wrapper);
-                    } catch (Throwable t) {
-                        LOGGER.error("Failed to get jar from PathOrJar:", t);
-                        return null;
-                    }
-                };
-            } catch (Throwable t) {
-                LOGGER.error("Failed to get jar from PathOrJar:", t);
-                jarGetter = __ -> null;
-            }
-        }
-        return jarGetter.apply(pathOrJar);
-    }
-
     private JarMetadata getMetadata(SecureJar jar) {
         Class<? extends SecureJar> implClass = jar.getClass();
         Function<SecureJar, JarMetadata> metadataGetter = metadataGetters.get(implClass);
@@ -160,7 +129,7 @@ public class SortedJarOrPathList extends ArrayList<Object> {
     }
 
     private List<?> substitute(Object orgPathOrJar) {
-        SecureJar orgJar = getJar(orgPathOrJar);
+        SecureJar orgJar = PathOrJarAccessor.getJar(orgPathOrJar);
         if (orgJar == null) {
             return List.of(orgPathOrJar);
         }
@@ -174,26 +143,9 @@ public class SortedJarOrPathList extends ArrayList<Object> {
             return newJars;
         }
 
-        if (pathOrJarConstructor == null) {
-            try {
-                Constructor<?> constructor = orgPathOrJar.getClass().getDeclaredConstructors()[0];
-                constructor.setAccessible(true);
-                pathOrJarConstructor = (path, jar) -> {
-                    try {
-                        return constructor.newInstance(path, jar);
-                    } catch (Throwable t) {
-                        LOGGER.error("Failed to construct PathOrJar:", t);
-                        return null;
-                    }
-                };
-            } catch (Throwable t) {
-                LOGGER.error("Failed to construct PathOrJar:", t);
-                pathOrJarConstructor = (path, jar) -> null;
-            }
-        }
         List<Object> newPathOrJars = new ArrayList<>(newJars.size());
         for (SecureJar newJar : newJars) {
-            Object newPathOrJar = pathOrJarConstructor.apply(null, newJar);
+            Object newPathOrJar = PathOrJarAccessor.from(newJar);
             if (newPathOrJar == null) {
                 return List.of(orgPathOrJar);
             }
