@@ -21,6 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -108,25 +109,35 @@ public class KFFMerger {
         return true;
     }
 
-    public List<SecureJar> maybeMergeInto(SecureJar secureJar) {
+    public void apply(List<Object> pathOrJarList) {
         // Nothing to merge (older Essential version), nothing to do
         if (ourCoreJars.jars.isEmpty()) {
-            return null;
+            return;
         }
 
-        // If this is a KotlinForForge version which uses JarJar to bundle Kotlin (KFF 5+, potentially 4.12),
-        // we no longer need to merge the Kotlin jars into it, we merely need to add our Kotlin jars to the to-be-loaded
-        // list too.
-        if (isJarJarKff(secureJar)) {
-            LOGGER.info("Looks like KotlinForForge is using JarJar now, all good to go: {}", secureJar);
-            List<SecureJar> allJars = new ArrayList<>();
-            allJars.add(secureJar); // keep user-installed jar
-            allJars.addAll(ourCoreJars.jars);
-            allJars.addAll(ourCoroutinesJars.jars);
-            allJars.addAll(ourSerializationJars.jars);
-            return allJars;
+        boolean didMergeIntoExistingMod = false;
+        ListIterator<Object> iter = pathOrJarList.listIterator();
+        while (iter.hasNext()) {
+            SecureJar jar = PathOrJarAccessor.getJar(iter.next());
+            if (jar == null) continue;
+
+            SecureJar newJar = maybeMergeInto(jar);
+            if (newJar != null) {
+                iter.set(PathOrJarAccessor.from(newJar));
+                didMergeIntoExistingMod = true;
+                // continue, in case there's multiple KFF versions
+            }
         }
 
+        if (didMergeIntoExistingMod) {
+            return;
+        }
+
+        // No KFF (or KFF 5+ which is using JarJar), so we can simply add all our Kotlin libs to the classpath directly.
+        addKotlinLibsToPathOrJarList(pathOrJarList);
+    }
+
+    public SecureJar maybeMergeInto(SecureJar secureJar) {
         // Only care about a jar if it contains a Kotlin we can overwrite
         if (!compatibilityLayer.getPackages(secureJar).contains("kotlin")) {
             return null;
@@ -147,7 +158,7 @@ public class KFFMerger {
         // If the jar contains only core but not coroutine libs, then it's not the fat KFF jar but rather KFF is
         // using JarJar, and we should be able to find that one later.
         if (theirCoreVersion != 0 && theirCoroutinesVersion == 0) {
-            LOGGER.info("Looks like a standalone Kotlin jar. Keeping as is, we should be finding a JarJar KFF jar.");
+            LOGGER.info("Looks like a standalone Kotlin jar. Keeping as is.");
             return null;
         }
 
@@ -200,16 +211,30 @@ public class KFFMerger {
                 }
             }
 
-            return List.of(compatibilityLayer.newSecureJarWithCustomMetadata((__, newMeta) -> new DescriptorRewritingJarMetadata(orgMeta, newMeta) {
+            return compatibilityLayer.newSecureJarWithCustomMetadata((__, newMeta) -> new DescriptorRewritingJarMetadata(orgMeta, newMeta) {
                 @Override
                 public String name() {
                     // Call the original name from the original SecureJar to allow SelfRenamingJarMetadata to function
                     return secureJar.name();
                 }
-            }, tmpFile));
+            }, tmpFile);
         } catch (Throwable t) {
             LOGGER.fatal("Failed to merge updated Kotlin into " + secureJar + ":", t);
             return null; // oh well, guess we'll give it a try as is
+        }
+    }
+
+    private void addKotlinLibsToPathOrJarList(List<Object> pathOrJarList) {
+        addToPathOrJarList(pathOrJarList, ourCoreJars.jars);
+        addToPathOrJarList(pathOrJarList, ourCoroutinesJars.jars);
+        addToPathOrJarList(pathOrJarList, ourSerializationJars.jars);
+    }
+
+    private void addToPathOrJarList(List<Object> pathOrJarList, List<SecureJar> jarsToBeAdded) {
+        for (SecureJar jar : jarsToBeAdded) {
+            Object pathOrJar = PathOrJarAccessor.from(jar);
+            if (pathOrJar == null) continue;
+            pathOrJarList.add(pathOrJar);
         }
     }
 
@@ -264,6 +289,13 @@ public class KFFMerger {
         try {
             Path versionFile = root.resolve("META-INF").resolve("kotlinx_coroutines_core.version");
             if (Files.notExists(versionFile)) {
+                // Coroutines prior to 1.6.0 (e.g. as in KFF 2.2.0) did not yet have the version file:
+                // https://github.com/Kotlin/kotlinx.coroutines/commit/5c75e7ad58337dcce68b00f5f7e40bfc0108dce7
+                // There's no way to know their exact version, but we don't really need to either because it'll always
+                // be older than what we ship, so any old non-zero version will do.
+                if (Files.exists(root.resolve("kotlinx").resolve("coroutines").resolve("Job.class"))) {
+                    return version(1, 0, 0);
+                }
                 return 0; // this is one of our slim jars, always consider it outdated
             }
             return version(Files.readString(versionFile));

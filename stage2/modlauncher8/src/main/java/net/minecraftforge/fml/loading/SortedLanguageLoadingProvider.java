@@ -6,6 +6,7 @@ import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +37,7 @@ public class SortedLanguageLoadingProvider extends LanguageLoadingProvider {
     @Override
     public void addAdditionalLanguages(List<ModFile> modFiles) {
         if (modFiles == null) {
-            return;
+            modFiles = Collections.emptyList();
         }
 
         Set<String> visited = new HashSet<>();

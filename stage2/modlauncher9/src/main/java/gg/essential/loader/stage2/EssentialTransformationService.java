@@ -5,6 +5,7 @@ import cpw.mods.modlauncher.Launcher;
 import cpw.mods.modlauncher.api.*;
 import gg.essential.loader.stage2.modlauncher.CompatibilityLayer;
 import gg.essential.loader.stage2.modlauncher.EssentialModLocator;
+import gg.essential.loader.stage2.util.AugmentedJarOrPathList;
 import gg.essential.loader.stage2.util.KFFMerger;
 import gg.essential.loader.stage2.util.SortedJarOrPathList;
 import org.apache.logging.log4j.LogManager;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static gg.essential.loader.stage2.Utils.hasClass;
 
@@ -160,12 +162,25 @@ public class EssentialTransformationService implements ITransformationService {
      * By default, if there are multiple jars declaring the same module in a layer, ModLauncher will simply pick
      * whichever was registered first (see JarModuleFinder). Registration order is effectively random (HashMap iteration
      * order), so it effectively picks a random version, which is no good.
-     * To work around this behavior, we replace the list which holds all jars in a layer with one that automatically
-     * sorts by version.
+     * To work around this behavior, we sort all jars in a layer by their version before the layer is loaded.
      * This may fail if ModLauncher internals change but there isn't much we can do about it. In such case, we will
      * simply fall back to the old, unstable behavior.
      */
-    private void configureLayerToBeSortedByVersion(IModuleLayerManager.Layer layer) {
+    private Consumer<List<Object>> sortedByVersion() {
+        return new SortedJarOrPathList(compatibilityLayer);
+    }
+
+    /**
+     * Configures the given layer to have the give augmentations applied to its classpath before it is loaded.
+     */
+    @SafeVarargs
+    private void configureLayerAugmentation(IModuleLayerManager.Layer layer, Consumer<List<Object>>...augmentations) {
+        Consumer<List<Object>> combinedAugmentations = list -> {
+            for (Consumer<List<Object>> augmentation : augmentations) {
+                augmentation.accept(list);
+            }
+        };
+
         try {
             IModuleLayerManager layerManager = Launcher.INSTANCE.findLayerManager().orElseThrow();
             Field layersField = layerManager.getClass().getDeclaredField("layers");
@@ -175,14 +190,13 @@ public class EssentialTransformationService implements ITransformationService {
                 (Map<IModuleLayerManager.Layer, List<Object>>) layersField.get(layerManager);
 
             layers.compute(layer, (__, list) -> {
-                SortedJarOrPathList sortedList = new SortedJarOrPathList(compatibilityLayer, kffMerger::maybeMergeInto);
-                if (list != null) {
-                    sortedList.addAll(list);
+                if (list == null) {
+                    list = new ArrayList<>();
                 }
-                return sortedList;
+                return new AugmentedJarOrPathList(list, combinedAugmentations);
             });
         } catch (Throwable t) {
-            LOGGER.error("Failed to replace mod list of " + layer + " with sorted list:", t);
+            LOGGER.error("Failed to replace mod list of " + layer + " with augmented list:", t);
         }
     }
 
@@ -244,7 +258,7 @@ public class EssentialTransformationService implements ITransformationService {
         if (injectMods()) {
             modsInjected = true;
         }
-        configureLayerToBeSortedByVersion(IModuleLayerManager.Layer.PLUGIN);
+        configureLayerAugmentation(IModuleLayerManager.Layer.PLUGIN, kffMerger::apply, sortedByVersion());
         return List.of(new Resource(IModuleLayerManager.Layer.PLUGIN, this.pluginJars));
     }
 
@@ -256,7 +270,7 @@ public class EssentialTransformationService implements ITransformationService {
         if (!modsInjected) {
             LOGGER.error("Failed to inject Essential into Forge mod list, falling back to Mixin-only operation. " +
                 "Mod will not be listed in Forge's mod list.");
-            configureLayerToBeSortedByVersion(IModuleLayerManager.Layer.GAME);
+            configureLayerAugmentation(IModuleLayerManager.Layer.GAME, sortedByVersion());
             return Collections.singletonList(new Resource(IModuleLayerManager.Layer.GAME, this.gameJars));
         }
         return List.of();
